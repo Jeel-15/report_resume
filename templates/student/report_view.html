@@ -1,0 +1,2583 @@
+{% extends "base.html" %}
+
+{% block title %}{% if admin_readonly %}Report Viewer - Anti-Report{% else %}Report Editor - Anti-Report{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background:
+            radial-gradient(1100px 420px at -10% -20%, rgba(59, 130, 246, 0.16), transparent 62%),
+            radial-gradient(980px 360px at 110% -16%, rgba(147, 197, 253, 0.25), transparent 58%),
+            linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
+        color: #0f172a;
+    }
+
+    .report-editor-header {
+        margin-bottom: 1rem;
+        gap: 0.75rem 0;
+    }
+
+    #pageTitle {
+        font-size: clamp(1.7rem, 4vw, 3rem);
+        line-height: 1.1;
+        margin-bottom: 0;
+        color: #0f172a;
+        font-family: 'Playfair Display', serif;
+    }
+
+    .container.main-content h2,
+    .container.main-content .text-muted {
+        color: #0f172a !important;
+    }
+
+    .container.main-content .text-muted {
+        color: #64748b !important;
+        opacity: 1;
+    }
+
+    .report-editor-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+    }
+
+    .report-editor-actions .badge {
+        border-radius: 999px;
+        padding: 0.45rem 0.72rem;
+        font-size: 0.75rem;
+        letter-spacing: 0.02em;
+    }
+
+    .report-editor-actions .btn {
+        border-radius: 10px;
+        min-height: 38px;
+        font-weight: 600;
+    }
+
+    .report-editor-actions .btn-outline-secondary {
+        border-color: #dbe7ff;
+        color: #64748b;
+        background: #f8fbff;
+    }
+
+    .report-editor-actions .btn-outline-secondary:hover {
+        color: #1e3a8a;
+        border-color: #bfdbfe;
+        background: #eff6ff;
+    }
+
+    .report-editor-actions .btn-success {
+        border: 0;
+        background: linear-gradient(90deg, #059669, #10b981);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.28);
+    }
+
+    .preview-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
+    }
+
+    .preview-toolbar .btn {
+        border-radius: 10px;
+        min-height: 36px;
+        font-weight: 600;
+    }
+
+    .cover-editor-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .cover-editor-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #ffffff;
+        padding: 8px 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .cover-editor-toolbar .btn,
+    .cover-editor-toolbar .form-select {
+        border-radius: 10px;
+        min-height: 34px;
+    }
+
+    .cover-editor-toolbar .cover-editor-spacer {
+        flex: 1 1 auto;
+    }
+
+    .cover-editor-banner {
+        display: none;
+        border: 1px solid #fde68a;
+        background: #fffbeb;
+        color: #92400e;
+        border-radius: 12px;
+        padding: 0.7rem 0.9rem;
+        font-size: 0.92rem;
+        line-height: 1.4;
+    }
+
+    .cover-editor-banner.show {
+        display: block;
+    }
+
+    .cover-block-editor {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .cover-row-divider {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin: 0.05rem 0;
+        min-height: 18px;
+        height: 18px;
+        font-size: 0.72rem;
+        line-height: 18px;
+    }
+
+    .cover-block-editor:hover .cover-row-divider,
+    .cover-row-divider:hover,
+    .cover-row-divider.is-visible {
+        display: flex;
+    }
+
+    .cover-row-divider::before,
+    .cover-row-divider::after {
+        content: '';
+        flex: 1 1 auto;
+        border-top: 1px dashed #bfdbfe;
+    }
+
+    .cover-row-divider button {
+        border: 0;
+        background: transparent;
+        color: #93c5fd;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0 0.35rem;
+        line-height: 1;
+    }
+
+    .cover-row {
+        display: flex;
+        align-items: stretch;
+        gap: 0.45rem;
+        border-radius: 8px;
+        padding: 0;
+        transition: background-color 150ms ease, transform 150ms ease, opacity 150ms ease;
+        position: relative;
+        min-height: 38px;
+        vertical-align: middle;
+    }
+
+    .cover-row:hover {
+        background: #f8fbff;
+    }
+
+    .cover-row.is-locked {
+        background: #f1f5f9;
+        color: #94a3b8;
+    }
+
+    .cover-row.dragging {
+        opacity: 0.4;
+    }
+
+    .cover-row.drop-before::before,
+    .cover-row.drop-after::after {
+        content: '';
+        position: absolute;
+        left: 0.4rem;
+        right: 0.4rem;
+        height: 2px;
+        background: #3b82f6;
+        border-radius: 999px;
+    }
+
+    .cover-row.drop-before::before {
+        top: -1px;
+    }
+
+    .cover-row.drop-after::after {
+        bottom: -1px;
+    }
+
+    .cover-row-handle,
+    .cover-row-lock,
+    .cover-row-delete {
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        flex: 0 0 28px;
+    }
+
+    .cover-row-handle {
+        color: #cbd5e1;
+        cursor: grab;
+        font-size: 1rem;
+        user-select: none;
+    }
+
+    .cover-row-handle:hover,
+    .cover-row-handle:focus-visible {
+        color: #3b82f6;
+        outline: none;
+    }
+
+    .cover-row-lock {
+        color: #94a3b8;
+        cursor: default;
+        font-size: 1rem;
+    }
+
+    .cover-row-input {
+        flex: 1 1 auto;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        outline: none;
+        color: #0f172a;
+        font-family: inherit;
+        font-size: inherit;
+        line-height: 1.2;
+        height: 38px;
+        padding: 0 8px;
+        min-width: 0;
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    .cover-row-style {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex: 0 0 auto;
+        padding-right: 0.15rem;
+    }
+
+    .cover-row-size {
+        border: 1px solid #dbe7ff;
+        background: #fff;
+        color: #334155;
+        border-radius: 8px;
+        height: 28px;
+        font-size: 0.78rem;
+        padding: 0 0.3rem;
+        min-width: 58px;
+    }
+
+    .cover-row-style-btn {
+        width: 28px;
+        height: 28px;
+        border: 1px solid #dbe7ff;
+        background: #fff;
+        color: #475569;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1;
+        padding: 0;
+    }
+
+    .cover-row-style-btn.is-active {
+        border-color: #60a5fa;
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    .cover-row-style-btn[data-style-action="italic"] {
+        font-style: italic;
+    }
+
+    .cover-row-input::placeholder {
+        color: #cbd5e1;
+    }
+
+    .cover-row-input[readonly] {
+        color: #94a3b8;
+        pointer-events: none;
+    }
+
+    .cover-row-delete {
+        color: #94a3b8;
+        border-radius: 999px;
+        transition: color 150ms ease, background-color 150ms ease;
+    }
+
+    .cover-row-delete:hover,
+    .cover-row-delete:focus-visible,
+    .cover-row-delete.is-armed {
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.08);
+        outline: none;
+    }
+
+    .cover-undo-toast {
+        position: fixed;
+        left: 50%;
+        bottom: 1rem;
+        transform: translateX(-50%);
+        z-index: 1080;
+        min-width: 280px;
+        max-width: calc(100vw - 2rem);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+    }
+
+    .cover-undo-toast .toast-body {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .cover-undo-toast .btn-link {
+        text-decoration: none;
+        font-weight: 700;
+        padding: 0;
+    }
+
+    .report-workspace {
+        border: 1px solid #dbe7ff;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 12px 30px rgba(37, 99, 235, 0.08);
+        overflow: hidden;
+    }
+
+    .report-workspace-head {
+        padding: 0.8rem 0.8rem 0;
+        background: linear-gradient(180deg, #f9fcff, #f2f7ff);
+        border-bottom: 1px solid #dbe7ff;
+    }
+
+    .workspace-head-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0 0.15rem 0.75rem;
+    }
+
+    .workspace-head-actions .btn {
+        border-radius: 10px;
+        min-height: 36px;
+        font-weight: 600;
+    }
+
+    .workspace-head-actions .btn-success {
+        border: 0;
+        background: linear-gradient(90deg, #059669, #10b981);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.28);
+    }
+
+    #reportTabs {
+        gap: 0.5rem;
+        margin-bottom: 0.75rem !important;
+    }
+
+    #reportTabs .nav-item {
+        flex: 1 1 0;
+    }
+
+    #reportTabs .nav-link {
+        width: 100%;
+        border: 1px solid #dbe7ff;
+        border-radius: 10px;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.92rem;
+        text-align: center;
+        padding: 0.64rem 0.85rem;
+        background: #f8fbff;
+    }
+
+    #reportTabs .nav-link:hover {
+        color: #1e3a8a;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    #reportTabs .nav-link.active {
+        color: #fff;
+        background: linear-gradient(135deg, #2563eb, #3b82f6);
+        border-color: transparent;
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    }
+
+    .report-workspace-body {
+        padding: 1rem;
+        background: #f8fbff;
+    }
+
+    .report-workspace-body .card {
+        border: 1px solid #dbe7ff !important;
+        background: #ffffff;
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.07);
+        border-radius: 14px;
+    }
+
+    .report-workspace-body .card-title,
+    .report-workspace-body h5,
+    .report-workspace-body h6 {
+        color: #0f172a;
+        font-family: 'Playfair Display', serif;
+    }
+
+    .report-workspace-body .form-label {
+        color: #64748b;
+        font-weight: 700;
+        font-size: 0.82rem;
+    }
+
+    .report-workspace-body .form-control,
+    .report-workspace-body .form-select {
+        background: #f8fbff;
+        border: 1.5px solid #dbe7ff;
+        color: #0f172a;
+        border-radius: 10px;
+    }
+
+    .report-workspace-body .form-control:focus,
+    .report-workspace-body .form-select:focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.2);
+        background: #ffffff;
+    }
+
+    .report-workspace-body .form-check-label {
+        color: #475569;
+    }
+
+    .report-workspace-body .border {
+        border-color: #dbe7ff !important;
+    }
+
+    .report-workspace-body .bg-light-subtle {
+        background: #f8fbff !important;
+    }
+
+    .report-workspace-body .bg-white {
+        background: #ffffff !important;
+    }
+
+    .report-workspace-body .btn-primary {
+        background: linear-gradient(90deg, #2563eb, #3b82f6);
+        border: 0;
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    }
+
+    .report-workspace-body .btn-outline-primary {
+        border-color: #bfdbfe;
+        color: #1d4ed8;
+        background: #eff6ff;
+    }
+
+    .cover-editor-note {
+        margin-top: 0.5rem;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .cover-editor-add {
+        margin-left: auto;
+    }
+
+    .report-workspace-body .btn-outline-secondary {
+        border-color: #dbe7ff;
+        color: #64748b;
+        background: #f8fbff;
+    }
+
+    .report-workspace-body .btn-success {
+        background: linear-gradient(90deg, #059669, #10b981);
+        border: 0;
+    }
+
+    .report-workspace-body .btn-outline-danger {
+        border-color: rgba(239, 68, 68, 0.25);
+        color: #dc2626;
+        background: #fef2f2;
+    }
+
+    .report-workspace-body .text-muted {
+        color: #64748b !important;
+    }
+
+    .report-workspace-body .card-header {
+        background: linear-gradient(180deg, #f9fcff, #f2f7ff);
+        border-bottom: 1px solid #dbe7ff;
+        color: #0f172a;
+    }
+
+    /* Report timeline - dark theme */
+    #reportTimeline {
+        background: #ffffff !important;
+        border-color: #dbe7ff !important;
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.07);
+    }
+
+    #reportTimeline .tl-dot {
+        border-color: #dbe7ff !important;
+        background: #ffffff !important;
+        color: #94a3b8 !important;
+    }
+
+    #reportTimeline div[style*="background:#e8e4f0"] {
+        background: #dbe7ff !important;
+    }
+
+    #timelineFill {
+        background: linear-gradient(90deg, #1d4ed8, #3b82f6) !important;
+    }
+
+    #reportTimeline div[style*="color:#9b97b0"] {
+        color: #64748b !important;
+    }
+
+    /* PDF preview loading */
+    #pdfLoadingOverlay {
+        background: #f8fbff !important;
+    }
+
+    #pdfLoadingOverlay div[style*="color: #1a1a2e"] {
+        color: #0f172a !important;
+    }
+
+    #pdfLoadingOverlay div[style*="color: #6b6783"] {
+        color: #64748b !important;
+    }
+
+    #pdfLoadingOverlay div[style*="border: 3px"] {
+        border-color: #dbe7ff !important;
+        border-top-color: #2563eb !important;
+    }
+
+    #pdfLoadingOverlay div[style*="background: #e8e4f0"] {
+        background: #dbe7ff !important;
+    }
+
+    #pdfProgressBar {
+        background: linear-gradient(90deg, #1d4ed8, #3b82f6) !important;
+    }
+
+    @media (max-width: 768px) {
+        .report-editor-actions {
+            justify-content: flex-start;
+            margin-top: 0.6rem;
+        }
+
+        .report-workspace-head {
+            padding: 0.7rem 0.7rem 0;
+        }
+
+        .report-workspace-body {
+            padding: 0.7rem;
+        }
+
+        .preview-toolbar {
+            justify-content: stretch;
+        }
+
+        .preview-toolbar .btn {
+            width: 100%;
+        }
+
+        .workspace-head-actions {
+            justify-content: stretch;
+            padding: 0 0.1rem 0.7rem;
+        }
+
+        .workspace-head-actions .btn {
+            width: 100%;
+        }
+
+        #reportTabs {
+            gap: 0.45rem;
+        }
+
+        #reportTabs .nav-item {
+            flex: 1 1 calc(50% - 0.45rem);
+        }
+
+        #reportTabs .nav-link {
+            font-size: 0.88rem;
+            padding: 0.55rem 0.55rem;
+        }
+
+        #previewViewport {
+            height: calc(100vh - 220px);
+            min-height: 430px;
+        }
+
+        #reportTimeline {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 12px 12px !important;
+        }
+
+        #reportTimeline > div {
+            min-width: 560px;
+        }
+
+        .tl-step {
+            min-width: 92px;
+        }
+
+        .images-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .report-editor-header {
+            margin-bottom: 0.75rem;
+        }
+
+        .report-editor-actions {
+            gap: 0.4rem;
+        }
+
+        .report-editor-actions .btn {
+            width: 100%;
+        }
+
+        #previewViewport {
+            min-height: 360px;
+            height: calc(100vh - 190px);
+        }
+
+        #reportTimeline > div {
+            min-width: 520px;
+        }
+
+        #logoSlots .col-md-6 {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3 align-items-center report-editor-header">
+    <div class="col-md-6">
+        <h2 id="pageTitle">Loading Report...</h2>
+    </div>
+    <div class="col-md-6 report-editor-actions">
+        <span id="statusBadge" class="badge bg-secondary">Loading</span>
+        <button class="btn btn-outline-secondary" onclick="window.history.back()">Back</button>
+    </div>
+</div>
+
+<div id="reportTimeline" style="
+    background:#fff;border-radius:12px;border:1px solid #e8e4f0;
+    padding:16px 20px;margin-bottom:20px;
+">
+    <div style="display:flex;align-items:center;justify-content:space-between;
+        position:relative;">
+
+        <div style="position:absolute;top:14px;left:14px;right:14px;
+            height:2px;background:#e8e4f0;z-index:0;"></div>
+        <div id="timelineFill" style="position:absolute;top:14px;left:14px;
+            height:2px;background:linear-gradient(90deg,#7c3aed,#e84393);
+            z-index:1;transition:width 0.5s ease;width:0%;"></div>
+
+        <div class="tl-step" data-step="pending">
+            <div class="tl-dot" style="width:28px;height:28px;border-radius:50%;
+                border:2px solid #e8e4f0;background:#fff;display:flex;
+                align-items:center;justify-content:center;font-size:11px;
+                color:#9b97b0;position:relative;z-index:2;margin:0 auto 6px;">1</div>
+            <div style="font-size:11px;color:#9b97b0;text-align:center;
+                white-space:nowrap;">Submitted</div>
+        </div>
+        <div class="tl-step" data-step="generating">
+            <div class="tl-dot" style="width:28px;height:28px;border-radius:50%;
+                border:2px solid #e8e4f0;background:#fff;display:flex;
+                align-items:center;justify-content:center;font-size:11px;
+                color:#9b97b0;position:relative;z-index:2;margin:0 auto 6px;">2</div>
+            <div style="font-size:11px;color:#9b97b0;text-align:center;
+                white-space:nowrap;">Generating</div>
+        </div>
+        <div class="tl-step" data-step="generated">
+            <div class="tl-dot" style="width:28px;height:28px;border-radius:50%;
+                border:2px solid #e8e4f0;background:#fff;display:flex;
+                align-items:center;justify-content:center;font-size:11px;
+                color:#9b97b0;position:relative;z-index:2;margin:0 auto 6px;">3</div>
+            <div style="font-size:11px;color:#9b97b0;text-align:center;
+                white-space:nowrap;">Generated</div>
+        </div>
+        <div class="tl-step" data-step="edited">
+            <div class="tl-dot" style="width:28px;height:28px;border-radius:50%;
+                border:2px solid #e8e4f0;background:#fff;display:flex;
+                align-items:center;justify-content:center;font-size:11px;
+                color:#9b97b0;position:relative;z-index:2;margin:0 auto 6px;">4</div>
+            <div style="font-size:11px;color:#9b97b0;text-align:center;
+                white-space:nowrap;">Edited</div>
+        </div>
+        <div class="tl-step" data-step="downloaded">
+            <div class="tl-dot" style="width:28px;height:28px;border-radius:50%;
+                border:2px solid #e8e4f0;background:#fff;display:flex;
+                align-items:center;justify-content:center;font-size:11px;
+                color:#9b97b0;position:relative;z-index:2;margin:0 auto 6px;">5</div>
+            <div style="font-size:11px;color:#9b97b0;text-align:center;
+                white-space:nowrap;">Downloaded</div>
+        </div>
+    </div>
+</div>
+
+<section class="report-workspace">
+    <div class="report-workspace-head">
+        <ul class="nav nav-pills nav-fill" id="reportTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="editor-tab" data-bs-toggle="tab" data-bs-target="#editor-pane" type="button" role="tab" aria-controls="editor-pane" aria-selected="true">
+                    <span class="me-1">1.</span><i class="bi bi-pencil-square me-1"></i>Editor
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview-pane" type="button" role="tab" aria-controls="preview-pane" aria-selected="false">
+                    <span class="me-1">2.</span><i class="bi bi-eye me-1"></i>Live Preview
+                </button>
+            </li>
+            <li class="nav-item" id="imageTabNavItem" style="display:none;" role="presentation">
+                <button class="nav-link" id="images-tab-btn" data-bs-toggle="tab" data-bs-target="#imagesPanel" type="button" role="tab" aria-controls="imagesPanel" aria-selected="false">
+                    <span class="me-1">3.</span><i class="bi bi-camera me-1"></i>Images
+                </button>
+            </li>
+        </ul>
+        <div class="workspace-head-actions">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="openPdfBtn">
+                <i class="bi bi-box-arrow-up-right"></i> Open PDF
+            </button>
+            <button class="btn btn-success btn-sm" id="downloadPdfBtn" onclick="downloadPdf()">
+                <i class="bi bi-file-pdf"></i> Download PDF
+            </button>
+        </div>
+    </div>
+
+    <div class="report-workspace-body">
+<div class="tab-content" id="reportTabsContent">
+    <!-- Editor Pane -->
+    <div class="tab-pane fade show active" id="editor-pane" role="tabpanel" aria-labelledby="editor-tab">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="card-title mb-0">Edit Sections</h5>
+                    <button class="btn btn-primary btn-sm" onclick="saveEdits()" id="saveBtn">
+                        <i class="bi bi-save"></i> Save Changes
+                    </button>
+                </div>
+                <div class="border rounded p-3 mb-4 bg-light-subtle">
+                    <h6 class="mb-2">Cover Page Editor</h6>
+                    <div id="coverEditorWrapper" class="cover-editor-shell">
+                        <div id="coverLegacyBanner" class="cover-editor-banner" role="alert"></div>
+                        <div class="cover-editor-toolbar">
+                            <select id="coverFontFamily" class="form-select form-select-sm" style="width:auto; min-width:160px;">
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Arial">Arial</option>
+                            </select>
+                            <select id="coverFontSize" class="form-select form-select-sm" style="width:auto; min-width:110px;">
+                                <option value="12">Font 12</option>
+                                <option value="14">Font 14</option>
+                                <option value="16">Font 16</option>
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-cover-align="left">L</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-cover-align="center">C</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-cover-align="right">R</button>
+                            <div class="cover-editor-spacer"></div>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="addCoverLineBtn">
+                                <i class="bi bi-plus-lg"></i> Add line
+                            </button>
+                        </div>
+                        <div id="coverPageEditor" class="cover-block-editor"></div>
+                    </div>
+                </div>
+                <div class="border rounded p-3 mb-4 bg-light-subtle">
+                    <h6 class="mb-3">Cover Logos</h6>
+                    <div id="logoSlots" class="row g-3"></div>
+                    <small class="text-muted d-block mt-2">Tip: If no custom logos uploaded, college and industry logos are used automatically.</small>
+                </div>
+                <div class="border rounded p-3 mb-4 bg-light-subtle">
+                    <h6 class="mb-3">Header & Footer</h6>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="showHeader">
+                                <label class="form-check-label" for="showHeader">Show Header</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="showFooter">
+                                <label class="form-check-label" for="showFooter">Show Footer</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Footer Text</label>
+                            <input type="text" class="form-control" id="footerText">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Header Left</label>
+                            <input type="text" class="form-control" id="headerLeft">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Header Right</label>
+                            <input type="text" class="form-control" id="headerRight">
+                        </div>
+                    </div>
+                </div>
+                <!-- Dynamic Editor Sections -->
+                <div id="editorSections">
+                    <div class="text-center text-muted">Loading content...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Preview Pane -->
+        <div class="tab-pane fade" id="preview-pane" role="tabpanel">
+            <div class="card shadow-sm">
+                <div class="card-body" style="position: relative;">
+                    <div class="preview-toolbar">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="refreshPdfPreview()">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh Preview
+                        </button>
+                    </div>
+
+                    <!-- Loading overlay - shown while PDF is generating -->
+                    <div id="pdfLoadingOverlay" style="
+                        position: absolute;
+                        inset: 0;
+                        background: #f8f7ff;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 16px;
+                        z-index: 10;
+                        border-radius: inherit;
+                    ">
+                        <!-- Spinner -->
+                        <div style="
+                            width: 48px;
+                            height: 48px;
+                            border-radius: 50%;
+                            border: 3px solid #e8e4f0;
+                            border-top-color: #7c3aed;
+                            animation: pdfSpin 0.9s linear infinite;
+                        "></div>
+
+                        <!-- Text -->
+                        <div style="text-align: center;">
+                            <div style="
+                                font-family: 'DM Sans', sans-serif;
+                                font-size: 15px;
+                                font-weight: 500;
+                                color: #1a1a2e;
+                                margin-bottom: 4px;
+                            ">Generating PDF Preview...</div>
+                            <div style="
+                                font-size: 12px;
+                                color: #6b6783;
+                            ">This may take 5-15 seconds</div>
+                        </div>
+
+                        <!-- Animated progress bar -->
+                        <div style="
+                            width: 200px;
+                            height: 3px;
+                            background: #e8e4f0;
+                            border-radius: 4px;
+                            overflow: hidden;
+                        ">
+                            <div id="pdfProgressBar" style="
+                                height: 100%;
+                                width: 0%;
+                                background: linear-gradient(90deg, #7c3aed, #e84393);
+                                border-radius: 4px;
+                                transition: width 0.3s ease;
+                            "></div>
+                        </div>
+
+                    </div>
+                    <!-- End loading overlay -->
+
+                    <iframe id="pdfPreviewFrame" src="" width="100%"
+                                        height="800" style="border:none; display:none;"></iframe>
+                </div>
+            </div>
+        </div>
+    <div class="tab-pane fade" id="imagesPanel">
+        <div id="imageManagerContainer" class="p-3">
+            <p class="text-muted">Loading image manager...</p>
+        </div>
+    </div>
+</div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const isAdminReadonly = {{ 'true' if admin_readonly else 'false' }};
+    const getToken = () => localStorage.getItem('token');
+    const authHeaders = (extra = {}) => {
+        const token = getToken();
+        return {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...extra
+        };
+    };
+    const jsonHeaders = () => authHeaders({ 'Content-Type': 'application/json' });
+
+    const pathParts = window.location.pathname.split('/');
+    const reportId = pathParts[pathParts.length - 1];
+    
+    let reportData = null;
+    let editableContent = {}; // Stores live edits
+    let coverPageBlocks = [];
+    let coverDeletePendingId = null;
+    let coverDeleteUndoState = null;
+    let coverLegacyBannerShown = false;
+    let coverDragState = { activeId: null, overId: null, before: true };
+    let coverDragSrcIndex = null;
+    let coverSyncTimer = null;
+    let coverAnimationFrame = null;
+    let coverEditorActions = {
+        insertLine: null,
+        sync: null,
+        applyTypography: null,
+    };
+    let logoFileNames = {};
+    let sectionImages = {};
+    let imagesEnabled = false;
+
+    const bindCoverEditorControls = () => {};
+
+    const applyAdminReadonlyMode = () => {
+        if (!isAdminReadonly) return;
+
+        const editorTab = document.getElementById('editor-tab');
+        const editorPane = document.getElementById('editor-pane');
+        const previewTab = document.getElementById('preview-tab');
+        const previewPane = document.getElementById('preview-pane');
+        const imageTabNavItem = document.getElementById('imageTabNavItem');
+        const saveBtn = document.getElementById('saveBtn');
+
+        if (editorTab && editorTab.parentElement) {
+            editorTab.parentElement.style.display = 'none';
+        }
+        if (editorPane) {
+            editorPane.classList.remove('show', 'active');
+            editorPane.style.display = 'none';
+        }
+        if (imageTabNavItem) {
+            imageTabNavItem.style.display = 'none';
+        }
+        if (saveBtn) {
+            saveBtn.style.display = 'none';
+        }
+        if (previewTab) {
+            previewTab.classList.add('active');
+            previewTab.setAttribute('aria-selected', 'true');
+            previewTab.innerHTML = '<i class="bi bi-eye me-1"></i>Report Preview';
+        }
+        if (previewPane) {
+            previewPane.classList.add('show', 'active');
+        }
+    };
+
+    const normalizeEditorText = (value) => {
+        let text = value == null ? '' : String(value);
+        text = text.replace(/\r\n?/g, '\n');
+
+        // Decode escaped HTML once/twice to handle webhook-escaped payloads.
+        for (let i = 0; i < 2; i++) {
+            const ta = document.createElement('textarea');
+            ta.innerHTML = text;
+            const decoded = ta.value;
+            if (decoded === text) break;
+            text = decoded;
+        }
+
+        text = text.replace(/<\s*br\s*\/?\s*>/gi, '\n');
+        text = text.replace(/<\s*\/\s*p\s*>/gi, '\n\n');
+        text = text.replace(/<\s*p\b[^>]*>/gi, '');
+        text = text.replace(/<\s*\/?\s*div\b[^>]*>/gi, '\n');
+        text = text.replace(/<\s*\/?\s*li\b[^>]*>/gi, '\n');
+        text = text.replace(/<[^>]+>/g, '');
+        text = text.replace(/\n{3,}/g, '\n\n');
+        return text.trim();
+    };
+
+    const sanitizeEditableContent = (content) => {
+        const out = {};
+        Object.entries(content || {}).forEach(([key, val]) => {
+            if (String(key).startsWith('__')) {
+                out[key] = val;
+            } else {
+                out[key] = normalizeEditorText(val);
+            }
+        });
+        return out;
+    };
+
+    const getLayoutSettings = (content = {}, report = null) => {
+        const raw = content.__layout;
+        const defaults = {
+            showHeader: true,
+            showFooter: true,
+            headerLeft: report?.user?.name || 'Internship Report',
+            headerRight: report?.projectTitle || report?.major?.name || 'Project Report',
+            footerText: 'Prepared as part of internship academic submission',
+        };
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return defaults;
+        return {
+            showHeader: raw.showHeader !== false,
+            showFooter: raw.showFooter !== false,
+            headerLeft: typeof raw.headerLeft === 'string' ? raw.headerLeft : defaults.headerLeft,
+            headerRight: typeof raw.headerRight === 'string' ? raw.headerRight : defaults.headerRight,
+            footerText: typeof raw.footerText === 'string' ? raw.footerText : defaults.footerText,
+        };
+    };
+
+    const writeLayoutSettings = (next) => {
+        editableContent = {
+            ...editableContent,
+            __layout: {
+                showHeader: next.showHeader !== false,
+                showFooter: next.showFooter !== false,
+                headerLeft: next.headerLeft || '',
+                headerRight: next.headerRight || '',
+                footerText: next.footerText || '',
+            }
+        };
+    };
+
+    const renderLayoutControls = () => {
+        const l = getLayoutSettings(editableContent, reportData);
+        const showHeader = document.getElementById('showHeader');
+        const showFooter = document.getElementById('showFooter');
+        const headerLeft = document.getElementById('headerLeft');
+        const headerRight = document.getElementById('headerRight');
+        const footerText = document.getElementById('footerText');
+
+        if (!showHeader || !showFooter || !headerLeft || !headerRight || !footerText) return;
+
+        showHeader.checked = l.showHeader;
+        showFooter.checked = l.showFooter;
+        headerLeft.value = l.headerLeft || '';
+        headerRight.value = l.headerRight || '';
+        footerText.value = l.footerText || '';
+
+        const onUpdate = () => {
+            writeLayoutSettings({
+                showHeader: showHeader.checked,
+                showFooter: showFooter.checked,
+                headerLeft: headerLeft.value,
+                headerRight: headerRight.value,
+                footerText: footerText.value,
+            });
+        };
+
+        [showHeader, showFooter, headerLeft, headerRight, footerText].forEach(el => {
+            if (!el.dataset.bound) {
+                el.addEventListener('change', onUpdate);
+                el.addEventListener('input', onUpdate);
+                el.dataset.bound = '1';
+            }
+        });
+    };
+
+    const getCoverSettings = (content = {}) => {
+        const raw = content.__cover;
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+            return { logos: [] };
+        }
+        const logos = Array.isArray(raw.logos)
+            ? raw.logos.slice(0, 2).filter(v => typeof v === 'string' && v.trim())
+            : [];
+        return { logos };
+    };
+
+    const getDefaultCoverLogos = (report = null) => {
+        if (!report || !Array.isArray(report.defaultCoverLogos)) return [];
+        return report.defaultCoverLogos.filter(v => typeof v === 'string' && v.trim());
+    };
+
+    const normalizeCoverBlockKind = (kind) => {
+        const value = String(kind || '').toLowerCase();
+        if (['title', 'subtitle', 'line', 'small', 'italic', 'logos', 'custom'].includes(value)) {
+            return value;
+        }
+        return 'custom';
+    };
+
+    const clampCoverFontSize = (value, fallback = '12') => {
+        const parsed = Number(String(value == null ? fallback : value).replace('pt', '').trim());
+        if (!Number.isFinite(parsed)) {
+            const fb = Number(String(fallback).replace('pt', '').trim());
+            return Number.isFinite(fb) ? String(Math.max(8, Math.min(32, Math.round(fb)))) : '12';
+        }
+        return String(Math.max(8, Math.min(32, Math.round(parsed))));
+    };
+
+    const getCoverBlockStyleDefaults = (kind) => {
+        switch (normalizeCoverBlockKind(kind)) {
+            case 'title': return { fontSize: '17', bold: true, italic: false };
+            case 'subtitle': return { fontSize: '14', bold: true, italic: false };
+            case 'line': return { fontSize: '12', bold: true, italic: false };
+            case 'small': return { fontSize: '10', bold: true, italic: false };
+            case 'italic': return { fontSize: '10', bold: false, italic: true };
+            case 'logos': return { fontSize: '12', bold: false, italic: false };
+            case 'custom':
+            default: return { fontSize: '12', bold: false, italic: false };
+        }
+    };
+
+    const getCoverBlockDefaults = (kind) => {
+        switch (normalizeCoverBlockKind(kind)) {
+            case 'title': return { label: 'Title', rows: 2 };
+            case 'subtitle': return { label: 'Subtitle', rows: 2 };
+            case 'line': return { label: 'Line', rows: 1 };
+            case 'small': return { label: 'Small Line', rows: 1 };
+            case 'italic': return { label: 'Italic Line', rows: 1 };
+            case 'logos': return { label: 'Logo Row', rows: 1 };
+            case 'custom':
+            default: return { label: 'Custom Line', rows: 2 };
+        }
+    };
+
+    const createCoverBlock = (kind, value, extras = {}) => {
+        const normalizedKind = normalizeCoverBlockKind(kind);
+        const defaults = getCoverBlockDefaults(normalizedKind);
+        const styleDefaults = getCoverBlockStyleDefaults(normalizedKind);
+        const blockId = typeof extras.id === 'string' && extras.id.trim()
+            ? extras.id.trim()
+            : `cover-${normalizedKind}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+
+        return {
+            id: blockId,
+            kind: normalizedKind,
+            label: typeof extras.label === 'string' && extras.label.trim() ? extras.label.trim() : defaults.label,
+            value: typeof value === 'string' ? value : '',
+            rows: Number.isFinite(Number(extras.rows)) ? Math.max(1, Math.min(8, Number(extras.rows))) : defaults.rows,
+            locked: extras.locked === true || normalizedKind === 'logos',
+            fontSize: clampCoverFontSize(extras.fontSize, styleDefaults.fontSize),
+            bold: typeof extras.bold === 'boolean' ? extras.bold : styleDefaults.bold,
+            italic: typeof extras.italic === 'boolean' ? extras.italic : styleDefaults.italic,
+        };
+    };
+
+    const normalizeCoverBlock = (block, fallbackIndex = 0) => {
+        if (!block || typeof block !== 'object' || Array.isArray(block)) return null;
+        return createCoverBlock(block.kind, typeof block.value === 'string' ? block.value : '', {
+            id: typeof block.id === 'string' && block.id.trim() ? block.id : undefined,
+            label: typeof block.label === 'string' && block.label.trim() ? block.label : undefined,
+            rows: block.rows,
+            locked: block.locked === true,
+            fontSize: block.fontSize,
+            bold: block.bold,
+            italic: block.italic,
+            index: fallbackIndex,
+        });
+    };
+
+    const buildDefaultCoverBlocks = (content = {}) => {
+        const report = reportData || {};
+        const user = report.user || {};
+        const college = report.college || {};
+        const university = report.university || {};
+        const degreeName = report.degree?.name || 'DEGREE NAME';
+        const departmentName = report.major?.department?.name || report.major?.name || 'Name of Department';
+        const collegeName = college.name || 'Name of College/Institute';
+        const collegeLocation = [college.villageCityName, college.district, college.state].filter(Boolean).join(', ');
+        const universityName = university.name || 'University Name';
+        const universityLocation = [university.villageCityName, university.district, university.state].filter(Boolean).join(', ');
+        const createdAt = report.createdAt ? new Date(report.createdAt) : null;
+        const monthYear = createdAt ? createdAt.toLocaleString('en-US', { month: 'long', year: 'numeric' }) : 'Month, Year';
+        const internshipTitle = report.internshipTitle || 'Internship Name if any';
+
+        const blocks = [
+            createCoverBlock('title', report.projectTitle || '', { label: 'Project Title', rows: 2 }),
+            createCoverBlock('subtitle', 'A PROJECT REPORT', { label: 'Report Title' }),
+            createCoverBlock('line', 'Submitted by', { label: 'Submitted By' }),
+            createCoverBlock('subtitle', user.name || 'STUDENT NAME', { label: 'Student Name' }),
+            createCoverBlock('small', user.enrollmentNumber || '-', { label: 'Enrollment Number' }),
+            createCoverBlock('small', report.rollNumber || '-', { label: 'Roll Number' }),
+            createCoverBlock('italic', 'As a part of Internship program under NEP guidelines', { label: 'Guideline Note' }),
+            createCoverBlock('subtitle', degreeName, { label: 'Degree' }),
+            createCoverBlock('line', 'In', { label: 'In' }),
+            createCoverBlock('line', departmentName, { label: 'Department' }),
+            createCoverBlock('line', `${collegeName}${collegeLocation ? `, ${collegeLocation}` : ''}`, { label: 'College' }),
+            createCoverBlock('line', `Semester: ${user.semester || 'Semester'}`, { label: 'Semester' }),
+            createCoverBlock('logos', '', { label: 'Logo Row', locked: true }),
+            createCoverBlock('line', `${universityName}${universityLocation ? `, ${universityLocation}` : ''}`, { label: 'University' }),
+            createCoverBlock('small', monthYear, { label: 'Month and Year' }),
+            createCoverBlock('small', 'Academic Year', { label: 'Academic Year' }),
+            createCoverBlock('small', internshipTitle, { label: 'Internship Title' }),
+        ];
+
+        return blocks;
+    };
+
+    const buildCoverPageHtmlFromBlocks = (blocks = [], settings = {}) => {
+        const report = reportData || {};
+        const user = report.user || {};
+        const college = report.college || {};
+        const university = report.university || {};
+        const defaultLogos = getDefaultCoverLogos(reportData);
+        const coverSettings = getCoverSettings(editableContent);
+        const customLogos = Array.isArray(coverSettings.logos) ? coverSettings.logos : [];
+        const collegeLogo = customLogos[0] || defaultLogos[0] || '';
+        const universityLogo = customLogos[1] || defaultLogos[1] || '';
+        const fontFamily = typeof settings.fontFamily === 'string' && settings.fontFamily.trim() ? settings.fontFamily.trim() : 'Times New Roman';
+        const fontSize = String(settings.fontSize || '12');
+        const align = ['left', 'center', 'right'].includes(String(settings.align || '').toLowerCase())
+            ? String(settings.align).toLowerCase()
+            : 'center';
+        const lineHtml = [];
+
+        const renderTextBlock = (block) => {
+            const escaped = escapeHtml(block.value || '');
+            const blockDefaults = getCoverBlockStyleDefaults(block.kind);
+            const blockFontSize = clampCoverFontSize(block.fontSize, blockDefaults.fontSize);
+            const blockBold = typeof block.bold === 'boolean' ? block.bold : blockDefaults.bold;
+            const blockItalic = typeof block.italic === 'boolean' ? block.italic : blockDefaults.italic;
+            const styleAttr = ` style="font-size:${blockFontSize}pt;font-weight:${blockBold ? '700' : '400'};font-style:${blockItalic ? 'italic' : 'normal'};"`;
+            switch (block.kind) {
+                case 'title':
+                    return `<div class="cover-main-title"${styleAttr}>${escaped || '&nbsp;'}</div>`;
+                case 'subtitle':
+                    return `<div class="cover-subtitle"${styleAttr}>${escaped || '&nbsp;'}</div>`;
+                case 'line':
+                    return `<div class="cover-line"${styleAttr}>${escaped || '&nbsp;'}</div>`;
+                case 'small':
+                    return `<div class="cover-line small"${styleAttr}>${escaped || '&nbsp;'}</div>`;
+                case 'italic':
+                    return `<div class="cover-line italic"${styleAttr}>${escaped || '&nbsp;'}</div>`;
+                case 'custom':
+                    return `<div class="cover-custom-note"${styleAttr}>${escaped.replace(/\n/g, '<br>')}</div>`;
+                default:
+                    return `<div class="cover-line"${styleAttr}>${escaped || '&nbsp;'}</div>`;
+            }
+        };
+
+        (blocks || []).forEach((block) => {
+            if (!block || typeof block !== 'object') return;
+            if (normalizeCoverBlockKind(block.kind) === 'logos') {
+                lineHtml.push(`
+                    <div class="cover-logo-row">
+                        <div class="cover-logo-box">
+                            ${collegeLogo ? `<img src="${collegeLogo}" alt="College/Institute Logo">` : '<div class="cover-logo-placeholder">College/Institute<br>Logo</div>'}
+                        </div>
+                        <div class="cover-logo-box">
+                            ${universityLogo ? `<img src="${universityLogo}" alt="University Logo">` : '<div class="cover-logo-placeholder">University Logo</div>'}
+                        </div>
+                    </div>`);
+                return;
+            }
+            lineHtml.push(renderTextBlock(block));
+        });
+
+        return `
+            <div style="font-family:${escapeHtml(fontFamily)}; text-align:${align}; line-height:1.5; color:#000;">
+                ${lineHtml.join('')}
+            </div>`;
+    };
+
+    const getCoverPageSettings = (content = {}) => {
+        const raw = content.__coverPage;
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+            return { html: '', blocks: [], fontSize: '12', fontFamily: 'Times New Roman', align: 'center', mode: 'full' };
+        }
+        const align = ['left', 'center', 'right'].includes(String(raw.align || '').toLowerCase())
+            ? String(raw.align).toLowerCase()
+            : 'center';
+        return {
+            html: typeof raw.html === 'string' ? raw.html : '',
+            blocks: Array.isArray(raw.blocks) ? raw.blocks.map((block, index) => normalizeCoverBlock(block, index)).filter(Boolean) : [],
+            fontSize: String(raw.fontSize || '12'),
+            fontFamily: typeof raw.fontFamily === 'string' && raw.fontFamily.trim() ? raw.fontFamily : 'Times New Roman',
+            align,
+            mode: String(raw.mode || 'full').toLowerCase() === 'append' ? 'append' : 'full',
+        };
+    };
+
+    const writeCoverPageSettings = (next) => {
+        const normalizedBlocks = Array.isArray(next.blocks)
+            ? next.blocks.map((block, index) => normalizeCoverBlock(block, index)).filter(Boolean)
+            : [];
+        editableContent = {
+            ...editableContent,
+            __coverPage: {
+                html: typeof next.html === 'string' ? next.html : '',
+                blocks: normalizedBlocks,
+                fontSize: String(next.fontSize || '12'),
+                fontFamily: typeof next.fontFamily === 'string' && next.fontFamily.trim() ? next.fontFamily : 'Times New Roman',
+                align: String(next.align || 'center').toLowerCase(),
+                mode: String(next.mode || 'full').toLowerCase() === 'append' ? 'append' : 'full',
+            }
+        };
+    };
+
+    const escapeHtml = (value) => {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    };
+
+    const renderCoverPageEditor = () => {
+        const editor = document.getElementById('coverPageEditor');
+        const banner = document.getElementById('coverLegacyBanner');
+        if (!editor) return;
+
+        // Build the editor state from saved blocks, or fall back to the default cover layout.
+        const state = getCoverPageSettings(editableContent);
+        const legacyNote = typeof editableContent.__coverPage?.html === 'string'
+            ? normalizeEditorText(editableContent.__coverPage.html)
+            : '';
+        const hasBlocks = Array.isArray(state.blocks) && state.blocks.length > 0;
+        const previousRects = new Map();
+
+        editor.querySelectorAll('[data-cover-block-id]').forEach((node) => {
+            previousRects.set(node.dataset.coverBlockId, node.getBoundingClientRect());
+        });
+
+        const sourceBlocks = hasBlocks ? state.blocks : buildDefaultCoverBlocks(editableContent);
+        if (!hasBlocks && legacyNote) {
+            sourceBlocks.push(createCoverBlock('custom', legacyNote, { label: 'Imported old cover note', rows: 1 }));
+            if (banner && !coverLegacyBannerShown) {
+                banner.textContent = 'Your old cover note was imported as a line below. You can edit or delete it.';
+                banner.classList.add('show');
+                coverLegacyBannerShown = true;
+            }
+        } else if (banner && !coverLegacyBannerShown) {
+            banner.classList.remove('show');
+            banner.textContent = '';
+        }
+
+        // Only populate coverPageBlocks on first render. On subsequent renders (after adding/editing lines),
+        // keep the current live state instead of resetting to saved state.
+        if (coverPageBlocks.length === 0) {
+            coverPageBlocks = sourceBlocks.map((block, index) => normalizeCoverBlock(block, index)).filter(Boolean);
+        }
+        editor.innerHTML = '';
+        editor.style.fontFamily = state.fontFamily || 'Times New Roman';
+        editor.style.fontSize = `${state.fontSize || 12}pt`;
+
+        const fontFamilySelect = document.getElementById('coverFontFamily');
+        const fontSizeSelect = document.getElementById('coverFontSize');
+        const addCoverLineBtn = document.getElementById('addCoverLineBtn');
+        const alignButtons = Array.from(document.querySelectorAll('[data-cover-align]'));
+
+        if (fontFamilySelect) fontFamilySelect.value = state.fontFamily || 'Times New Roman';
+        if (fontSizeSelect) fontSizeSelect.value = String(state.fontSize || '12');
+
+        // Sync the current block list back into the saved cover-page payload.
+        const getActiveAlign = () => document.querySelector('[data-cover-align].active')?.getAttribute('data-cover-align')
+            || state.align
+            || 'center';
+
+        const runSync = () => {
+            const fontFamily = fontFamilySelect.value || 'Times New Roman';
+            const fontSize = fontSizeSelect.value || '12';
+            const align = getActiveAlign();
+            writeCoverPageSettings({
+                html: '',
+                blocks: coverPageBlocks,
+                fontSize,
+                fontFamily,
+                align,
+                mode: 'full',
+            });
+        };
+
+        const syncCoverBlocks = (immediate = false) => {
+            clearTimeout(coverSyncTimer);
+            if (immediate) {
+                runSync();
+                return;
+            }
+            coverSyncTimer = setTimeout(runSync, 300);
+        };
+
+        const applyTypography = () => {
+            const activeAlign = getActiveAlign();
+            const activeFamily = fontFamilySelect?.value || 'Times New Roman';
+            const fallbackSize = fontSizeSelect?.value || '12';
+            editor.querySelectorAll('.cover-row').forEach((row) => {
+                const input = row.querySelector('.cover-row-input');
+                if (!input) return;
+                const blockId = row.dataset.coverBlockId;
+                const block = coverPageBlocks.find((item) => item.id === blockId);
+                const styleDefaults = getCoverBlockStyleDefaults(block?.kind);
+                const size = clampCoverFontSize(block?.fontSize, styleDefaults.fontSize || fallbackSize);
+                input.style.textAlign = activeAlign;
+                input.style.fontFamily = activeFamily;
+                input.style.fontSize = `${size}pt`;
+                input.style.fontWeight = block?.bold ? '700' : '400';
+                input.style.fontStyle = block?.italic ? 'italic' : 'normal';
+            });
+        };
+
+        // Bind toolbar controls - use named handlers so we can removeEventListener before re-adding.
+        // These references are stored on the element itself to survive re-renders.
+        const bindFontFamily = () => {
+            if (!fontFamilySelect) return;
+            const handler = () => {
+                editor.style.fontFamily = fontFamilySelect.value || 'Times New Roman';
+                applyTypography();
+                syncCoverBlocks(false);
+            };
+            fontFamilySelect.onchange = handler;
+            fontFamilySelect.oninput = handler;
+        };
+
+        const bindFontSize = () => {
+            if (!fontSizeSelect) return;
+            const handler = () => {
+                editor.style.fontSize = `${fontSizeSelect.value || 12}pt`;
+                syncCoverBlocks(false);
+            };
+            fontSizeSelect.onchange = handler;
+            fontSizeSelect.oninput = handler;
+        };
+
+        const bindAlignButtons = () => {
+            alignButtons.forEach((btn) => {
+                btn.onclick = () => {
+                    alignButtons.forEach(other => other.classList.remove('active'));
+                    btn.classList.add('active');
+                    applyTypography();
+                    syncCoverBlocks(true);
+                };
+            });
+        };
+
+        const bindAddLineBtn = () => {
+            if (!addCoverLineBtn) return;
+            addCoverLineBtn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                insertBlockAt(coverPageBlocks.length, true);
+            };
+        };
+
+        bindFontFamily();
+        bindFontSize();
+        bindAlignButtons();
+        bindAddLineBtn();
+
+        // Show a compact undo toast after deleting a line.
+        const showUndoToast = (message, onUndo) => {
+            let toast = document.getElementById('coverUndoToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'coverUndoToast';
+                toast.className = 'toast show cover-undo-toast';
+                toast.setAttribute('role', 'status');
+                toast.setAttribute('aria-live', 'polite');
+                toast.innerHTML = `
+                    <div class="toast-body bg-dark text-white rounded-3 py-2 px-3">
+                        <span data-toast-message></span>
+                        <button type="button" class="btn btn-link text-info" data-toast-undo>Undo</button>
+                    </div>`;
+                document.body.appendChild(toast);
+            }
+            toast.querySelector('[data-toast-message]').textContent = message;
+            toast.querySelector('[data-toast-undo]').onclick = () => {
+                if (typeof onUndo === 'function') onUndo();
+                toast.remove();
+            };
+            clearTimeout(toast.__timer);
+            toast.__timer = setTimeout(() => {
+                toast.remove();
+            }, 4000);
+        };
+
+        // Keep focus stable after structural changes so editing stays fast.
+        const focusBlock = (blockId) => {
+            requestAnimationFrame(() => {
+                const input = editor.querySelector(`[data-cover-block-id="${blockId}"] .cover-row-input`);
+                if (input) input.focus();
+            });
+        };
+
+        // Render the blue insertion line used during drag-and-drop reorder.
+        const clearDropIndicators = () => {
+            editor.querySelectorAll('.cover-row').forEach((row) => {
+                row.classList.remove('drop-before', 'drop-after');
+            });
+        };
+
+        const setDropIndicator = (rowId, before) => {
+            clearDropIndicators();
+            if (!rowId) return;
+            const row = editor.querySelector(`[data-cover-block-id="${rowId}"]`);
+            if (row) {
+                row.classList.add(before ? 'drop-before' : 'drop-after');
+            }
+        };
+
+        const insertBlockAt = (insertAt, focusNew = true) => {
+            const newBlock = createCoverBlock('custom', 'New line', {
+                label: 'Custom line',
+                rows: 1,
+                fontSize: fontSizeSelect?.value || '12',
+                bold: false,
+                italic: false,
+            });
+            coverPageBlocks.splice(Math.max(0, Math.min(insertAt, coverPageBlocks.length)), 0, newBlock);
+            coverDeletePendingId = null;
+            coverDragState = { activeId: null, overId: null, before: true };
+            renderCoverPageEditor();
+            if (focusNew) focusBlock(newBlock.id);
+        };
+
+        const moveBlock = (fromIndex, toIndex) => {
+            if (fromIndex === toIndex || fromIndex < 0 || fromIndex >= coverPageBlocks.length) return;
+            const [block] = coverPageBlocks.splice(fromIndex, 1);
+            const targetIndex = Math.max(0, Math.min(toIndex, coverPageBlocks.length));
+            coverPageBlocks.splice(targetIndex, 0, block);
+            coverDeletePendingId = null;
+            coverDragState = { activeId: null, overId: null, before: true };
+            renderCoverPageEditor();
+            focusBlock(block.id);
+        };
+
+        const deleteBlock = (block, index) => {
+            coverPageBlocks.splice(index, 1);
+            coverDeletePendingId = null;
+            coverDragState = { activeId: null, overId: null, before: true };
+            coverDeleteUndoState = { block, index };
+            renderCoverPageEditor();
+            showUndoToast('Line deleted · Undo', () => {
+                if (!coverDeleteUndoState) return;
+                const restore = coverDeleteUndoState;
+                coverDeleteUndoState = null;
+                coverPageBlocks.splice(Math.max(0, Math.min(restore.index, coverPageBlocks.length)), 0, restore.block);
+                renderCoverPageEditor();
+                focusBlock(restore.block.id);
+            });
+        };
+
+        const animateRows = () => {
+            if (!previousRects.size) return;
+            if (coverAnimationFrame) cancelAnimationFrame(coverAnimationFrame);
+            coverAnimationFrame = requestAnimationFrame(() => {
+                editor.querySelectorAll('[data-cover-block-id]').forEach((node) => {
+                    const prev = previousRects.get(node.dataset.coverBlockId);
+                    if (!prev) {
+                        node.animate(
+                            [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'translateY(0)' }],
+                            { duration: 150, easing: 'ease-out' }
+                        );
+                        return;
+                    }
+                    const next = node.getBoundingClientRect();
+                    const deltaY = prev.top - next.top;
+                    if (deltaY) {
+                        node.style.transition = 'transform 0ms';
+                        node.style.transform = `translateY(${deltaY}px)`;
+                        requestAnimationFrame(() => {
+                            node.style.transition = 'transform 150ms ease';
+                            node.style.transform = 'translateY(0)';
+                        });
+                    }
+                });
+            });
+        };
+
+        // Render the hover-only divider used to add a line between rows.
+        const renderDivider = (insertAt) => {
+            const divider = document.createElement('div');
+            divider.className = 'cover-row-divider';
+            divider.innerHTML = '<button type="button">+ Add line here</button>';
+            // store insertion index for delegation
+            divider.dataset.insertAt = String(insertAt);
+            divider.addEventListener('mouseenter', () => divider.classList.add('is-visible'));
+            divider.addEventListener('mouseleave', () => divider.classList.remove('is-visible'));
+            // keep a direct listener, but also use delegated handler below as a fallback
+            const _btn = divider.querySelector('button');
+            if (_btn) {
+                _btn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertBlockAt(insertAt, true);
+                };
+            }
+            return divider;
+        };
+
+        const renderRow = (block, index) => {
+            const row = document.createElement('div');
+            row.className = `cover-row${block.locked ? ' is-locked' : ''}`;
+            row.dataset.coverBlockId = block.id;
+            row.setAttribute('data-index', String(index));
+
+            const label = block.label || getCoverBlockDefaults(block.kind).label;
+            const isArmedDelete = coverDeletePendingId === block.id;
+
+            const leftControl = block.locked
+                ? '<span class="cover-row-lock" aria-hidden="true">🔒</span>'
+                : `<button type="button" class="cover-row-handle" tabindex="0" aria-label="Drag to reorder ${escapeHtml(label)}">⠿</button>`;
+
+            const rightControl = block.locked
+                ? '<span class="cover-row-lock" aria-hidden="true"></span>'
+                : `<button type="button" class="cover-row-delete${isArmedDelete ? ' is-armed' : ''}" aria-label="Delete ${escapeHtml(label)}">🗑</button>`;
+
+            const styleDefaults = getCoverBlockStyleDefaults(block.kind);
+            const sizeValue = clampCoverFontSize(block.fontSize, styleDefaults.fontSize);
+            const sizeOptions = Array.from({ length: 25 }, (_, i) => 8 + i)
+                .map((size) => `<option value="${size}"${String(size) === String(sizeValue) ? ' selected' : ''}>${size}pt</option>`)
+                .join('');
+
+            const styleControls = block.locked
+                ? ''
+                : `
+                <div class="cover-row-style" aria-label="Line style controls">
+                    <select class="cover-row-size" aria-label="Line font size">${sizeOptions}</select>
+                    <button type="button" class="cover-row-style-btn${block.bold ? ' is-active' : ''}" data-style-action="bold" aria-label="Toggle bold">B</button>
+                    <button type="button" class="cover-row-style-btn${block.italic ? ' is-active' : ''}" data-style-action="italic" aria-label="Toggle italic">I</button>
+                </div>`;
+
+            row.innerHTML = `
+                ${leftControl}
+                <input class="cover-row-input" type="text" value="${escapeHtml(block.value || '')}"
+                    aria-label="${escapeHtml(label)}"
+                    ${block.locked ? 'readonly tabindex="-1"' : ''}>
+                ${styleControls}
+                ${rightControl}
+            `;
+
+            const input = row.querySelector('.cover-row-input');
+            if (input) {
+                const applyRowStyle = () => {
+                    const defaults = getCoverBlockStyleDefaults(block.kind);
+                    const activeSize = clampCoverFontSize(block.fontSize, defaults.fontSize);
+                    input.style.textAlign = getActiveAlign();
+                    input.style.fontFamily = fontFamilySelect?.value || 'Times New Roman';
+                    input.style.fontSize = `${activeSize}pt`;
+                    input.style.fontWeight = block.bold ? '700' : '400';
+                    input.style.fontStyle = block.italic ? 'italic' : 'normal';
+                };
+                applyRowStyle();
+                if (block.locked) {
+                    input.readOnly = true;
+                } else {
+                    input.addEventListener('input', () => {
+                        block.value = input.value;
+                        coverDeletePendingId = null;
+                        syncCoverBlocks(false);
+                    });
+
+                    const sizeSelect = row.querySelector('.cover-row-size');
+                    const boldBtn = row.querySelector('[data-style-action="bold"]');
+                    const italicBtn = row.querySelector('[data-style-action="italic"]');
+
+                    if (sizeSelect) {
+                        sizeSelect.value = clampCoverFontSize(block.fontSize, styleDefaults.fontSize);
+                        sizeSelect.addEventListener('change', () => {
+                            block.fontSize = clampCoverFontSize(sizeSelect.value, styleDefaults.fontSize);
+                            applyRowStyle();
+                            syncCoverBlocks(false);
+                        });
+                    }
+
+                    if (boldBtn) {
+                        boldBtn.addEventListener('click', () => {
+                            block.bold = !block.bold;
+                            boldBtn.classList.toggle('is-active', block.bold);
+                            applyRowStyle();
+                            syncCoverBlocks(false);
+                        });
+                    }
+
+                    if (italicBtn) {
+                        italicBtn.addEventListener('click', () => {
+                            block.italic = !block.italic;
+                            italicBtn.classList.toggle('is-active', block.italic);
+                            syncCoverBlocks(false);
+                            applyRowStyle();
+                        });
+                    }
+                }
+            }
+
+            if (!block.locked) {
+                const handle = row.querySelector('.cover-row-handle');
+                const deleteBtn = row.querySelector('.cover-row-delete');
+
+                // Make the parent row draggable when the user presses the handle.
+                handle.addEventListener('mousedown', () => { row.setAttribute('draggable', 'true'); });
+                handle.addEventListener('pointerdown', () => { row.setAttribute('draggable', 'true'); });
+
+                // dragstart on the ROW (not the handle)
+                row.addEventListener('dragstart', (e) => {
+                    coverDragSrcIndex = index;
+                    e.dataTransfer.effectAllowed = 'move';
+                    try { e.dataTransfer.setData('text/plain', block.id); } catch (err) {}
+                    row.classList.add('dragging');
+                });
+
+                // remove draggable attribute on dragend
+                row.addEventListener('dragend', () => {
+                    row.removeAttribute('draggable');
+                    row.classList.remove('dragging');
+                    coverDragSrcIndex = null;
+                    clearDropIndicators();
+                });
+
+                handle.addEventListener('keydown', (event) => {
+                    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+                    event.preventDefault();
+                    const fromIndex = coverPageBlocks.findIndex((item) => item.id === block.id);
+                    if (fromIndex < 0) return;
+                    if (event.key === 'ArrowUp' && fromIndex > 0) {
+                        moveBlock(fromIndex, fromIndex - 1);
+                    }
+                    if (event.key === 'ArrowDown' && fromIndex < coverPageBlocks.length - 1) {
+                        moveBlock(fromIndex, fromIndex + 1);
+                    }
+                });
+
+                deleteBtn.addEventListener('click', () => {
+                    const currentValue = (block.value || '').trim();
+                    if (currentValue && coverDeletePendingId !== block.id) {
+                        coverDeletePendingId = block.id;
+                        row.querySelector('.cover-row-delete').classList.add('is-armed');
+                        return;
+                    }
+                    deleteBlock(block, index);
+                });
+            }
+
+            return row;
+        };
+
+        coverPageBlocks.forEach((block, index) => {
+            if (index > 0) {
+                editor.appendChild(renderDivider(index));
+            }
+            editor.appendChild(renderRow(block, index));
+        });
+
+        if (editor._dividerClickHandler) {
+            editor.removeEventListener('click', editor._dividerClickHandler);
+        }
+        editor._dividerClickHandler = (e) => {
+            const btn = e.target.closest('.cover-row-divider button');
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const divider = btn.closest('.cover-row-divider');
+            let insertAt = null;
+            if (divider && divider.dataset && divider.dataset.insertAt) {
+                insertAt = Number(divider.dataset.insertAt);
+            }
+            if (!Number.isFinite(insertAt)) {
+                const next = divider ? divider.nextElementSibling : null;
+                insertAt = next ? Number(next.getAttribute('data-index')) : coverPageBlocks.length;
+            }
+            insertBlockAt(insertAt, true);
+        };
+        editor.addEventListener('click', editor._dividerClickHandler);
+
+        if (editor._dragOverHandler) editor.removeEventListener('dragover', editor._dragOverHandler);
+        if (editor._dropHandler) editor.removeEventListener('drop', editor._dropHandler);
+
+        editor._dragOverHandler = (e) => {
+            e.preventDefault();
+            const target = e.target.closest('[data-index]');
+            if (!target) return;
+            const rect = target.getBoundingClientRect();
+            const before = e.clientY < rect.top + rect.height / 2;
+            setDropIndicator(target.dataset.coverBlockId, before);
+            try { e.dataTransfer.dropEffect = 'move'; } catch (err) {}
+        };
+
+        editor._dropHandler = (e) => {
+            e.preventDefault();
+            const target = e.target.closest('[data-index]');
+            if (!target || coverDragSrcIndex === null) return;
+            const dropIndex = parseInt(target.getAttribute('data-index'), 10);
+            const moved = coverPageBlocks.splice(coverDragSrcIndex, 1)[0];
+            coverPageBlocks.splice(dropIndex, 0, moved);
+            coverDragSrcIndex = null;
+            renderCoverPageEditor();
+            syncCoverBlocks(true);
+        };
+
+        editor.addEventListener('dragover', editor._dragOverHandler);
+        editor.addEventListener('drop', editor._dropHandler);
+
+        if (!editor.dataset.bound) {
+            editor.dataset.bound = '1';
+        }
+
+        const activeAlign = state.align || 'center';
+        document.querySelectorAll('[data-cover-align]').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-cover-align') === activeAlign);
+        });
+        applyTypography();
+
+        clearDropIndicators();
+        animateRows();
+        syncCoverBlocks(true);
+    };
+
+    function updateTimeline(status) {
+        const steps = ['pending','generating','generated','edited','downloaded'];
+        const statusMap = {
+            pending:0, generating:1, generated:2, edited:3, final:4, downloaded:4
+        };
+        const currentIdx = statusMap[status] ?? 0;
+        const pct = currentIdx === 0 ? 0 : (currentIdx / (steps.length - 1)) * 100;
+
+        const fill = document.getElementById('timelineFill');
+        if (fill) fill.style.width = pct + '%';
+
+        document.querySelectorAll('.tl-step').forEach((step, idx) => {
+            const dot = step.querySelector('.tl-dot');
+            const label = step.querySelector('div:last-child');
+            if (!dot || !label) return;
+
+            if (idx < currentIdx) {
+                dot.style.background = '#2563eb';
+                dot.style.borderColor = '#2563eb';
+                dot.style.color = '#fff';
+                dot.textContent = '\u2713';
+                label.style.color = '#1d4ed8';
+            } else if (idx === currentIdx) {
+                dot.style.background = 'linear-gradient(135deg,#1d4ed8,#3b82f6)';
+                dot.style.borderColor = '#2563eb';
+                dot.style.color = '#fff';
+                dot.style.boxShadow = '0 0 0 4px rgba(37,99,235,0.18)';
+                label.style.color = '#1d4ed8';
+                label.style.fontWeight = '600';
+            }
+        });
+    }
+
+    function celebrateIfNew(reportIdValue, status) {
+        const key = 'celebrated_' + reportIdValue;
+        if ((status === 'generated') && !localStorage.getItem(key)) {
+            localStorage.setItem(key, '1');
+            showToast('Your report is ready. You can review, edit, or download the PDF.',
+                'success', 5000);
+        }
+    }
+
+    const writeCoverSettings = (next) => {
+        editableContent = {
+            ...editableContent,
+            __cover: {
+                logos: Array.isArray(next.logos) ? next.logos.slice(0, 2) : [],
+            }
+        };
+    };
+
+
+
+    const uploadLogoAt = (index, file) => {
+        if (!file) return;
+        logoFileNames[index] = file.name;
+        const reader = new FileReader();
+        reader.onload = () => {
+            const current = getCoverSettings(editableContent);
+            const logos = [...current.logos];
+            logos[index] = typeof reader.result === 'string' ? reader.result : '';
+            writeCoverSettings({ logos });
+            renderLogoControls();
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const removeLogoAt = (index) => {
+        const current = getCoverSettings(editableContent);
+        const logos = [...current.logos];
+        logos[index] = '';
+        delete logoFileNames[index];
+        writeCoverSettings({ logos });
+        renderLogoControls();
+    };
+
+    const renderLogoControls = () => {
+        const { logos } = getCoverSettings(editableContent);
+        const fallbackLogos = getDefaultCoverLogos(reportData);
+        const slots = document.getElementById('logoSlots');
+        if (!slots) return;
+
+        slots.innerHTML = '';
+
+        for (let i = 0; i < 2; i++) {
+            const customLogo = logos[i] || '';
+            const fallbackLogo = fallbackLogos[i] || '';
+            const displayLogo = customLogo || fallbackLogo;
+            const hasCustomLogo = !!customLogo;
+            const hasFallbackLogo = !hasCustomLogo && !!fallbackLogo;
+            const hasAnyLogo = !!displayLogo;
+            const fileName = hasCustomLogo
+                ? (logoFileNames[i] || `uploaded_logo_${i + 1}.png`)
+                : (hasFallbackLogo ? `Default logo ${i + 1}` : 'No file selected');
+            const col = document.createElement('div');
+            col.className = 'col-md-6';
+            col.innerHTML = `
+                <div class="border rounded p-2 bg-white">
+                    <div class="small mb-2">Logo ${i + 1}</div>
+                    <input type="file" class="form-control form-control-sm logo-input" data-index="${i}" accept="image/*">
+                    ${hasAnyLogo ? `<div class="mt-2"><img src="${displayLogo}" alt="Logo ${i + 1}" style="height:40px; max-width:140px; object-fit:contain; border:1px solid #dbe7ff; border-radius:8px; padding:4px; background:#fff;"></div>` : ''}
+                    <div class="mt-2 d-flex justify-content-between align-items-center">
+                        <div class="text-truncate ${hasCustomLogo ? 'text-success fw-semibold bg-success-subtle border border-success-subtle rounded px-2 py-1' : (hasFallbackLogo ? 'text-primary fw-semibold bg-primary-subtle border border-primary-subtle rounded px-2 py-1' : 'text-muted')}" style="max-width: 70%;" title="${fileName}">
+                            ${hasCustomLogo ? '<i class="bi bi-check-circle-fill me-1"></i>' : (hasFallbackLogo ? '<i class="bi bi-image me-1"></i>' : '')}${fileName}
+                        </div>
+                        ${hasCustomLogo ? `<button type="button" class="btn btn-sm btn-outline-danger logo-remove" data-index="${i}">Remove</button>` : ''}
+                    </div>
+                </div>
+            `;
+            slots.appendChild(col);
+        }
+
+        slots.querySelectorAll('.logo-input').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const idx = Number(e.target.getAttribute('data-index'));
+                const file = e.target.files && e.target.files[0];
+                uploadLogoAt(idx, file);
+            });
+        });
+
+        slots.querySelectorAll('.logo-remove').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = Number(e.target.getAttribute('data-index'));
+                removeLogoAt(idx);
+            });
+        });
+    };
+
+    const openPreviewInNewTab = async () => {
+        if (!reportData) return;
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('Please sign in again.', 'error');
+            return;
+        }
+
+        const url = `/api/reports/${reportId}/pdf?inline=1&token=${encodeURIComponent(token)}`;
+        const popup = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!popup) {
+            showToast('Popup blocked. Please allow popups for this site.', 'warning');
+        }
+    };
+
+    const isMobilePreview = () => {
+        try {
+            return window.matchMedia('(max-width: 768px)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        } catch (err) {
+            return false;
+        }
+    };
+
+    const renderMobilePreviewFallback = () => {
+        const overlay = document.getElementById('pdfLoadingOverlay');
+        const previewFrame = document.getElementById('pdfPreviewFrame');
+        if (!overlay || !previewFrame) return;
+
+        const container = overlay.parentElement;
+        if (container) {
+            container.style.minHeight = '420px';
+        }
+
+        previewFrame.style.display = 'none';
+        overlay.style.display = 'flex';
+        overlay.style.position = 'relative';
+        overlay.style.inset = 'auto';
+        overlay.style.minHeight = '340px';
+        overlay.style.marginTop = '8px';
+        overlay.style.padding = '18px 14px';
+        overlay.style.overflow = 'visible';
+        overlay.style.borderRadius = '12px';
+        overlay.innerHTML = `
+            <div style="text-align:center; width:100%; max-width: 360px; margin:0 auto; padding: 10px 8px;">
+                <div style="font-size: 28px; margin-bottom: 10px;">📄</div>
+                <div style="font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; color: #1a1a2e; margin-bottom: 6px;">
+                    Mobile preview is limited
+                </div>
+                <div style="font-size: 13px; color: #6b6783; line-height: 1.5; margin-bottom: 14px;">
+                    This phone browser cannot reliably display the PDF inside the preview pane.
+                    Use Open PDF or Download PDF instead.
+                </div>
+                <div style="display:flex; gap:10px; flex-direction:column; width:100%;">
+                    <button type="button" onclick="openPreviewInNewTab()" style="width:100%; padding:11px 16px;border-radius:10px;border:0;background:linear-gradient(90deg,#2563eb,#3b82f6);color:#fff;font-weight:600;">
+                        Open PDF
+                    </button>
+                    <button type="button" onclick="downloadPdf()" style="width:100%; padding:11px 16px;border-radius:10px;border:1px solid #dbe7ff;background:#fff;color:#1d4ed8;font-weight:600;">
+                        Download PDF
+                    </button>
+                </div>
+            </div>
+        `;
+    };
+
+    function initImageManager(reportData, sectionsArray) {
+        imagesEnabled = reportData.imagesEnabled === true;
+        sectionImages = reportData.sectionImages || {};
+
+        const navItem = document.getElementById('imageTabNavItem');
+        if (navItem) {
+            navItem.style.display = imagesEnabled ? '' : 'none';
+
+            // If Images is currently active but feature is disabled, switch back to Editor.
+            if (!imagesEnabled) {
+                const imagesBtn = document.getElementById('images-tab-btn');
+                if (imagesBtn && imagesBtn.classList.contains('active')) {
+                    const editorBtn = document.getElementById('editor-tab');
+                    if (editorBtn && window.bootstrap?.Tab) {
+                        window.bootstrap.Tab.getOrCreateInstance(editorBtn).show();
+                    }
+                }
+            }
+        }
+
+        renderImageManager(sectionsArray);
+    }
+
+    function renderImageManager(sectionsArray) {
+        const container = document.getElementById('imageManagerContainer');
+        if (!container) return;
+
+        if (!imagesEnabled) {
+            container.innerHTML = '<p class="text-muted">Images are not enabled for this report type.</p>';
+            return;
+        }
+
+        container.innerHTML = `<div class="images-grid">${sectionsArray.map(([key, title]) => `
+            <div class="card">
+                <div class="card-header fw-bold">${title}</div>
+                <div class="card-body">
+                    <div id="imgList_${key}" class="d-flex flex-wrap gap-2 mb-3">
+                        ${renderImageThumbnails(key, sectionImages[key] || [])}
+                    </div>
+                    <label class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-upload me-1"></i>Upload Image
+                        <input type="file" accept="image/jpeg,image/png,image/gif,image/webp"
+                               style="display:none" onchange="uploadSectionImage('${key}', this)">
+                    </label>
+                </div>
+            </div>
+        `).join('')}</div>`;
+    }
+
+    function renderImageThumbnails(sectionKey, images) {
+        if (!images || !images.length) return '<p class="text-muted small">No images uploaded yet.</p>';
+        return images.map(img => `
+            <div class="border rounded p-2" style="width:210px;">
+                <img src="${img.url}" style="width:100%;height:120px;object-fit:cover;border-radius:4px;"
+                     onerror="this.src='/static/img/placeholder.png'">
+                <select class="form-select form-select-sm mt-1"
+                        onchange="updateSectionImage('${sectionKey}','${img.filename}','position',this.value)">
+                    <option value="top" ${img.position==='top' ?'selected':''}>Top of section</option>
+                    <option value="middle" ${img.position==='middle'?'selected':''}>Middle of section</option>
+                    <option value="bottom" ${img.position==='bottom'?'selected':''}>Bottom of section</option>
+                </select>
+                <input type="text" class="form-control form-control-sm mt-1"
+                       placeholder="Caption (optional)" value="${img.caption||''}"
+                       onchange="updateSectionImage('${sectionKey}','${img.filename}','caption',this.value)">
+                <div class="d-flex align-items-center gap-1 mt-1">
+                    <small>Width:</small>
+                          <input type="range" class="form-range" min="10" max="100"
+                           value="${img.widthPercent||100}"
+                           oninput="this.nextElementSibling.textContent=this.value+'%'"
+                           onchange="updateSectionImage('${sectionKey}','${img.filename}','widthPercent',this.value)">
+                    <small>${img.widthPercent||100}%</small>
+                </div>
+                <button class="btn btn-outline-danger btn-sm w-100 mt-1"
+                        onclick="deleteSectionImage('${sectionKey}','${img.filename}')"><i class="bi bi-trash me-1"></i>Remove</button>
+            </div>
+        `).join('');
+    }
+
+    async function uploadSectionImage(sectionKey, input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const allowedTypes = ['image/jpeg','image/png','image/gif','image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            showToast('Invalid file type. Use JPG, PNG, GIF, or WEBP.', 'warning');
+            input.value = '';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            const res = await fetch(`/api/reports/${reportId}/images/${sectionKey}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: authHeaders(),
+                body: formData
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(data.message || 'Upload failed', 'error');
+                return;
+            }
+
+            if (!sectionImages[sectionKey]) sectionImages[sectionKey] = [];
+            sectionImages[sectionKey].push(data.image);
+            document.getElementById(`imgList_${sectionKey}`).innerHTML =
+                renderImageThumbnails(sectionKey, sectionImages[sectionKey]);
+            showToast('Image uploaded successfully.', 'success');
+            refreshPdfPreview();
+        } catch (err) {
+            showToast('Network error during upload.', 'error');
+        } finally {
+            input.value = '';
+        }
+    }
+
+    async function updateSectionImage(sectionKey, filename, field, value) {
+        const imgs = sectionImages[sectionKey] || [];
+        const img = imgs.find(i => i.filename === filename);
+        if (img) img[field] = field === 'widthPercent' ? parseInt(value) : value;
+
+        try {
+            const res = await fetch(`/api/reports/${reportId}/images/${sectionKey}/${filename}`, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: jsonHeaders(),
+                body: JSON.stringify({ [field]: value })
+            });
+            if (res.ok) refreshPdfPreview();
+        } catch (err) {
+            console.error('Failed to update image metadata:', err);
+        }
+    }
+
+    async function deleteSectionImage(sectionKey, filename) {
+        showConfirm('Remove this image from the report?', async () => {
+            try {
+                const res = await fetch(`/api/reports/${reportId}/images/${sectionKey}/${filename}`, {
+                    method: 'DELETE',
+                    credentials: 'include',
+                    headers: jsonHeaders()
+                });
+                if (!res.ok) {
+                    showToast('Failed to delete image.', 'error');
+                    return;
+                }
+                sectionImages[sectionKey] = (sectionImages[sectionKey] || []).filter(i => i.filename !== filename);
+                document.getElementById(`imgList_${sectionKey}`).innerHTML =
+                    renderImageThumbnails(sectionKey, sectionImages[sectionKey]);
+                showToast('Image removed.', 'success');
+                refreshPdfPreview();
+            } catch (err) {
+                showToast('Network error during delete.', 'error');
+            }
+            });
+    }
+
+    window.uploadSectionImage = uploadSectionImage;
+    window.updateSectionImage = updateSectionImage;
+    window.deleteSectionImage = deleteSectionImage;
+    
+    document.addEventListener('DOMContentLoaded', async () => {
+        bindCoverEditorControls();
+        await loadReport();
+
+        // Keep entry state predictable.
+        const editorTabEl = document.getElementById('editor-tab');
+        const previewTabEl = document.getElementById('preview-tab');
+        if (isAdminReadonly && previewTabEl && window.bootstrap?.Tab) {
+            window.bootstrap.Tab.getOrCreateInstance(previewTabEl).show();
+        } else if (editorTabEl && window.bootstrap?.Tab) {
+            window.bootstrap.Tab.getOrCreateInstance(editorTabEl).show();
+        }
+        
+        // Listen for tab switch to trigger PDF generation when preview is clicked
+        if (previewTabEl) {
+            previewTabEl.addEventListener('shown.bs.tab', function () {
+                refreshPdfPreview();
+            });
+        }
+    });
+
+    const loadReport = async () => {
+        try {
+            const res = await fetch(`/api/reports/${reportId}`, {
+                credentials: 'include',
+                headers: authHeaders()
+            });
+
+            if (!res.ok) {
+                document.getElementById('pageTitle').innerText = 'Report Not Found';
+                document.getElementById('editorSections').innerHTML = 
+                    '<div class="alert alert-danger">Error loading report. It may have been deleted.</div>';
+                return;
+            }
+
+            reportData = await res.json();
+
+            document.getElementById('pageTitle').innerText = reportData.projectTitle || 'Untitled Report';
+            applyAdminReadonlyMode();
+
+            // ── Status badge ────────────────────────────────────
+            const badge = document.getElementById('statusBadge');
+            const status = reportData.status || '';
+            if (status === 'generated' || status === 'edited') {
+                badge.innerText = 'READY';
+                badge.className = 'badge bg-success me-2';
+            } else if (status === 'generating') {
+                badge.innerText = 'GENERATING';
+                badge.className = 'badge bg-warning text-dark me-2';
+            } else if (status === 'error') {
+                badge.innerText = 'ERROR';
+                badge.className = 'badge bg-danger me-2';
+            } else {
+                badge.innerText = status.toUpperCase();
+                badge.className = 'badge bg-secondary me-2';
+            }
+            updateTimeline(status);
+            celebrateIfNew(reportId, status);
+
+            // ── If still generating — show spinner and poll ─────
+            const editorDiv = document.getElementById('editorSections');
+
+            if (status === 'generating') {
+                editorDiv.innerHTML = `
+                    <div class="alert alert-info border-0 d-flex align-items-center gap-3">
+                        <div class="spinner-border spinner-border-sm flex-shrink-0" role="status"></div>
+                        <div>
+                            <strong>AI is generating your report...</strong><br>
+                            <small class="text-muted">This usually takes 1–2 minutes. This page checks automatically every 10 seconds.</small>
+                        </div>
+                    </div>`;
+                document.getElementById('downloadPdfBtn').disabled = true;
+                setTimeout(loadReport, 15000);
+                return;
+            }
+
+            // ── If hard error ────────────────────────────────────
+            if (status === 'error') {
+                // The backend may have marked this as error due to a webhook timeout,
+                // while n8n is actually still running and will call back when done.
+                // If the report is less than 10 minutes old, keep polling before showing final error.
+                const createdAt = reportData.createdAt ? new Date(reportData.createdAt) : null;
+                const ageMinutes = createdAt ? (Date.now() - createdAt.getTime()) / 60000 : 999;
+
+                if (ageMinutes < 10) {
+                    editorDiv.innerHTML = `
+                        <div class="alert alert-warning border-0 d-flex align-items-center gap-3">
+                            <div class="spinner-border spinner-border-sm flex-shrink-0" role="status"></div>
+                            <div>
+                                <strong>Still working...</strong><br>
+                                <small class="text-muted">AI generation is taking longer than usual. This page will check again automatically in 15 seconds.</small>
+                            </div>
+                        </div>`;
+                    document.getElementById('downloadPdfBtn').disabled = true;
+                    setTimeout(loadReport, 15000);
+                    return;
+                }
+
+                // Report is older than 10 minutes and still errored — show real failure message.
+                editorDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Generation failed.</strong> Please go back and create a new report, or contact support.
+                    </div>`;
+                document.getElementById('downloadPdfBtn').disabled = true;
+                return;
+            }
+
+            // ── Build editable content ───────────────────────────
+            editableContent = reportData.editedContent && Object.keys(reportData.editedContent).length > 0
+                ? reportData.editedContent
+                : reportData.generatedContent || {};
+            editableContent = sanitizeEditableContent(editableContent);
+
+            const titles = reportData.generatedTitles || {};
+            renderCoverPageEditor();
+
+            // ── No content yet (edge case) ────────────────────────
+            if (Object.keys(editableContent).filter(k => !String(k).startsWith('__')).length === 0) {
+                editorDiv.innerHTML = '<div class="alert alert-warning">No report sections available yet. You can still edit the cover page notes above.</div>';
+            } else {
+                document.getElementById('downloadPdfBtn').disabled = false;
+
+                // ── Render textareas ─────────────────────────────────
+                let html = '';
+                for (const [key, text] of Object.entries(editableContent)) {
+                    if (String(key).startsWith('__')) continue;
+                    const title = titles[key] || key;
+                    html += `
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">${title}</label>
+                            <textarea class="form-control section-editor" data-key="${key}" rows="8">${text}</textarea>
+                        </div>`;
+                }
+                editorDiv.innerHTML = html;
+
+                // ── Sync state on edit ───────────────────────────────
+                document.querySelectorAll('.section-editor').forEach(ta => {
+                    if (isAdminReadonly) {
+                        ta.setAttribute('readonly', 'readonly');
+                    }
+                    ta.addEventListener('input', (e) => {
+                        if (isAdminReadonly) return;
+                        const k = e.target.getAttribute('data-key');
+                        editableContent[k] = e.target.value;
+                    });
+                });
+            }
+
+            document.getElementById('downloadPdfBtn').disabled = false;
+
+            renderLogoControls();
+            renderLayoutControls();
+
+            // ── Image manager ────────────────────────────────────
+            const sectionsForImageManager = Object.entries(editableContent)
+                .filter(([key]) => !String(key).startsWith('__'))
+                .map(([key]) => [
+                    key,
+                    (reportData.generatedTitles && reportData.generatedTitles[key]) || key
+                ]);
+            initImageManager(reportData, sectionsForImageManager);
+
+            // ── Initial PDF preview (only if on preview tab) ─────
+            const previewPane = document.getElementById('preview-pane');
+            if (previewPane && previewPane.classList.contains('active')) {
+                refreshPdfPreview();
+            }
+
+        } catch (e) {
+            console.error('loadReport error:', e);
+            document.getElementById('editorSections').innerHTML =
+                '<div class="alert alert-danger">Network error loading report.</div>';
+        }
+    };
+
+    const saveEdits = async () => {
+        if (isAdminReadonly) {
+            showToast('Read-only view for admin.', 'warning');
+            return;
+        }
+        const btn = document.getElementById('saveBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+        btn.disabled = true;
+        
+        try {
+            const res = await fetch(`/api/reports/${reportId}/content`, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: jsonHeaders(),
+                body: JSON.stringify({ editedContent: sanitizeEditableContent(editableContent) })
+            });
+            
+            if (res.ok) {
+                btn.innerHTML = '<i class="bi bi-check"></i> Saved';
+                showToast('Changes saved successfully.', 'success');
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="bi bi-save"></i> Save Changes';
+                    btn.disabled = false;
+                }, 2000);
+                refreshPdfPreview();
+            } else {
+                showToast('Failed to save.', 'error');
+                btn.innerHTML = '<i class="bi bi-save"></i> Save Changes';
+                btn.disabled = false;
+            }
+        } catch (e) {
+            showToast('Network error.', 'error');
+            btn.innerHTML = '<i class="bi bi-save"></i> Save Changes';
+            btn.disabled = false;
+        }
+    };
+
+    const refreshPdfPreview = async () => {
+        const previewFrame = document.getElementById('pdfPreviewFrame');
+        const overlay = document.getElementById('pdfLoadingOverlay');
+        const progressBar = document.getElementById('pdfProgressBar');
+        if (!previewFrame || !overlay || !progressBar) return;
+        if (!reportData || Object.keys(editableContent).length === 0) return;
+        if (!getToken()) {
+            showToast('Your session expired. Please sign in again.', 'warning');
+            return;
+        }
+
+        if (!overlay.dataset.defaultHtml) {
+            overlay.dataset.defaultHtml = overlay.innerHTML;
+        }
+
+        // Reset overlay in case previous attempt replaced it with error state.
+        overlay.innerHTML = overlay.dataset.defaultHtml;
+        const activeProgressBar = document.getElementById('pdfProgressBar');
+        if (!activeProgressBar) return;
+
+        // Show overlay, hide iframe
+        overlay.style.display = 'flex';
+        overlay.style.position = 'absolute';
+        overlay.style.inset = '0';
+        overlay.style.minHeight = '';
+        overlay.style.marginTop = '0';
+        overlay.style.padding = '';
+        overlay.style.overflow = '';
+        previewFrame.style.display = 'none';
+
+        // Animate progress bar: 0% -> 85% over 12 seconds (fake progress)
+        let progress = 0;
+        activeProgressBar.style.width = '0%';
+        const progressInterval = setInterval(() => {
+            // Slow down as it approaches 85%
+            const remaining = 85 - progress;
+            const increment = Math.max(0.5, remaining * 0.04);
+            progress = Math.min(85, progress + increment);
+            activeProgressBar.style.width = progress + '%';
+            if (progress >= 85) clearInterval(progressInterval);
+        }, 300);
+
+        try {
+            const res = await fetch(`/api/reports/${reportId}/pdf-preview`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: jsonHeaders(),
+                body: JSON.stringify({
+                    editedContent: sanitizeEditableContent(editableContent)
+                })
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+
+                if (isMobilePreview()) {
+                    clearInterval(progressInterval);
+                    renderMobilePreviewFallback();
+                    return;
+                }
+
+                if (previewFrame._blobUrl) {
+                    URL.revokeObjectURL(previewFrame._blobUrl);
+                }
+                const objUrl = URL.createObjectURL(blob);
+                previewFrame._blobUrl = objUrl;
+
+                // Complete progress bar to 100%
+                clearInterval(progressInterval);
+                activeProgressBar.style.width = '100%';
+
+                // Hide overlay after iframe finishes loading.
+                previewFrame.onload = () => {
+                    previewFrame.style.display = 'block';
+                    overlay.style.display = 'none';
+                    activeProgressBar.style.width = '0%';
+                    previewFrame.onload = null;
+                };
+
+                // Short delay so user sees 100% before loading preview
+                setTimeout(() => {
+                    previewFrame.src = objUrl;
+                }, 300);
+
+            } else {
+                // On error: hide overlay, show error message
+                clearInterval(progressInterval);
+                overlay.innerHTML = `
+                    <div style="text-align:center; color:#dc2626;">
+                        <div style="font-size:24px; margin-bottom:8px;">⚠</div>
+                        <div style="font-size:14px; font-weight:500;">
+                            Failed to generate preview
+                        </div>
+                        <div style="font-size:12px; color:#6b6783; margin-top:4px;">
+                            Try saving your changes and retry
+                        </div>
+                        <button onclick="refreshPdfPreview()" style="
+                            margin-top:12px; padding:8px 20px;
+                            border-radius:8px; border:1px solid #e8e4f0;
+                            background:#fff; cursor:pointer; font-size:13px;
+                            color:#7c3aed; font-weight:500;
+                        ">Retry</button>
+                    </div>`;
+            }
+        } catch (e) {
+            clearInterval(progressInterval);
+            console.error('Failed to render PDF preview:', e);
+            overlay.innerHTML = `
+                <div style="text-align:center; color:#dc2626;">
+                    <div style="font-size:14px; font-weight:500;">Network error</div>
+                    <button onclick="refreshPdfPreview()" style="
+                        margin-top:12px; padding:8px 20px;
+                        border-radius:8px; border:1px solid #e8e4f0;
+                        background:#fff; cursor:pointer; font-size:13px;
+                    ">Retry</button>
+                </div>`;
+        }
+    };
+    window.refreshPdfPreview = refreshPdfPreview;
+    window.openPreviewInNewTab = openPreviewInNewTab;
+
+    const downloadPdf = async () => {
+        const btn = document.getElementById('downloadPdfBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`/api/reports/${reportId}/pdf-preview`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: jsonHeaders(),
+                body: JSON.stringify({ editedContent: sanitizeEditableContent(editableContent) })
+            });
+            
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `${reportData.projectTitle || 'Report'}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                showToast('PDF downloaded successfully.', 'success');
+                updateTimeline('downloaded');
+            } else {
+                showToast('Failed to download PDF.', 'error');
+            }
+        } catch (e) {
+            showToast('Failed to download PDF.', 'error');
+        } finally {
+            btn.innerHTML = '<i class="bi bi-file-pdf"></i> Download PDF';
+            btn.disabled = false;
+        }
+    };
+    window.downloadPdf = downloadPdf;
+
+    const openPdfBtn = document.getElementById('openPdfBtn');
+    if (openPdfBtn) {
+        openPdfBtn.addEventListener('click', openPreviewInNewTab);
+    }
+</script>
+{% endblock %}

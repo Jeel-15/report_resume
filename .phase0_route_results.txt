@@ -1,0 +1,60 @@
+ROUTE_HEALTH
+/	200	PASS
+/login	200	PASS
+/register	200	PASS
+/forgot-password	200	PASS
+/logout	200	PASS
+/about	200	PASS
+/faq	200	PASS
+/contact	200	PASS
+/privacy	200	PASS
+/terms	200	PASS
+/refund	200	PASS
+/robots.txt	200	PASS
+/sitemap.xml	200	PASS
+/api/health	200	PASS
+/blog	404	PASS
+PUBLIC_URL_MAP
+/	GET
+/about	GET
+/api/auth/forgot-password/request-otp	POST
+/api/auth/forgot-password/verify-otp	POST
+/api/auth/google-login	POST
+/api/auth/login	POST
+/api/auth/logout	POST
+/api/auth/me	GET
+/api/auth/register	POST
+/api/health	GET
+/api/internship-types/	GET
+/api/internship-types/	POST
+/api/internship-types/<type_id>	GET
+/api/internship-types/<type_id>	PUT
+/api/internship-types/<type_id>	DELETE
+/api/internship-types/all	GET
+/api/reports/	POST
+/api/reports/<report_id>	GET
+/api/reports/<report_id>	DELETE
+/api/reports/<report_id>/content	PUT
+/api/reports/<report_id>/generated	PUT
+/api/reports/<report_id>/images/<section_key>	POST
+/api/reports/<report_id>/images/<section_key>/<filename>	PUT
+/api/reports/<report_id>/images/<section_key>/<filename>	DELETE
+/api/reports/<report_id>/pdf	GET
+/api/reports/<report_id>/pdf-preview	POST
+/api/reports/my	GET
+/api/upload/logo/<upload_type>	POST
+/api/upload/resume-photo	POST
+/api/upload/video-guide	POST
+/contact	GET
+/faq	GET
+/forgot-password	GET
+/login	GET
+/logout	GET
+/privacy	GET
+/refund	GET
+/register	GET
+/robots.txt	GET
+/sitemap.xml	GET
+/static/<path:filename>	GET
+/terms	GET
+/uploads/<path:filename>	GET

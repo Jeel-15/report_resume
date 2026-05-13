@@ -1,0 +1,639 @@
+# ReportGen — Complete Project Flow & Architecture Notes
+
+> **Purpose:** Deep-dive understanding of every entity, relationship, and flow in the ReportGen system.  
+> Created: 2026-04-29 | Project path: `J:\BAK_files\report_sqllite\report_changes`
+
+---
+
+## 1. Entity Relationship Map — "What connects to what?"
+
+This is the master map of all models and how they relate.
+
+```mermaid
+erDiagram
+    University ||--o{ College : "has many"
+    University ||--o| UniversityReportTemplate : "has one template"
+
+    College }o--|| University : "belongs to"
+    College ||--o| CollegeReportTemplate : "has one template"
+
+    Degree ||--o{ Department : "has many"
+    Degree ||--o{ Major : "has many"
+
+    Department }o--|| Degree : "belongs to"
+    Department ||--o{ Major : "has many (optional)"
+
+    Major }o--|| Degree : "belongs to (required)"
+    Major }o--o| Department : "belongs to (optional)"
+    Major ||--o| MajorReportTemplate : "has one template"
+    Major ||--o{ ProjectTitle : "has many"
+
+    User }o--o| University : "enrolled in"
+    User }o--o| College : "enrolled in"
+    User }o--o| Degree : "studying"
+    User }o--o| Department : "academic dept"
+    User }o--o| Major : "specialization"
+    User }o--o| Industry : "placed at"
+
+    Report }o--|| User : "belongs to"
+    Report }o--|| Degree : "degree of report"
+    Report }o--|| Major : "major of report"
+    Report }o--o| College : "college of report"
+    Report }o--o| University : "university of report"
+    Report }o--o| Industry : "placement company"
+    Report }o--o| Payment : "payment record"
+
+    Payment }o--|| User : "paid by"
+    Payment }o--o| Report : "for report"
+
+    WorkKeyword {
+        string keyword
+        string industryType
+        string jobProfile
+    }
+    InternshipType {
+        string name
+        string aiPromptContext
+    }
+    ReportContentType {
+        string name
+        int sortOrder
+    }
+    AuditLog }o--|| User : "action by admin"
+```
+
+---
+
+## 2. Academic Hierarchy — The "Who studies what where" chain
+
+```mermaid
+graph TD
+    D[🎓 Degree\ne.g. B.Tech, BCA, BBA, M.Tech] --> DEPT[📚 Department\ne.g. Computer Engineering\nbelongs to one Degree]
+    D --> M[📖 Major / Specialization\ne.g. Computer Science\nrequires Degree]
+    DEPT --> M
+    M --> PT[📝 ProjectTitle\nsuggested titles per major]
+    M --> RST[📋 MajorReportTemplate\n3-level cascade]
+    
+    U[🏛️ University\ne.g. GTU, GSFC Uni] --> C[🏫 College\ne.g. DAIICT\nbelongs to University]
+    C --> CRT[📋 CollegeReportTemplate]
+    U --> URT[📋 UniversityReportTemplate]
+
+    style D fill:#4a90d9,color:#fff
+    style DEPT fill:#7b68ee,color:#fff
+    style M fill:#20b2aa,color:#fff
+    style U fill:#e87c3e,color:#fff
+    style C fill:#e8843e,color:#fff
+```
+
+### Key Rules:
+| Entity | Required by | Optional for | Notes |
+|--------|------------|--------------|-------|
+| **Degree** | Major, Department | - | Top of academic hierarchy. Admin creates, no approval. |
+| **Department** | - | Major | Optional intermediate. Student can create (needs approval). |
+| **Major** | Report creation, User profile | - | Carries all AI config: language, content type, policy, sections. |
+| **University** | College | User profile | Student can create (needs approval). |
+| **College** | - | User profile | Must belong to a University. Student can create (needs approval). |
+
+---
+
+## 3. Industry (Company) System — How it works
+
+The `Industry` model represents the **company where the student did their internship**.
+
+```mermaid
+graph LR
+    A[Admin creates Industry\nstatus=approved] --> B[Student selects from list]
+    C[Student creates new Industry\nstatus=pending] --> D[Admin approves/rejects]
+    D --> B
+    B --> E[User.industry = selected Industry]
+    E --> F{Student can customize?}
+    F -->|industryProfileCustomized=True| G[Uses User's own overrides\nindustryVillageCityName\nindustryType\netc.]
+    F -->|industryProfileCustomized=False| H[Uses master Industry fields]
+    G --> I[Report payload sent to n8n]
+    H --> I
+
+    style A fill:#27ae60,color:#fff
+    style C fill:#e67e22,color:#fff
+    style D fill:#e74c3c,color:#fff
+    style I fill:#2980b9,color:#fff
+```
+
+**Why the customization system exists:**  
+A company like "IVInfotech" may have one master record, but 50 different students interned there in different roles. Each student can describe their specific experience of that company without corrupting the shared master record.
+
+---
+
+## 4. Report Section Cascade — The most complex part explained
+
+This is the **3-level inheritance system** for defining what sections a report will have.
+
+```mermaid
+graph TD
+    Start([Student creates Report]) --> Check1{MajorReportTemplate\nexists AND\nuseLevelAboveDefault=False\nAND sections not empty?}
+    Check1 -->|YES| UseMajor[✅ Use Major's custom sections\nsource: 'major_custom']
+    Check1 -->|NO| Check2{CollegeReportTemplate\nexists AND\nuseUniversityDefault=False\nAND sections not empty?}
+    Check2 -->|YES| UseCollege[✅ Use College's custom sections\nsource: 'college_custom']
+    Check2 -->|NO| Check3{UniversityReportTemplate\nexists AND sections not empty?}
+    Check3 -->|YES| UseUniversity[✅ Use University's sections\nsource: 'university_default']
+    Check3 -->|NO| Check4{Major has legacy\nreportSections array?}
+    Check4 -->|YES| UseLegacy[✅ Use Major.reportSections\nsource: 'major_legacy']
+    Check4 -->|NO| UseDefault[⚠️ Use n8n's hardcoded defaults\n7 standard sections]
+
+    style UseMajor fill:#27ae60,color:#fff
+    style UseCollege fill:#27ae60,color:#fff
+    style UseUniversity fill:#27ae60,color:#fff
+    style UseLegacy fill:#f39c12,color:#fff
+    style UseDefault fill:#e74c3c,color:#fff
+```
+
+### What are "sections"?
+
+Each section is: `{ key: "workDescription", title: "Work Description", description: "Detailed tasks..." }`
+
+- `key` → becomes the dictionary key in `generatedContent` in DB, e.g. `generatedContent["workDescription"]`
+- `title` → shown as section heading in PDF
+- `description` → sent to AI (n8n) as guidance for what to write
+
+### Where sections come from (priority order):
+
+| Level | Location | Who sets it | Override? |
+|-------|----------|-------------|-----------|
+| **Major** | `MajorReportTemplate` collection | Admin per-major | `useLevelAboveDefault=False` to use own |
+| **College** | `CollegeReportTemplate` collection | Admin per-college | `useUniversityDefault=False` to use own |
+| **University** | `UniversityReportTemplate` collection | Admin per-university | Always used if no lower override |
+| **Major (legacy)** | `Major.reportSections` embedded field | Admin in major edit | Old system, still works |
+| **Default** | Hardcoded in n8n JavaScript | n8n workflow | Fallback only |
+
+> [!IMPORTANT]
+> The `Major.reportSections` embedded field (inside the Major document itself) is the **LEGACY** system.
+> The **NEW** system uses separate `MajorReportTemplate`, `CollegeReportTemplate`, `UniversityReportTemplate` collections.
+> Both systems coexist. The resolver (`utils/report_sections.py`) handles both.
+
+---
+
+## 5. Major Model Deep Dive — The Control Center of Report Generation
+
+The `Major` document is the **most important configuration object** in the system. It controls almost everything about how a report is generated.
+
+```mermaid
+graph LR
+    subgraph MajorDoc[Major Document]
+        M1[name\ne.g. Computer Science]
+        M2[degree: Degree ref]
+        M3[department: Department ref\noptional]
+        M4[reportLanguage\ne.g. English, Gujarati, Hindi]
+        M5[reportContentType\ne.g. Text, Images, Chart]
+        M6[aiPromptContext\nCustom AI instructions]
+        M7[reportPolicy embedded]
+        M8[reportSections\nlegacy embedded list]
+    end
+
+    subgraph PolicyDoc[ReportPolicy embedded]
+        P1[strictLanguageOnly]
+        P2[allowedLanguages]
+        P3[generationInstruction\nCustom AI prompt addon]
+        P4[uiLabels\nlabel overrides dict]
+        P5[sectionTitleMap\ntitle overrides dict]
+        P6[contentFeatures\nlist of features]
+        P7[imagesRequired]
+    end
+
+    M7 --> PolicyDoc
+```
+
+### How Major fields affect AI generation:
+
+| Major Field | How it's used |
+|------------|---------------|
+| `reportLanguage` | Tells n8n "Write in Gujarati" etc. |
+| `reportContentType` | Tells n8n if tables/charts are allowed |
+| `aiPromptContext` | Injected as extra context for the AI prompt |
+| `reportPolicy.generationInstruction` | Overrides the default language instruction |
+| `reportPolicy.strictLanguageOnly` | If true, AI must use ONLY that language |
+| `reportPolicy.imagesRequired` | Enables image upload UI in student report editor |
+| `reportSections` (legacy) | The list of sections to generate (fallback) |
+
+---
+
+## 6. Full Report Generation Flow — Step by Step
+
+```mermaid
+sequenceDiagram
+    participant S as Student Browser
+    participant F as Flask Backend
+    participant DB as SQLite DB
+    participant N8N as n8n AI Workflow
+    participant AI as OpenAI GPT-4.1
+
+    S->>F: POST /api/reports/ {major, projectTitle, workKeywords, briefDescription}
+    F->>DB: Fetch Major, User, Industry docs
+    F->>DB: Create Report (status='generating')
+    F->>F: resolve_effective_report_sections() → pick sections from cascade
+    F->>F: Build full payload (student+college+university+industry+reportConfig+sections)
+    F->>N8N: POST webhook with full payload (timeout=120s)
+    N8N->>N8N: Split Into Sections (one item per section)
+    loop For each section
+        N8N->>AI: GPT-4.1 prompt with context + section instructions
+        AI-->>N8N: JSON {sectionTitle, sectionContent, uiLabels, references}
+    end
+    N8N->>N8N: Merge All Sections + validate + duplicate check
+    N8N->>F: PUT /api/reports/{id}/generated {generatedContent, generatedTitles, ...}
+    F->>DB: Save content, set status='generated'
+    S->>F: GET /api/reports/{id} (polling)
+    F-->>S: Report data with generatedContent
+    S->>S: Show editable sections
+    S->>F: PUT /api/reports/{id}/content {editedContent}
+    F->>DB: Save editedContent, status='edited'
+    S->>F: GET /api/reports/{id}/pdf
+    F->>F: _build_pdf_sections() + render pdf_template.html
+    F->>F: Playwright renders HTML → PDF bytes
+    F-->>S: application/pdf download
+```
+
+### Report Status State Machine:
+
+```
+pending ──► generating ──► generated ──► edited ──► final
+                      └──► error
+```
+
+---
+
+## 7. What Data Goes to n8n (The AI Payload)
+
+When your Flask backend calls n8n, it sends this complete payload:
+
+```json
+{
+  "reportId": "abc123",
+  "callbackUrl": "https://yoursite.com/api/reports/abc123/generated",
+  "student": { "name", "email", "rollNumber", "enrollmentNumber", "villageCityName", "district", "state" },
+  "college": { "name", "villageCityName", "district", "state", "website" },
+  "university": { "name", "villageCityName", "district", "state" },
+  "industry": { 
+    "name", "villageCityName", "website", "gstNumber",
+    "industryDetails", "industryType", "industrySubType", "keyActivities",
+    "supervisorName"
+  },
+  "academic": { "degree", "major", "university", "college" },
+  "internship": {
+    "projectTitle", "internshipTitle", "academicYear", "duration",
+    "startDate", "endDate", "positionTitle",
+    "briefDescription",    ← the key input from student
+    "keySkills",
+    "workKeywords",        ← selected from WorkKeyword model
+    "jobProfile",
+    "descriptionSource"    ← 'keywords' | 'legacy' | 'hybrid'
+  },
+  "reportConfig": {
+    "language",            ← from Major.reportLanguage
+    "contentType",         ← from Major.reportContentType
+    "policy": { ... },     ← from Major.reportPolicy
+    "aiContext",           ← from Major.aiPromptContext
+    "sections": [          ← resolved from cascade
+      { "key": "acknowledgement", "title": "Acknowledgement", "description": "..." },
+      { "key": "abstract", "title": "Abstract", "description": "..." },
+      ...
+    ]
+  }
+}
+```
+
+---
+
+## 8. WorkKeyword System — How it Connects
+
+`WorkKeyword` is a **tag/keyword library** that helps students describe their work without writing paragraphs.
+
+```mermaid
+graph TD
+    A[Admin creates WorkKeywords\ne.g. 'Tally entries'\n'GST filing'\n'Bank reconciliation'] --> B
+    B[Admin tags each keyword with:\nindustryType: 'Finance'\njobProfile: 'Accounts Assistant'\nsortOrder: 1] --> C
+    C[Student on Create Report page\nSelects their industryType\nand jobProfile first] --> D
+    D[Work Keywords filter by\nindustryType+jobProfile] --> E
+    E[Student picks keywords\ne.g. Tally entries, GST filing] --> F
+    F{REPORT_DESCRIPTION_MODE?}
+    F -->|keywords_only| G[briefDescription = comma joined keywords]
+    F -->|hybrid| H[briefDescription = keywords if no text\nOR text input if provided]
+    F -->|legacy| I[briefDescription = raw student text]
+    G --> J[Sent to n8n as briefDescription]
+    H --> J
+    I --> J
+
+    style A fill:#8e44ad,color:#fff
+    style E fill:#3498db,color:#fff
+    style J fill:#e74c3c,color:#fff
+```
+
+**Current problem with WorkKeyword:**  
+WorkKeyword is a **flat global list** — it's NOT linked to any Major, Degree, or Department. Filtering is only by `industryType` and `jobProfile` strings. This means:
+- A `Computer Science` major student might see `Tally entries` keywords (meant for Commerce students).
+- The filtering is completely manual and text-based.
+
+**Suggested improvement:** Add a `major` or `degree` ReferenceField to WorkKeyword so keywords can be scoped.
+
+---
+
+## 9. Student Profile — What Must Be Filled and Why
+
+```mermaid
+graph LR
+    subgraph Required for profileCompleted=True
+        N[name] 
+        U[university] 
+        C[college]
+        D[degree]
+        M[major]
+        I[industry]
+    end
+
+    subgraph Optional but used in report
+        DP[department text\ncourse semester]
+        AD[academicDepartment ref\nDepartment model]
+        RN[rollNumber]
+        EN[enrollmentNumber]
+        SN[supervisorName]
+        SC[supervisorContact]
+        UL[universityLogoOverride]
+        CL[collegeLogoOverride]
+    end
+
+    profileCompleted -->|unlocks| CreateReport[Create Report page]
+```
+
+**Profile Update Endpoints (3 separate PUT calls):**
+- `PUT /api/student/profile/personal` → name, address, phone, gender
+- `PUT /api/student/profile/college` → university, college, degree, department, major, semester, rollNumber, enrollmentNumber
+- `PUT /api/student/profile/industry` → industry, supervisor details, optional custom overrides
+
+---
+
+## 10. Logo System — Where Logos Come From in PDF
+
+The PDF cover page can show up to 4 logos. Here's the resolution logic:
+
+```mermaid
+graph TD
+    A{Does editedContent.__cover.logos\nexist with custom logo URLs?}
+    A -->|YES| B[Use custom logos array\nup to logoCount]
+    A -->|NO| C[Build fallback logos]
+    C --> D[universityLogoOverride\nOR university.logo\nOR report.university.logo]
+    C --> E[collegeLogoOverride\nOR college.logo\nOR report.college.logo]
+    C --> F[industry.logo]
+    D --> G[Final logos list sent to PDF template]
+    E --> G
+    F --> G
+
+    style B fill:#27ae60,color:#fff
+    style G fill:#2980b9,color:#fff
+```
+
+---
+
+## 11. Admin Approval Workflow — For Student-Submitted Entities
+
+Students can submit new Universities, Colleges, Departments, Majors, and Industries. These need admin approval.
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending : Student creates entity
+    pending --> approved : Admin clicks Approve
+    pending --> rejected : Admin clicks Reject (with reason)
+    rejected --> pending : Student can see rejection reason\nbut cannot resubmit automatically
+    approved --> [*]
+
+    note right of pending
+        Visible to: 
+        - The student who created it
+        - Not visible to other students
+    end note
+
+    note right of approved
+        Visible to:
+        - All students
+        - Can be used in reports
+    end note
+```
+
+**Visibility rule in code:**
+```python
+def _is_visible_to_student(doc, current_user):
+    return (approvalStatus == 'approved') OR (createdBy == current_user.id)
+```
+
+---
+
+## 12. Report Template Hierarchy — Admin Configuration Guide
+
+Here's how an admin should configure sections for a university:
+
+```
+SCENARIO: GTU University, Computer Engineering Department, B.Tech Major
+
+Step 1: Admin sets UniversityReportTemplate for GTU
+  → 7 standard sections for all GTU students
+
+Step 2: (Optional) Admin sets CollegeReportTemplate for specific college
+  → useUniversityDefault=False + custom sections
+  → Override only for that college's students
+
+Step 3: (Optional) Admin sets MajorReportTemplate for B.Tech CS
+  → useLevelAboveDefault=False + custom sections
+  → Override specifically for CS students
+
+Result: CS student at GTU-affiliated college
+  → Gets MajorReportTemplate sections (most specific wins)
+```
+
+---
+
+## 13. InternshipType — Legacy System (Mostly Unused)
+
+`InternshipType` was the **original** way to configure report sections. It has:
+- `name` (e.g. "Software Development Internship")
+- `description`
+- `aiPromptContext`
+- `reportSections` (embedded list of `InternshipTypeSection`)
+
+**Current status:** This model exists and is managed by admins at `/admin/types`, but it is **NOT used** in the current report generation flow. The flow uses `Major.reportLanguage/reportContentType/aiPromptContext/reportPolicy/reportSections` directly.
+
+> [!WARNING]
+> `InternshipType` is a dead-end in the current system. Its sections are never sent to n8n in the current flow. Either:
+> 1. Remove it and clean up the UI, OR
+> 2. Integrate it — e.g., let Major reference an InternshipType to inherit its sections and aiPromptContext
+
+---
+
+## 14. Service & Payment System
+
+```mermaid
+graph TD
+    S[Service\nname: Report Generation\ntype: report\nprice: 50\nfreeLimit: 3\ndegreePricing: [{BE: 100}, {MBA: 75}]] --> P
+    P[Payment\nuser, service, report\namount, gstAmount, totalAmount\nstatus: pending/completed/failed]
+    P --> R[Report\nisPaid=True\npayment=Payment ref]
+```
+
+**Current state:** The payment system is modeled but the actual payment gateway integration (Razorpay, PayU, etc.) is not implemented. The `Service.freeLimit` field suggests a freemium model was planned (e.g., 3 free reports, then pay).
+
+---
+
+## 15. ProjectTitle System
+
+`ProjectTitle` model stores suggested report/project titles per Major:
+- `title` → the suggested title
+- `major` → which Major it applies to
+- `degree` → denormalized for easy filtering
+
+**How it's used:**  
+On the Create Report page, when a student selects their Major, the system fetches pre-seeded project titles from `/api/student/project-titles?major=<id>`. The student can pick one or type their own.
+
+**Admin manages these at:** `/admin/project-titles`
+
+---
+
+## 16. ReportContentType — What It Controls
+
+`ReportContentType` is a configurable list of content types like:
+- Text, Images, Chemical Formula, Data Table, Data Analysis, Graph, Chart, Code Snippet, Mathematical Equation
+
+**Where it's used:**  
+- Admin assigns one to a Major via `Major.reportContentType` (stored as a string, NOT a reference)
+- This string is sent to n8n as `reportConfig.contentType`
+- n8n checks if it contains "table" → sets `allowTables = 'YES'`
+
+> [!WARNING]
+> The link between `ReportContentType` collection and `Major.reportContentType` field is **loose**. Major stores it as a free-text string, not a foreign key reference to `ReportContentType`. This means:
+> - If admin renames a ReportContentType, existing Majors don't update
+> - Should be changed to a ReferenceField or at least validated against the collection
+
+---
+
+## 17. Current Issues & Confusion Points (Your Questions Answered)
+
+### Issue 1: "I don't understand Department's role"
+- Department is **optional** in the chain: `Degree → (Department) → Major`
+- Think of it as a sub-group within a Degree  
+- Example: Degree=B.Tech → Department=Computer Engineering → Major=AI/ML
+- Without Department: Degree=BCA → Major=Computer Applications (simpler)
+- Students CAN create departments (with approval)
+
+### Issue 2: "How do sections connect to University/College?"
+- The `UniversityReportTemplate` and `CollegeReportTemplate` hold section lists
+- BUT they are separate collection documents — NOT embedded in University/College
+- The connection is via `ReferenceField`
+- A University can have AT MOST ONE template (`unique=True` on the university field)
+
+### Issue 3: "WorkKeyword seems disconnected"
+- You're right — it's disconnected. WorkKeywords filter by `industryType` and `jobProfile` strings
+- These strings must match what the student has in their industry profile
+- The system is fragile — if admin uses different capitalization, keywords won't show
+
+### Issue 4: "Why does Major have both reportSections AND MajorReportTemplate?"
+- `Major.reportSections` = OLD/LEGACY system (directly embedded)
+- `MajorReportTemplate` = NEW system (separate collection, more flexible)
+- Both exist for backward compatibility
+- The resolver checks new system first, falls back to legacy
+
+### Issue 5: "Industry vs InternshipType — what's the difference?"
+- `Industry` = The actual company (IVInfotech, TCS, etc.) — **used actively**
+- `InternshipType` = A category of internship (Software Dev, Accounting, etc.) — **legacy, mostly unused**
+- The current system derives internship context from `Major.aiPromptContext` instead of `InternshipType`
+
+---
+
+## 18. Suggested Improvements
+
+### 🔴 Critical Issues
+
+| # | Issue | Suggested Fix |
+|---|-------|---------------|
+| 1 | `WorkKeyword` not linked to Major/Degree | Add `major: ReferenceField('Major')` and `degree: ReferenceField('Degree')` to WorkKeyword for scoped filtering |
+| 2 | `Major.reportContentType` is a loose string | Change to `ReferenceField('ReportContentType')` with a migration script |
+| 3 | `InternshipType` is unused dead code | Either remove it or link it to Major so it can provide aiPromptContext |
+| 4 | No cascade-clear when University/College is deleted | If a University is deleted, colleges pointing to it have broken references |
+
+### 🟡 Design Improvements
+
+| # | Issue | Suggested Fix |
+|---|-------|---------------|
+| 5 | Report sections not ordered consistently | Add explicit `sortOrder` to MajorReportTemplate sections (it exists in `ReportSectionItem` but isn't used in sorting) |
+| 6 | Student can't see why their University was rejected | Surface `rejectionReason` in student profile UI |
+| 7 | Industry customization (`industryProfileCustomized`) is all-or-nothing | Allow field-level customization (student can override just city but not name) |
+| 8 | Payment gateway not implemented | Integrate Razorpay/PayU; implement `freeLimit` check before allowing report generation |
+
+### 🟢 Future Flow Additions
+
+```mermaid
+graph LR
+    A[Planned: Report Finalization] --> B[student marks as final]
+    B --> C[Payment is verified]
+    C --> D[PDF watermark removed]
+    D --> E[Certificate/stamp added]
+    
+    F[Planned: Admin Report Review] --> G[Admin can annotate report]
+    G --> H[Student revises]
+    H --> I[Report re-finalized]
+```
+
+---
+
+## 19. Complete Flow Summary — From Zero to PDF
+
+```mermaid
+graph TD
+    REG[1. Student Registers] --> PROF[2. Student fills Profile\nuniversity, college, degree\ndepartment, major, industry]
+    PROF -->|profileCompleted=True| CREATE[3. Go to Create Report page]
+    
+    CREATE --> SEL[4. Degree + Department + Major selected\nfrom profile OR changed]
+    SEL --> PT[5. Pick or type Project Title\noptional: from ProjectTitle suggestions]
+    PT --> KW[6. Select Work Keywords\nfiltered by industryType + jobProfile]
+    KW --> DESC[7. Write brief description\nOR let keywords auto-fill]
+    DESC --> SUBMIT[8. Submit → POST /api/reports/]
+    
+    SUBMIT --> CASCADE[Backend resolves sections\nMajor→College→University cascade]
+    CASCADE --> PAYLOAD[Build full AI payload]
+    PAYLOAD --> N8N[Send to n8n webhook]
+    
+    N8N --> SPLIT[n8n: Split into one item per section]
+    SPLIT --> GPT[n8n: GPT-4.1 generates each section\nwith full context + formatting rules]
+    GPT --> MERGE[n8n: Merge all sections\n+ duplicate sentence check]
+    MERGE --> CALLBACK[n8n: PUT callback to Flask]
+    
+    CALLBACK --> SAVE[Flask saves generatedContent\nstatus = generated]
+    SAVE --> POLL[Student polls for status=generated]
+    POLL --> VIEW[Student views report sections]
+    VIEW --> EDIT[Student edits any section]
+    EDIT --> EDITSTATUS[status = edited]
+    EDITSTATUS --> IMAGE[Student uploads images\nper section, with position: top/middle/bottom]
+    IMAGE --> PDF[Download PDF via Playwright]
+
+    style REG fill:#3498db,color:#fff
+    style SUBMIT fill:#e67e22,color:#fff
+    style N8N fill:#8e44ad,color:#fff
+    style GPT fill:#c0392b,color:#fff
+    style CALLBACK fill:#8e44ad,color:#fff
+    style PDF fill:#27ae60,color:#fff
+```
+
+---
+
+## 20. Quick Reference — What Controls What
+
+| If you want to control... | Change this... |
+|--------------------------|----------------|
+| What language report is written in | `Major.reportLanguage` |
+| What sections appear in report | `MajorReportTemplate` → `sections[]` |
+| How many words per section | Hardcoded in n8n (280-420 words) |
+| AI writing style/format | `Major.reportPolicy.generationInstruction` |
+| Whether tables are allowed | `Major.reportContentType` (include "table") |
+| Whether images can be uploaded | `Major.reportPolicy.imagesRequired` |
+| AI domain context | `Major.aiPromptContext` |
+| Report pricing | `Service.price` + `Service.degreePricing` |
+| Which students can use a section template | Assign college/major template appropriately |
+| Work keywords shown to student | `WorkKeyword.industryType` + `jobProfile` |
+| PDF cover page content | Student edits `editedContent.__cover` + `__coverPage` |
+| PDF header/footer text | `editedContent.__layout` |
+
+---
+
+*Document generated by deep reading of all models, routes, utilities, and n8n flow. Last updated: 2026-04-29.*

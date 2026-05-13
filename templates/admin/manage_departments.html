@@ -1,0 +1,512 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'departments' %}
+
+{% block title %}Departments - ReportGen Admin{% endblock %}
+
+{% block page_css %}
+<style>
+  .status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge-approved { background: rgba(5,150,105,0.15); color: #10b981; }
+  .badge-pending  { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .badge-rejected { background: rgba(239,68,68,0.15);  color: #ef4444; }
+</style>
+{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Manage Departments</h1>
+    <p class="page-subtitle">Build degree-wise department hierarchy and review pending submissions.</p>
+  </div>
+
+  <div class="stats-inline">
+    <a href="/admin/bulk-import" class="btn-ghost"><i data-lucide="upload" style="width:14px;height:14px;"></i>Bulk Import</a>
+    <button class="btn-ghost" type="button" onclick="downloadTemplate()"><i data-lucide="download" style="width:14px;height:14px;"></i>Template</button>
+    <button class="btn-ghost" type="button" onclick="loadDepartments()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
+    <button class="btn-primary" type="button" onclick="openCreate()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Department</button>
+  </div>
+
+  <article class="panel-card panel-body" style="display:grid;gap:12px;">
+    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filters</h3>
+    <div class="toolbar" style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) 170px;gap:12px;">
+      <select id="filterDegree" class="small-input"></select>
+      <input id="filterSearch" class="small-input" placeholder="Search departments...">
+      <select id="filterStatus" class="small-input">
+        <option value="">All statuses</option>
+        <option value="approved">Approved</option>
+        <option value="pending">Pending</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+    <div style="font-size:12px;color:#64748b;">
+      Pending review count: <strong id="pendingCount">0</strong>
+    </div>
+  </article>
+
+  <article class="panel-card panel-body table-card">
+    <div id="bulkToolbar" style="
+      display:none;
+      align-items:center;
+      gap:12px;
+      padding:10px 16px;
+      background:#fff3cd;
+      border:1px solid #ffc107;
+      border-radius:8px;
+      margin-bottom:12px;
+      font-size:13px;
+    ">
+      <span id="selectedCount" style="font-weight:600;color:#856404;">
+        0 selected
+      </span>
+      <button 
+        onclick="bulkDelete()" 
+        style="
+          padding:6px 16px;
+          background:#dc2626;
+          color:#fff;
+          border:none;
+          border-radius:6px;
+          font-size:13px;
+          font-weight:600;
+          cursor:pointer;
+        "
+      >
+        🗑 Delete Selected
+      </button>
+      <button 
+        onclick="clearSelection()" 
+        style="
+          padding:6px 12px;
+          background:transparent;
+          border:1px solid #aaa;
+          border-radius:6px;
+          font-size:13px;
+          cursor:pointer;
+        "
+      >
+        ✕ Clear
+      </button>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
+            <th>Name</th>
+            <th>Degree</th>
+            <th>Status</th>
+            <th>Active</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<div class="modal fade" id="departmentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="departmentModalTitle">Add Department</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="departmentId">
+        <div class="mb-3">
+          <label class="form-label">Degree *</label>
+          <select class="form-select" id="departmentDegree"></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Department Name *</label>
+          <input class="form-control" id="departmentName" placeholder="Department of Mechanical Engineering">
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="departmentActive" checked>
+          <label class="form-check-label" for="departmentActive">Active</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveDepartment()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="rejectDepartmentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Reject Department</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="rejectDepartmentId">
+        <label class="form-label">Reason (optional)</label>
+        <textarea class="form-control" id="rejectDepartmentReason" rows="3"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" type="button" onclick="confirmReject()">Reject</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+const ENTITY_ENDPOINT = 'departments';
+let degrees = [];
+let modal = null;
+
+function showToast(msg, isError = false) {
+  let el = document.getElementById('toastMsg');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toastMsg';
+    el.style.cssText = `
+      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      background:#0f172a;color:#fff;padding:10px 24px;border-radius:8px;
+      font-size:13px;font-weight:600;z-index:9999;opacity:0;
+      pointer-events:none;transition:opacity 0.3s ease;
+    `;
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.background = isError ? '#dc2626' : '#0f172a';
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 2500);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Multi-select logic
+// ─────────────────────────────────────────────────────────────
+
+function updateBulkToolbar() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  const toolbar = document.getElementById('bulkToolbar');
+  const count = document.getElementById('selectedCount');
+  if (checked.length > 0) {
+    toolbar.style.display = 'flex';
+    count.textContent = `${checked.length} selected`;
+  } else {
+    toolbar.style.display = 'none';
+  }
+  const all = document.querySelectorAll('.row-checkbox');
+  document.getElementById('selectAll').checked = 
+    all.length > 0 && checked.length === all.length;
+  document.getElementById('selectAll').indeterminate = 
+    checked.length > 0 && checked.length < all.length;
+}
+
+function clearSelection() {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+  document.getElementById('selectAll').checked = false;
+  document.getElementById('selectAll').indeterminate = false;
+  document.getElementById('bulkToolbar').style.display = 'none';
+}
+
+async function bulkDelete() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  if (!checked.length) return;
+  
+  const ids = Array.from(checked).map(cb => cb.dataset.id);
+  const confirmed = await showBulkConfirm(ids.length);
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`/api/admin/${ENTITY_ENDPOINT}/bulk-delete`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids })
+    });
+    
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      showToast(`✓ ${data.deleted || ids.length} departments deleted`);
+      clearSelection();
+      loadDepartments();
+    } else {
+      showToast(data.message || 'Bulk delete failed', true);
+    }
+  } catch (err) {
+    showToast('Network error during bulk delete', true);
+  }
+}
+
+function showBulkConfirm(count) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('bulkConfirmBar');
+    if (existing) existing.remove();
+    
+    const bar = document.createElement('div');
+    bar.id = 'bulkConfirmBar';
+    bar.style.cssText = `
+      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;
+      font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;
+      box-shadow:0 4px 20px rgba(0,0,0,0.3);
+    `;
+    bar.innerHTML = `
+      <span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span>
+      <button id="bulkConfirmYes" style="
+        padding:6px 16px;background:#dc2626;color:#fff;border:none;
+        border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
+        Delete
+      </button>
+      <button id="bulkConfirmNo" style="
+        padding:6px 12px;background:transparent;border:1px solid #aaa;
+        color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+        Cancel
+      </button>
+    `;
+    document.body.appendChild(bar);
+    
+    document.getElementById('bulkConfirmYes').onclick = () => { 
+      bar.remove(); resolve(true); 
+    };
+    document.getElementById('bulkConfirmNo').onclick = () => { 
+      bar.remove(); resolve(false); 
+    };
+  });
+}
+
+const statusBadge = (status) => {
+  const cls = status === 'pending' ? 'badge-pending' : (status === 'rejected' ? 'badge-rejected' : 'badge-approved');
+  return `<span class="status-badge ${cls}">${status || 'approved'}</span>`;
+};
+
+function setDegreeOptions(selectId, selected = '') {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const isFilter = selectId === 'filterDegree';
+  const placeholder = isFilter ? 'Select degree' : 'Select degree';
+  select.innerHTML = `<option value="">${placeholder}</option>` + degrees.map(d => {
+    const selectedAttr = String(selected) === String(d._id) ? 'selected' : '';
+    return `<option value="${d._id}" ${selectedAttr}>${d.name}</option>`;
+  }).join('');
+}
+
+async function loadDegrees() {
+  const res = await fetch('/api/admin/degrees', { headers });
+  degrees = await res.json();
+  const currentFilterVal = document.getElementById('filterDegree').value;
+  setDegreeOptions('filterDegree', currentFilterVal || '');
+  const currentDeptVal = document.getElementById('departmentDegree').value;
+  setDegreeOptions('departmentDegree', currentDeptVal || '');
+}
+
+async function loadDepartments() {
+  const params = new URLSearchParams();
+  const degree = document.getElementById('filterDegree').value;
+  const q = document.getElementById('filterSearch').value.trim();
+  const status = document.getElementById('filterStatus').value;
+  if (degree) params.set('degree', degree);
+  if (q) params.set('q', q);
+  if (status) params.set('status', status);
+
+  const res = await fetch(`/api/admin/departments?${params.toString()}`, { headers });
+  const data = await res.json();
+
+  const pendingRes = await fetch('/api/admin/departments?status=pending', { headers });
+  const pendingData = await pendingRes.json();
+  document.getElementById('pendingCount').textContent = String((pendingData || []).length);
+
+  document.getElementById('rows').innerHTML = (data || []).map(dep => `
+    <tr>
+      <td><input type="checkbox" class="row-checkbox" data-id="${dep._id}" style="width:16px;height:16px;cursor:pointer;"></td>
+      <td><strong>${dep.name || '-'}</strong>${dep.rejectionReason ? `<br><small class="text-danger">Reason: ${dep.rejectionReason}</small>` : ''}</td>
+      <td>${dep.degree?.name || '-'}</td>
+      <td>${statusBadge(dep.approvalStatus)}</td>
+      <td>${dep.isActive ? 'Yes' : 'No'}</td>
+      <td>
+        <div class="icon-actions">
+          ${dep.approvalStatus === 'pending' ? `<button class="toggle-action" onclick="approveDepartment('${dep._id}')" title="Approve"><i data-lucide="check" style="width:16px;height:16px;"></i></button><button class="danger-action" onclick="openRejectModal('${dep._id}')" title="Reject"><i data-lucide="x" style="width:16px;height:16px;"></i></button>` : ''}
+          <button class="toggle-action" onclick='openEdit(${JSON.stringify(dep)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+          <button class="danger-action" onclick="deleteDepartment('${dep._id}')" title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No departments found</td></tr>';
+
+  if (window.lucide) lucide.createIcons();
+  window.AdminUI?.staggerRows();
+  clearSelection();
+}
+
+function openCreate() {
+  document.getElementById('departmentModalTitle').textContent = 'Add Department';
+  document.getElementById('departmentId').value = '';
+  document.getElementById('departmentName').value = '';
+  document.getElementById('departmentActive').checked = true;
+  setDegreeOptions('departmentDegree', '');
+  modal.show();
+}
+
+function openEdit(dep) {
+  document.getElementById('departmentModalTitle').textContent = 'Edit Department';
+  document.getElementById('departmentId').value = dep._id || '';
+  document.getElementById('departmentName').value = dep.name || '';
+  document.getElementById('departmentActive').checked = dep.isActive !== false;
+  setDegreeOptions('departmentDegree', dep.degree?._id || dep.degree || '');
+  modal.show();
+}
+
+async function saveDepartment() {
+  const id = document.getElementById('departmentId').value;
+  const payload = {
+    name: document.getElementById('departmentName').value.trim(),
+    degree: document.getElementById('departmentDegree').value,
+    isActive: document.getElementById('departmentActive').checked,
+  };
+
+  if (!payload.name || !payload.degree) {
+    showToast('Department name and degree are required', true);
+    return;
+  }
+
+  const url = id ? `/api/admin/departments/${id}` : '/api/admin/departments';
+  const method = id ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+  const data = await res.json();
+  if (!res.ok) {
+    showToast(data.message || 'Save failed', true);
+    return;
+  }
+
+  modal.hide();
+  showToast(id ? '✓ Department updated' : '✓ Department created');
+  loadDepartments();
+}
+
+function showDeleteDepartmentConfirm() {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('bulkConfirmBar');
+    if (existing) existing.remove();
+
+    const bar = document.createElement('div');
+    bar.id = 'bulkConfirmBar';
+    bar.style.cssText = `
+      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;
+      font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;
+      box-shadow:0 4px 20px rgba(0,0,0,0.3);
+    `;
+    bar.innerHTML = `
+      <span>Delete this department? This cannot be undone.</span>
+      <button id="bulkConfirmYes" style="
+        padding:6px 16px;background:#dc2626;color:#fff;border:none;
+        border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
+        Delete
+      </button>
+      <button id="bulkConfirmNo" style="
+        padding:6px 12px;background:transparent;border:1px solid #aaa;
+        color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+        Cancel
+      </button>
+    `;
+    document.body.appendChild(bar);
+
+    document.getElementById('bulkConfirmYes').onclick = () => {
+      bar.remove();
+      resolve(true);
+    };
+    document.getElementById('bulkConfirmNo').onclick = () => {
+      bar.remove();
+      resolve(false);
+    };
+  });
+}
+
+async function deleteDepartment(id) {
+  const confirmed = await showDeleteDepartmentConfirm();
+  if (!confirmed) return;
+  const res = await fetch(`/api/admin/departments/${id}`, { method: 'DELETE', headers });
+  if (res.ok) {
+    showToast('✓ Department deleted');
+    loadDepartments();
+  } else {
+    showToast('Delete failed', true);
+  }
+}
+
+async function approveDepartment(id) {
+  await fetch(`/api/admin/departments/${id}/approve`, { method: 'PUT', headers });
+  loadDepartments();
+}
+
+function openRejectModal(id) {
+  document.getElementById('rejectDepartmentId').value = id;
+  document.getElementById('rejectDepartmentReason').value = '';
+  new bootstrap.Modal(document.getElementById('rejectDepartmentModal')).show();
+}
+
+async function confirmReject() {
+  const id = document.getElementById('rejectDepartmentId').value;
+  const reason = document.getElementById('rejectDepartmentReason').value.trim();
+  await fetch(`/api/admin/departments/${id}/reject`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ reason }),
+  });
+  bootstrap.Modal.getInstance(document.getElementById('rejectDepartmentModal'))?.hide();
+  loadDepartments();
+}
+
+async function downloadTemplate() {
+  const res = await fetch('/api/admin/bulk-import/template/departments', { headers: { 'Authorization': `Bearer ${token}` } });
+  if (!res.ok) {
+    showToast('Unable to download template', true);
+    return;
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'departments_template.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  modal = new bootstrap.Modal(document.getElementById('departmentModal'));
+  document.getElementById('filterDegree').value = '';
+  document.getElementById('filterSearch').value = '';
+  document.getElementById('filterStatus').value = '';
+  document.getElementById('filterDegree').addEventListener('change', loadDepartments);
+  document.getElementById('filterStatus').addEventListener('change', loadDepartments);
+  document.getElementById('filterSearch').addEventListener('input', loadDepartments);
+  
+  // Setup selectAll checkbox
+  document.getElementById('selectAll').addEventListener('change', (e) => {
+    document.querySelectorAll('.row-checkbox')
+      .forEach(cb => cb.checked = e.target.checked);
+    updateBulkToolbar();
+  });
+
+  // Setup individual checkboxes via event delegation on tbody
+  document.getElementById('rows').addEventListener('change', (e) => {
+    if (e.target.classList.contains('row-checkbox')) {
+      updateBulkToolbar();
+    }
+  });
+
+  await loadDegrees();
+  await loadDepartments();
+});
+</script>
+{% endblock %}

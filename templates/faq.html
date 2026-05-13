@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}FAQ — ReportGen{% endblock %}
+{% block og_title %}Frequently Asked Questions — ReportGen{% endblock %}
+{% block meta_description %}Answers to common questions about ReportGen's AI internship report generator, supported universities, pricing, and more.{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { background:#0a0f1e;color:#f1f5f9;font-family:'DM Sans',sans-serif; }
+    body::before { content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 50% at 10% 10%,rgba(37,99,235,0.12),transparent 70%),radial-gradient(ellipse 40% 50% at 90% 90%,rgba(59,123,255,0.08),transparent 70%);pointer-events:none;z-index:0; }
+    .faq-page { position:relative;z-index:1;padding-top:120px;padding-bottom:80px; }
+    .faq-hero { text-align:center;padding:0 24px 60px; }
+    .faq-eyebrow { display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#3b7bff;margin-bottom:16px; }
+    .faq-h1 { font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:800;color:#fff;line-height:1.15;margin-bottom:12px; }
+    .faq-sub { font-size:1rem;color:#64748b;max-width:480px;margin:0 auto; }
+    .faq-container { max-width:780px;margin:0 auto;padding:0 24px; }
+    .faq-category { font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#3b7bff;margin:2.5rem 0 1rem;padding-left:4px; }
+    .faq-item { border:1px solid rgba(255,255,255,0.08);border-radius:12px;margin-bottom:8px;overflow:hidden;background:rgba(255,255,255,0.03);transition:border-color 0.2s; }
+    .faq-item:hover { border-color:rgba(255,255,255,0.14); }
+    .faq-q { display:flex;justify-content:space-between;align-items:center;padding:18px 20px;cursor:pointer;font-size:0.95rem;font-weight:600;color:#e2e8f0;gap:12px; }
+    .faq-icon { flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(59,123,255,0.15);border:1px solid rgba(59,123,255,0.25);display:flex;align-items:center;justify-content:center;font-size:12px;color:#3b7bff;transition:transform 0.2s,background 0.2s; }
+    .faq-item.open .faq-icon { transform:rotate(45deg);background:rgba(37,99,235,0.25); }
+    .faq-a { display:none;padding:0 20px 18px;font-size:0.9rem;line-height:1.75;color:#94a3b8; }
+    .faq-a a { color:#3b7bff;text-decoration:none; }
+    .faq-a a:hover { text-decoration:underline; }
+    .faq-item.open .faq-a { display:block; }
+    .faq-cta { text-align:center;margin-top:60px;padding:48px 24px;background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.2);border-radius:20px; }
+    .faq-cta h3 { font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:#fff;margin-bottom:12px; }
+    .faq-cta p { color:#64748b;margin-bottom:24px; }
+    .faq-cta-btn { display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#2563eb,#3b7bff);color:white;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;text-decoration:none;box-shadow:0 4px 16px rgba(37,99,235,0.35);cursor:pointer;font-family:'DM Sans',sans-serif; }
+</style>
++{% endblock %}
++
++{% block content %}
++{% include 'partials/landing_navbar.html' %}
++
++<div class="faq-page">
++    <div class="faq-hero">
++        <div class="faq-eyebrow">✦ Help Center</div>
++        <h1 class="faq-h1">Frequently Asked<br>Questions</h1>
++        <p class="faq-sub">Everything you need to know about ReportGen.</p>
++    </div>
++
++    <div class="faq-container">
++        <div class="faq-category">About the Platform</div>
++
++        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What is ReportGen?<span class="faq-icon">+</span></div><div class="faq-a">ReportGen is an AI-powered platform that helps Indian university students generate professional internship reports and resumes in minutes. You fill in details about your internship, and our AI writes a complete, formatted report tailored to your university's requirements.</div></div>
++        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Which universities are supported?<span class="faq-icon">+</span></div><div class="faq-a">We currently support 50+ Indian universities including GTU (Gujarat Technological University), SPPU (Savitribai Phule Pune University), Mumbai University, Anna University, VTU, and many more. Each university has custom report section templates configured by our academic team. If your university is not listed, contact us and we'll add it.</div></div>
++        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How long does report generation take?<span class="faq-icon">+</span></div><div class="faq-a">Report generation typically takes 1–3 minutes. Our AI writes each section simultaneously for speed. You'll see the status update in real time on your dashboard.</div></div>
++        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is it plagiarism to use AI-generated reports?<span class="faq-icon">+</span></div><div class="faq-a">This depends on your university's academic integrity policy. ReportGen generates content based on YOUR specific internship details — it is not copied from any existing source. Every report is unique to you. However, we strongly recommend reviewing and editing the generated content to add your personal experience and voice. Using the platform to submit work that is entirely AI-generated without review may violate your institution's policies. Use ReportGen as a writing assistant, not a replacement for your own experience.</div></div>
++
++        <div class="faq-category">Using the Platform</div>
++
++        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Can I edit the generated report?<span class="faq-icon">+</span></div><div class="faq-a">Yes, absolutely. Every section of the generated report is fully editable. You can modify any text, add your own content, upload images, and preview the final PDF before downloading. The report editor is built into the platform.</div></div>
++        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What does the downloaded PDF look like?<span class="faq-icon">+</span></div><div class="faq-a">The PDF includes a professional cover page with your name, roll number, college name, and company logos. It follows standard academic formatting with proper section headings, page numbers, and consistent typography. Visit our <a href="/#preview">sample output section</a> on the homepage to see an example.</div></div>
++        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What is the Resume Builder?<span class="faq-icon">+</span></div><div class="faq-a">The Resume Builder is a separate feature that helps you create a professional single-page resume. You fill in your education, experience, skills, projects, and certifications in a step-by-step form, and the platform generates a cleanly formatted PDF resume ready for job applications. AI Enhance buttons can improve each section with professional language.</div></div>
++
++        <div class="faq-category">Account & Pricing</div>
++
++        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is there a free plan?<span class="faq-icon">+</span></div><div class="faq-a">Yes! The free plan allows you to generate 1 internship report. This is enough for most students who need a single report per semester. Paid plans offer more report generations and priority support. See our <a href="/#pricing">pricing section</a> for details.</div></div>
++        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Can I generate multiple reports?<span class="faq-icon">+</span></div><div class="faq-a">Yes. With paid plans you can generate multiple reports — useful if you have multiple internship semesters or want to start fresh after editing. Each generated report is saved to your account and can be accessed anytime.</div></div>
++        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How do I reset my password?<span class="faq-icon">+</span></div><div class="faq-a">Click "Forgot Password" on the login page. Enter your registered email and you'll receive an OTP to reset your password. If you don't receive the email, check your spam folder or contact support.</div></div>
++
++        <div class="faq-cta">
++            <h3>Still have questions?</h3>
++            <p>Our support team is happy to help.</p>
++            <a href="/contact" class="faq-cta-btn">Contact Support →</a>
++        </div>
++    </div>
++</div>
++
++{% include 'partials/landing_footer.html' %}
++{% endblock %}
++
++{% block extra_js %}
++<script>
++function toggleFaq(el) {
++    const item = el.closest('.faq-item');
++    const isOpen = item.classList.contains('open');
++    document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
++    if (!isOpen) item.classList.add('open');
++}
++</script>
++{% endblock %}

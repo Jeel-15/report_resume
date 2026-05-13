@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Refund Policy — ReportGen{% endblock %}
+{% block meta_description %}ReportGen's refund and cancellation policy for paid plans and report credits.{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { background:#0a0f1e; color:#f1f5f9; font-family:'DM Sans',sans-serif; }
+    body::before { content:''; position:fixed; inset:0; background:radial-gradient(ellipse 60% 50% at 10% 10%,rgba(37,99,235,0.12),transparent 70%); pointer-events:none; z-index:0; }
+    .legal-page { position:relative; z-index:1; padding-top:120px; padding-bottom:80px; }
+    .legal-hero { text-align:center; padding:0 24px 60px; }
+    .legal-eyebrow { display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#3b7bff;margin-bottom:16px; }
+    .legal-h1 { font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:800;color:#ffffff;line-height:1.15;margin-bottom:12px; }
+    .legal-sub { font-size:1rem;color:#64748b;max-width:520px;margin:0 auto; }
+    .legal-card { max-width:820px;margin:0 auto;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:48px;backdrop-filter:blur(16px); }
+    .legal-card h2 { font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:#ffffff;margin:2rem 0 0.75rem;padding-top:2rem;border-top:1px solid rgba(255,255,255,0.08); }
+    .legal-card h2:first-child { margin-top:0;padding-top:0;border-top:none; }
+    .legal-card p { font-size:0.95rem;line-height:1.75;color:#94a3b8;margin-bottom:1rem; }
+    .legal-card ul { padding-left:1.5rem;margin-bottom:1rem; }
+    .legal-card li { font-size:0.95rem;line-height:1.75;color:#94a3b8;margin-bottom:0.4rem; }
+    .legal-card strong { color:#e2e8f0; }
+    .legal-date { display:inline-block;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:999px;padding:4px 14px;font-size:0.78rem;color:#93c5fd;margin-bottom:2rem; }
+    .container-narrow { max-width:880px;margin:0 auto;padding:0 24px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'partials/landing_navbar.html' %}
+
+<div class="legal-page">
+    <div class="legal-hero">
+        <div class="legal-eyebrow">✦ Legal</div>
+        <h1 class="legal-h1">Refund Policy</h1>
+        <p class="legal-sub">Our refund and cancellation terms for paid plans.</p>
+    </div>
+    <div class="container-narrow">
+        <div class="legal-card">
+            <span class="legal-date">Last updated: January 1, 2026</span>
+
+            <h2>1. Free Plan</h2>
+            <p>The free plan is provided at no cost and does not involve any payment. No refunds are applicable.</p>
+
+            <h2>2. Paid Plans — Eligibility for Refund</h2>
+            <p>We offer refunds under the following conditions:</p>
+            <ul>
+                <li><strong>7-day money-back guarantee:</strong> If you are not satisfied with a paid plan, you may request a full refund within 7 days of your original purchase, provided you have not used more than 1 report generation credit.</li>
+                <li><strong>Technical failure:</strong> If a report generation fails due to a technical error on our end and we are unable to resolve it within 48 hours, you are entitled to a full refund of the affected credit.</li>
+                <li><strong>Duplicate charges:</strong> If you were charged twice for the same transaction, we will refund the duplicate charge immediately upon verification.</li>
+            </ul>
+
+            <h2>3. Non-Refundable Situations</h2>
+            <p>Refunds will <strong>not</strong> be issued in the following cases:</p>
+            <ul>
+                <li>You have successfully generated and downloaded a report or resume.</li>
+                <li>More than 7 days have passed since the purchase date.</li>
+                <li>Refund request is for subscription renewals that were not cancelled before the renewal date.</li>
+                <li>Account was suspended due to violation of our Terms of Service.</li>
+                <li>Change of mind after the 7-day window has passed.</li>
+            </ul>
+
+            <h2>4. How to Request a Refund</h2>
+            <p>To request a refund, email <strong>support@reportgen.in</strong> with:</p>
+            <ul>
+                <li>Your registered email address</li>
+                <li>Transaction ID or payment reference number</li>
+                <li>Reason for the refund request</li>
+            </ul>
+            <p>We will review and respond within 3 business days. Approved refunds are processed within 5-7 business days to your original payment method.</p>
+
+            <h2>5. Subscription Cancellation</h2>
+            <p>You may cancel your subscription at any time from your account settings. Cancellation stops future renewals but does not provide a refund for the current billing period, unless you are within the 7-day window.</p>
+
+            <h2>6. Contact</h2>
+            <p>For refund queries, contact us at <strong>support@reportgen.in</strong> or call us at +91 99999 99999 (Mon–Sat, 10 AM – 7 PM IST).</p>
+        </div>
+    </div>
+</div>
+
+{% include 'partials/landing_footer.html' %}
+{% endblock %}

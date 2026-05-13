@@ -1,0 +1,305 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'bulk-import' %}
+
+{% block title %}Bulk Import - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Bulk Import</h1>
+    <p class="page-subtitle">Import master data in bulk using Excel or CSV files.</p>
+  </div>
+
+  <div class="bulk-import-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+    <!-- Universities Panel -->
+    <article class="panel-card panel-body" style="display:grid;gap:12px;">
+      <h3 style="margin:0;font-size:16px;color:#0f172a;">Universities</h3>
+      <p style="margin:0;font-size:13px;color:#64748b;">Download the template, fill it with university data, and upload to import.</p>
+      <div style="display:flex;gap:8px;flex-direction:column;">
+        <button class="btn-ghost" type="button" onclick="downloadTemplate('universities')" style="text-align:center;padding:8px 12px;border-radius:4px;font-size:13px;"><i data-lucide="download" style="width:14px;height:14px;display:inline;margin-right:4px;"></i>Download Template</button>
+        <input type="file" accept=".xlsx,.csv" id="file-universities" style="padding:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
+        <button class="btn-primary" type="button" onclick="importFile('universities')" style="padding:8px 12px;font-size:13px;">Import</button>
+        <div id="result-universities" style="margin-top:8px;font-size:13px;"></div>
+      </div>
+    </article>
+
+    <!-- Colleges Panel (select university then upload college-only file) -->
+    <article class="panel-card panel-body" style="display:grid;gap:12px;">
+      <h3 style="margin:0;font-size:16px;color:#0f172a;">Colleges</h3>
+      <p style="margin:0;font-size:13px;color:#64748b;">Select a university, download the college-only template, and upload to import.</p>
+      <div style="display:flex;gap:8px;flex-direction:column;">
+        <button class="btn-ghost" type="button" onclick="downloadTemplate('colleges')" style="text-align:center;padding:8px 12px;border-radius:4px;font-size:13px;"><i data-lucide="download" style="width:14px;height:14px;display:inline;margin-right:4px;"></i>Download Template</button>
+        <select id="college-university-select" style="padding:8px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
+          <option value="">Select University</option>
+        </select>
+        <input type="file" accept=".xlsx,.csv" id="file-colleges" style="padding:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
+        <button class="btn-primary" type="button" onclick="importFile('colleges')" style="padding:8px 12px;font-size:13px;">Import</button>
+        <div id="result-colleges" style="margin-top:8px;font-size:13px;"></div>
+      </div>
+    </article>
+
+    <!-- Industries Panel -->
+    <article class="panel-card panel-body" style="display:grid;gap:12px;">
+      <h3 style="margin:0;font-size:16px;color:#0f172a;">Industries</h3>
+      <p style="margin:0;font-size:13px;color:#64748b;">Download the template, fill it with industry data, and upload to import.</p>
+      <div style="display:flex;gap:8px;flex-direction:column;">
+        <button class="btn-ghost" type="button" onclick="downloadTemplate('industries')" style="text-align:center;padding:8px 12px;border-radius:4px;font-size:13px;"><i data-lucide="download" style="width:14px;height:14px;display:inline;margin-right:4px;"></i>Download Template</button>
+        <input type="file" accept=".xlsx,.csv" id="file-industries" style="padding:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
+        <button class="btn-primary" type="button" onclick="importFile('industries')" style="padding:8px 12px;font-size:13px;">Import</button>
+        <div id="result-industries" style="margin-top:8px;font-size:13px;"></div>
+      </div>
+    </article>
+
+    <!-- Project Titles Panel -->
+    <article class="panel-card panel-body" style="display:grid;gap:12px;">
+      <h3 style="margin:0;font-size:16px;color:#0f172a;">Project Titles</h3>
+      <p style="margin:0;font-size:13px;color:#64748b;">Download the template, fill it with project title data, and upload to import.</p>
+      <div style="display:flex;gap:8px;flex-direction:column;">
+        <button class="btn-ghost" type="button" onclick="downloadTemplate('project-titles')" style="text-align:center;padding:8px 12px;border-radius:4px;font-size:13px;"><i data-lucide="download" style="width:14px;height:14px;display:inline;margin-right:4px;"></i>Download Template</button>
+        <input type="file" accept=".xlsx,.csv" id="file-project-titles" style="padding:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
+        <button class="btn-primary" type="button" onclick="importFile('project-titles')" style="padding:8px 12px;font-size:13px;">Import</button>
+        <div id="result-project-titles" style="margin-top:8px;font-size:13px;"></div>
+      </div>
+    </article>
+
+    <!-- Degree Structure Panel -->
+    <article class="panel-card panel-body" style="display:grid;gap:12px;">
+      <h3 style="margin:0;font-size:16px;color:#0f172a;">Degree Structure</h3>
+      <p style="margin:0;font-size:13px;color:#64748b;">
+        Import Degree → Department → Majors in one sheet.
+        Each row = one degree + optional department + one or more majors.
+      </p>
+      <div style="display:flex;gap:8px;flex-direction:column;">
+        <button
+          class="btn-ghost"
+          type="button"
+          onclick="downloadTemplate('degree-structure')"
+          style="text-align:center;padding:8px 12px;border-radius:4px;font-size:13px;"
+        >
+          <i data-lucide="download" style="width:14px;height:14px;display:inline;margin-right:4px;"></i>
+          Download Template
+        </button>
+        <input
+          type="file"
+          accept=".xlsx,.csv"
+          id="file-degree-structure"
+          style="padding:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;"
+        >
+        <button
+          class="btn-primary"
+          type="button"
+          onclick="importFile('degree-structure')"
+          style="padding:8px 12px;font-size:13px;"
+        >
+          Import
+        </button>
+        <div id="result-degree-structure" style="margin-top:8px;font-size:13px;"></div>
+      </div>
+    </article>
+
+    <!-- Work Keywords Panel -->
+    <article class="panel-card panel-body" style="display:grid;gap:12px;">
+      <h3 style="margin:0;font-size:16px;color:#0f172a;">Work Keywords</h3>
+      <p style="margin:0;font-size:13px;color:#64748b;">Upload keyword bank entries used in report description generation.</p>
+      <div style="display:flex;gap:8px;flex-direction:column;">
+        <button class="btn-ghost" type="button" onclick="downloadTemplate('work-keywords')" style="text-align:center;padding:8px 12px;border-radius:4px;font-size:13px;"><i data-lucide="download" style="width:14px;height:14px;display:inline;margin-right:4px;"></i>Download Template</button>
+        <input type="file" accept=".xlsx,.csv" id="file-work-keywords" style="padding:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
+        <button class="btn-primary" type="button" onclick="importFile('work-keywords')" style="padding:8px 12px;font-size:13px;">Import</button>
+        <div id="result-work-keywords" style="margin-top:8px;font-size:13px;"></div>
+      </div>
+    </article>
+
+    <!-- Career Objectives Panel -->
+    <article class="panel-card panel-body" style="display:grid;gap:12px;">
+      <h3 style="margin:0;font-size:16px;color:#0f172a;">Career Objectives</h3>
+      <p style="margin:0;font-size:13px;color:#64748b;">Import student objective suggestions with optional major, status, and active flag.</p>
+      <div style="display:flex;gap:8px;flex-direction:column;">
+        <button class="btn-ghost" type="button" onclick="downloadTemplate('career-objectives')" style="text-align:center;padding:8px 12px;border-radius:4px;font-size:13px;"><i data-lucide="download" style="width:14px;height:14px;display:inline;margin-right:4px;"></i>Download Template</button>
+        <input type="file" accept=".xlsx,.csv" id="file-career-objectives" style="padding:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
+        <button class="btn-primary" type="button" onclick="importFile('career-objectives')" style="padding:8px 12px;font-size:13px;">Import</button>
+        <div id="result-career-objectives" style="margin-top:8px;font-size:13px;"></div>
+      </div>
+    </article>
+
+    <!-- Resume Keywords Panel -->
+    <article class="panel-card panel-body" style="display:grid;gap:12px;">
+      <h3 style="margin:0;font-size:16px;color:#0f172a;">Resume Keywords</h3>
+      <p style="margin:0;font-size:13px;color:#64748b;">Import keyword chips for resume sections with category and optional major scope.</p>
+      <div style="display:flex;gap:8px;flex-direction:column;">
+        <button class="btn-ghost" type="button" onclick="downloadTemplate('resume-keywords')" style="text-align:center;padding:8px 12px;border-radius:4px;font-size:13px;"><i data-lucide="download" style="width:14px;height:14px;display:inline;margin-right:4px;"></i>Download Template</button>
+        <input type="file" accept=".xlsx,.csv" id="file-resume-keywords" style="padding:6px;border:1px solid #e2e8f0;border-radius:4px;font-size:13px;">
+        <button class="btn-primary" type="button" onclick="importFile('resume-keywords')" style="padding:8px 12px;font-size:13px;">Import</button>
+        <div id="result-resume-keywords" style="margin-top:8px;font-size:13px;"></div>
+      </div>
+    </article>
+  </div>
+</section>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+
+function readMessageFromText(text) {
+  if (!text) return 'Request failed';
+  try {
+    const parsed = JSON.parse(text);
+    return parsed.message || text;
+  } catch (_) {
+    return text;
+  }
+}
+
+function inferFilename(response, entity) {
+  const fallback = `${entity}_template.xlsx`;
+  const contentDisposition = response.headers.get('content-disposition') || '';
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match && utf8Match[1]) return decodeURIComponent(utf8Match[1]);
+  const simpleMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+  if (simpleMatch && simpleMatch[1]) return simpleMatch[1];
+  return fallback;
+}
+
+async function downloadTemplate(entity) {
+  const resultDiv = document.getElementById(`result-${entity}`);
+  resultDiv.innerHTML = '<span style="color:#64748b;">Preparing template download...</span>';
+
+  try {
+    const response = await fetch(`/api/admin/bulk-import/template/${entity}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.status === 401) {
+      location.href = '/login';
+      return;
+    }
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(readMessageFromText(text));
+    }
+
+    const blob = await response.blob();
+    const filename = inferFilename(response, entity);
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+
+    resultDiv.innerHTML = '<span style="color:#10b981;">✓ Template downloaded</span>';
+  } catch (err) {
+    resultDiv.innerHTML = `<span style="color:#ef4444;">✗ Download error: ${err.message}</span>`;
+  }
+}
+
+async function importFile(entity) {
+  const fileInput = document.getElementById(`file-${entity}`);
+  const resultDiv = document.getElementById(`result-${entity}`);
+  const file = fileInput.files[0];
+
+  if (!file) {
+    alert('Please select a file first');
+    return;
+  }
+
+  resultDiv.innerHTML = '<span style="color:#64748b;">Importing...</span>';
+
+  const formData = new FormData();
+  formData.append('file', file);
+  if (entity === 'colleges') {
+    const uniSelect = document.getElementById('college-university-select');
+    const universityId = uniSelect ? uniSelect.value : '';
+    if (!universityId) {
+      alert('Please select a university for college import');
+      return;
+    }
+    formData.append('university_id', universityId);
+  }
+
+  try {
+    const response = await fetch(`/api/admin/bulk-import/${entity}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    if (response.status === 401) {
+      location.href = '/login';
+      return;
+    }
+
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    let data;
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      data = { message: readMessageFromText(text) };
+    }
+
+    if (response.ok) {
+      let html = '';
+      if (entity === 'degree-structure') {
+        html = `<span style="color:#10b981;">✓ Degrees: <strong>${data.imported_degrees}</strong> | Departments: <strong>${data.imported_departments}</strong> | Majors: <strong>${data.imported_majors}</strong> | Skipped: <strong>${data.skipped}</strong></span>`;
+      } else {
+        html = `<span style="color:#10b981;">✓ Imported: <strong>${data.imported}</strong>, Skipped: <strong>${data.skipped}</strong></span>`;
+      }
+      if (data.errors && data.errors.length > 0) {
+        html += `<details style="margin-top:8px;">
+          <summary style="cursor:pointer;color:#f59e0b;font-weight:600;">⚠ ${data.errors.length} error(s)</summary>
+          <ul style="margin:8px 0;padding-left:20px;font-size:12px;">
+            ${data.errors.map(e => `<li><strong>Row ${e.row}:</strong> ${e.reason || 'Unknown error'}</li>`).join('')}
+          </ul>
+        </details>`;
+      }
+      resultDiv.innerHTML = html;
+    } else {
+      resultDiv.innerHTML = `<span style="color:#ef4444;">✗ Error: ${data.message || 'Import failed'}</span>`;
+    }
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    console.error(err);
+    resultDiv.innerHTML = `<span style="color:#ef4444;">✗ Network error: ${err.message}</span>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.lucide) lucide.createIcons();
+  loadUniversitiesForCollegeImport();
+});
+
+async function loadUniversitiesForCollegeImport() {
+  const token = localStorage.getItem('token');
+  if (!token) return;
+  try {
+    const res = await fetch('/api/admin/universities', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const list = await res.json();
+    const select = document.getElementById('college-university-select');
+    if (!select) return;
+    // Expecting an array of { id, name }
+    list.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id || u._id || u._data && u._data.id || '';
+      opt.text = u.name || u.name || 'Unnamed';
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    // ignore
+  }
+}
+</script>
+{% endblock %}

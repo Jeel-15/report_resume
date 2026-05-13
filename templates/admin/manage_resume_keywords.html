@@ -1,0 +1,168 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'resume_keywords' %}
+
+{% block title %}Resume Keywords - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Resume Keywords</h1>
+    <p class="page-subtitle">Manage keyword chips for resume sections</p>
+  </div>
+
+  <div class="stats-inline">
+    <button class="btn-ghost" type="button" onclick="loadKeywords()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
+    <button class="btn-primary" type="button" onclick="openCreate()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Keyword</button>
+  </div>
+
+  <article class="panel-card panel-body" style="display:grid;gap:12px;">
+    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filters</h3>
+    <div class="toolbar" style="display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) minmax(220px,1fr) 140px;gap:12px;">
+      <select id="filterCategory" class="small-input">
+        <option value="">All Categories</option>
+        <option value="experience">Experience</option>
+        <option value="project">Project</option>
+        <option value="volunteering">Volunteering</option>
+        <option value="skill">Skill</option>
+        <option value="technical">Technical</option>
+      </select>
+      <select id="filterMajor" class="small-input"><option value="">All Majors</option></select>
+      <input id="filterSearch" class="small-input" placeholder="Search keyword...">
+      <button class="btn-ghost" type="button" onclick="applyFilters()">Apply</button>
+    </div>
+  </article>
+
+  <article class="panel-card panel-body table-card">
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th>Keyword</th>
+            <th>Category</th>
+            <th>Major</th>
+            <th>Industry</th>
+            <th>Active</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<div class="modal fade" id="keywordModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="keywordModalTitle">Add Resume Keyword</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="keywordId">
+        <div class="mb-3">
+          <label class="form-label">Keyword *</label>
+          <input class="form-control" id="keywordText" placeholder="Enter keyword">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Category *</label>
+          <select id="keywordCategory" class="form-control">
+            <option value="">Select Category</option>
+            <option value="experience">Experience</option>
+            <option value="project">Project</option>
+            <option value="volunteering">Volunteering</option>
+            <option value="skill">Skill</option>
+            <option value="technical">Technical</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Major (Optional)</label>
+          <select id="keywordMajor" class="form-control"><option value="">All Majors</option></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Industry Type</label>
+          <input class="form-control" id="keywordIndustryType" placeholder="Industry">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Job Profile</label>
+          <input class="form-control" id="keywordJobProfile" placeholder="Job profile">
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="keywordActive" checked>
+          <label class="form-check-label" for="keywordActive">Active</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveKeyword()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token'); if(!token) location.href='/login';
+const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+let modal = null;
+
+function applyFilters(){ loadKeywords(); }
+
+async function loadMajorsForDropdown(){
+  try{ const res = await fetch('/api/admin/majors', { headers }); const data = await res.json(); const sel = document.getElementById('keywordMajor'); const filter = document.getElementById('filterMajor'); sel.innerHTML = '<option value="">All Majors</option>'; filter.innerHTML = '<option value="">All Majors</option>'; (data||[]).forEach(m=>{ sel.innerHTML += `<option value="${m._id}">${m.name}</option>`; filter.innerHTML += `<option value="${m._id}">${m.name}</option>`; }); }catch(e){ console.error(e); }
+}
+
+async function loadKeywords(){
+  const params = new URLSearchParams();
+  const category = document.getElementById('filterCategory').value;
+  const major = document.getElementById('filterMajor').value;
+  const q = document.getElementById('filterSearch').value.trim();
+  if(category) params.set('category', category);
+  if(major) params.set('major', major);
+  if(q) params.set('q', q);
+  const res = await fetch(`/api/admin/resume-keywords${params.toString()?`?${params.toString()}`:''}`, { headers });
+  const result = await res.json();
+  const data = Array.isArray(result) ? result : (result.items || []);
+  document.getElementById('rows').innerHTML = (data||[]).map(item=>`<tr>
+    <td>${item.keyword||'-'}</td>
+    <td>${item.category||'-'}</td>
+    <td>${item.major? item.major.name : '<span style="color:#94a3b8;">All Majors</span>'}</td>
+    <td>${item.industryType||'-'}</td>
+    <td>${item.isActive? 'Yes':'No'}</td>
+    <td>
+      <div class="icon-actions">
+        <button onclick='openEdit(${JSON.stringify(item)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+        <button onclick='deleteKeyword("${item._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+      </div>
+    </td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No keywords found</td></tr>';
+  if(window.lucide) lucide.createIcons();
+}
+
+function openCreate(){ document.getElementById('keywordModalTitle').textContent='Add Resume Keyword'; document.getElementById('keywordId').value=''; document.getElementById('keywordText').value=''; document.getElementById('keywordCategory').value=''; document.getElementById('keywordMajor').value=''; document.getElementById('keywordIndustryType').value=''; document.getElementById('keywordJobProfile').value=''; document.getElementById('keywordActive').checked=true; modal.show(); }
+function openEdit(item){ document.getElementById('keywordModalTitle').textContent='Edit Resume Keyword'; document.getElementById('keywordId').value=item._id||''; document.getElementById('keywordText').value=item.keyword||''; document.getElementById('keywordCategory').value=item.category||''; document.getElementById('keywordMajor').value=item.major? item.major._id : ''; document.getElementById('keywordIndustryType').value=item.industryType||''; document.getElementById('keywordJobProfile').value=item.jobProfile||''; document.getElementById('keywordActive').checked = item.isActive !== false; modal.show(); }
+
+async function saveKeyword(){
+  const id = document.getElementById('keywordId').value;
+  const payload = {
+    keyword: document.getElementById('keywordText').value.trim(),
+    category: document.getElementById('keywordCategory').value,
+    major: document.getElementById('keywordMajor').value || '',
+    industryType: document.getElementById('keywordIndustryType').value.trim(),
+    jobProfile: document.getElementById('keywordJobProfile').value.trim(),
+    isActive: document.getElementById('keywordActive').checked
+  };
+  if(!payload.keyword || !payload.category){ alert('Keyword and Category are required'); return; }
+  const url = id? `/api/admin/resume-keywords/${id}` : '/api/admin/resume-keywords';
+  const method = id? 'PUT' : 'POST';
+  const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+  if(!res.ok){ const d = await res.json().catch(()=>({})); alert(d.message||'Save failed'); return; }
+  modal.hide(); loadKeywords();
+}
+
+async function deleteKeyword(id){ if(!confirm('Delete this keyword?')) return; await fetch(`/api/admin/resume-keywords/${id}`, { method: 'DELETE', headers }); loadKeywords(); }
+
+document.addEventListener('DOMContentLoaded', async ()=>{ modal = new bootstrap.Modal(document.getElementById('keywordModal')); document.getElementById('filterCategory').addEventListener('change', loadKeywords); document.getElementById('filterMajor').addEventListener('change', loadKeywords); document.getElementById('filterSearch').addEventListener('input', loadKeywords); await loadMajorsForDropdown(); await loadKeywords(); });
+</script>
+{% endblock %}

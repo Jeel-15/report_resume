@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}About ReportGen — AI Internship Report Generator{% endblock %}
+{% block og_title %}About ReportGen — Our Mission{% endblock %}
+{% block meta_description %}Learn about ReportGen — the AI-powered platform helping Indian university students generate professional internship reports in minutes.{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { background:#0a0f1e; color:#f1f5f9; font-family:'DM Sans',sans-serif; }
+    body::before { content:''; position:fixed; inset:0; background: radial-gradient(ellipse 70% 50% at 15% 20%,rgba(37,99,235,0.15),transparent 70%), radial-gradient(ellipse 50% 60% at 85% 80%,rgba(59,123,255,0.10),transparent 70%); pointer-events:none; z-index:0; }
+    .about-page { position:relative; z-index:1; padding-top:120px; padding-bottom:80px; }
+    .about-hero { text-align:center; padding:0 24px 72px; }
+    .about-eyebrow { display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#3b7bff;margin-bottom:16px; }
+    .about-h1 { font-family:'Playfair Display',serif;font-size:clamp(2.2rem,6vw,4rem);font-weight:800;color:#fff;line-height:1.15;margin-bottom:16px; }
+    .about-sub { font-size:1.05rem;color:#64748b;max-width:580px;margin:0 auto;line-height:1.7; }
+    .about-section { max-width:900px; margin:0 auto 60px; padding:0 24px; }
+    .about-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:20px;padding:48px; backdrop-filter:blur(16px);margin-bottom:24px; }
+    .about-card h2 { font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:#fff;margin-bottom:16px; }
+    .about-card p { font-size:1rem;line-height:1.8;color:#94a3b8;margin-bottom:1rem; }
+    .stat-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:32px; }
+    .stat-item { text-align:center;padding:24px;background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.2);border-radius:14px; }
+    .stat-num { font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:800;color:#3b7bff;line-height:1; }
+    .stat-label { font-size:0.85rem;color:#64748b;margin-top:6px; }
+    .mission-card { background:linear-gradient(135deg,rgba(37,99,235,0.12),rgba(59,123,255,0.06)); border:1px solid rgba(37,99,235,0.25);border-radius:20px;padding:48px; }
+    .mission-card blockquote { font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:#fff;line-height:1.5;border-left:4px solid #3b7bff;padding-left:24px;margin:0 0 24px; }
+    .mission-card p { font-size:1rem;color:#94a3b8;line-height:1.8; }
+    @media(max-width:768px) { .stat-grid { grid-template-columns:1fr; } .about-card { padding:28px; } }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'partials/landing_navbar.html' %}
+
+<div class="about-page">
+    <div class="about-hero">
+        <div class="about-eyebrow">✦ Our Story</div>
+        <h1 class="about-h1">Built for Indian<br>University Students</h1>
+        <p class="about-sub">ReportGen was born from a simple frustration — hours wasted writing internship reports from scratch when students should be focused on learning.</p>
+    </div>
+
+    <div class="about-section">
+        <div class="mission-card">
+            <blockquote>"Every student deserves a professional report, regardless of their writing skills."</blockquote>
+            <p>We built ReportGen to level the playing field. Whether you're at GTU or SPPU, whether you're in computer science or commerce, our AI writes a complete, formatted, university-ready internship report based on your inputs — in minutes, not days.</p>
+        </div>
+    </div>
+
+    <div class="about-section">
+        <div class="about-card">
+            <h2>The Problem We Solve</h2>
+            <p>Every year, thousands of Indian university students spend 10–30 hours writing mandatory internship reports. Many struggle with formal writing, proper formatting, and meeting university guidelines. Some pay others to write for them. Most submit below-standard reports and face consequences.</p>
+            <p>ReportGen changes this completely. You fill in what you actually did — your company, your tasks, your learnings — and our AI writes a professional, well-formatted report tailored to your university's structure.</p>
+
+            <div class="stat-grid">
+                <div class="stat-item"><div class="stat-num">10,000+</div><div class="stat-label">Reports Generated</div></div>
+                <div class="stat-item"><div class="stat-num">50+</div><div class="stat-label">Universities Supported</div></div>
+                <div class="stat-item"><div class="stat-num">2 min</div><div class="stat-label">Average Generation Time</div></div>
+            </div>
+        </div>
+
+        <div class="about-card">
+            <h2>What Makes Us Different</h2>
+            <p><strong style="color:#e2e8f0;">University-aware AI:</strong> Our report sections, formatting, and structure are configured per university by academic experts — not generic AI templates.</p>
+            <p><strong style="color:#e2e8f0;">Complete control:</strong> Every section is fully editable. The AI gives you a strong draft; you make it yours.</p>
+            <p><strong style="color:#e2e8f0;">PDF-ready output:</strong> Download a properly formatted PDF that looks exactly like what your professor expects — right fonts, margins, cover page, and sections.</p>
+            <p><strong style="color:#e2e8f0;">Resume builder included:</strong> Beyond internship reports, build and download a professional resume using the same platform — with AI enhancement for every section.</p>
+        </div>
+    </div>
+</div>
+
+{% include 'partials/landing_footer.html' %}
+{% endblock %}

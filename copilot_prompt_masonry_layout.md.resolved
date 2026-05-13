@@ -1,0 +1,101 @@
+# Copilot Prompt — Fix Resume Layout (Full-Width Wrapping)
+
+## The Problem
+
+Currently, the resume uses a strict Flexbox two-column layout (`display: flex` on `.resume-body`). 
+This creates a major issue: when the left column (Experience, Projects, Volunteering) is much longer than the right column (Education, Skills, Links), it leaves a huge empty blank space under the right column. 
+
+## The Goal
+
+We want the left column to automatically expand to take up **full 100% width** as soon as it clears the bottom of the right column. This is a classic "masonry" or "magazine wrap" layout that maximizes space on a resume.
+
+## The Solution: The "Float Wrap" Technique
+
+We can achieve this beautifully without Javascript by using the classic CSS `float` property. If we float the right column and let the left column behave as a normal block, the left column's text will naturally flow around the right column!
+
+To make this work seamlessly with our blue section borders (`border-bottom`), we will give the right column a solid white background and use `padding-left` instead of margin, so it neatly covers the lines from the left side without them bleeding through.
+
+---
+
+### Step 1: Update the CSS in `resume_pdf_template.html`
+
+Find the layout CSS (around line 75-90) and replace it completely with this:
+
+```css
+    /* 1. Change from Flexbox to Block with Clearfix */
+    .resume-body {
+      display: block;
+    }
+    .resume-body::after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+
+    /* 2. Float the right column and add white background */
+    .col-right {
+      float: right;
+      width: 36%;
+      max-width: 36%;
+      /* Use padding instead of margin so the white background covers the gap */
+      padding-left: 24px;
+      padding-bottom: 24px;
+      background-color: #fff;
+      position: relative;
+      z-index: 10;
+      box-sizing: border-box;
+    }
+
+    /* 3. Let left column flow naturally (no width constraints) */
+    .col-left {
+      display: block;
+      /* Remove flex, width, and max-width properties */
+    }
+```
+
+### Step 2: Swap the Column Order in the HTML
+
+For a `float` to affect the flow of a subsequent element, **the floated element MUST come first in the HTML DOM.**
+
+Find `<div class="resume-body">` in `resume_pdf_template.html`. You must cut the entire `<div class="col-right">...</div>` block and paste it **above** the `<div class="col-left">...</div>` block.
+
+**Change from this:**
+```html
+    <div class="resume-body">
+      <div class="col-left">
+        <!-- Experience, Projects, etc. -->
+      </div>
+      
+      <div class="col-right">
+        <!-- Education, Skills, etc. -->
+      </div>
+    </div>
+```
+
+**To this exact structure:**
+```html
+    <div class="resume-body">
+      <!-- 1. RIGHT COLUMN MUST BE FIRST -->
+      <div class="col-right">
+        {% if resume.education %}
+        <div class="section-heading">Education</div>
+        ...
+        <!-- All other right column content -->
+      </div>
+
+      <!-- 2. LEFT COLUMN MUST BE SECOND -->
+      <div class="col-left">
+        {% if resume.experience %}
+        <div class="section-heading">Experience</div>
+        ...
+        <!-- All other left column content -->
+      </div>
+    </div>
+```
+
+### Why this specific technique works:
+1. Because `.col-right` is `float: right`, `.col-left` (which is 100% wide) flows underneath it.
+2. The blue `border-bottom` from `.section-heading` inside `.col-left` will technically span 100% of the page width.
+3. However, because `.col-right` has `background-color: #fff; position: relative; z-index: 10;`, it sits *on top* of those lines and perfectly hides them on the right side.
+4. Because we use `padding-left: 24px` instead of `margin`, the white background covers the gap, meaning the blue line from the left stops exactly 24px away from the right text.
+5. As soon as the left content passes the bottom of `.col-right`, the text and the blue section lines will naturally extend to the full 100% width of the page!

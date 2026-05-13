@@ -1,0 +1,421 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'industries' %}
+
+{% block title %}Industries - ReportGen Admin{% endblock %}
+
+{% block page_css %}
+<style>
+  .status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge-approved { background: rgba(5,150,105,0.15); color: #10b981; }
+  .badge-pending  { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .badge-rejected { background: rgba(239,68,68,0.15);  color: #ef4444; }
+  .tab-btn { cursor: pointer; border-bottom: 2px solid transparent; padding: 6px 14px; font-weight: 600; background: none; border-top: none; border-left: none; border-right: none; color: #64748b; }
+  .tab-btn.active { border-bottom-color: #3b82f6; color: #1d4ed8; }
+</style>
+{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Manage Industries</h1>
+    <p class="page-subtitle">Maintain student-submitted industries, approvals, and industry metadata.</p>
+  </div>
+
+  <div class="stats-inline">
+    <button class="btn-ghost" type="button" onclick="load()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
+    <button class="btn-primary" type="button" onclick="openAddModal()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Industry</button>
+  </div>
+
+  <article class="panel-card panel-body" style="display:grid;gap:12px;">
+    <h3 style="margin:0;font-size:16px;color:#0f172a;">Status Filters</h3>
+    <div class="toolbar" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+      <button class="tab-btn active" id="tab-all" onclick="switchTab('all')">All</button>
+      <button class="tab-btn" id="tab-pending" onclick="switchTab('pending')">⏳ Pending Review <span id="pendingCount" class="badge bg-warning text-dark ms-1">0</span></button>
+      <button class="tab-btn" id="tab-approved" onclick="switchTab('approved')">✓ Approved</button>
+      <button class="tab-btn" id="tab-rejected" onclick="switchTab('rejected')">✗ Rejected</button>
+      <div style="flex:1 1 280px;"></div>
+      <input type="text" class="small-input" id="searchInput" placeholder="Search industries..." oninput="load()" style="min-width:280px;max-width:360px;">
+    </div>
+  </article>
+
+  <article class="panel-card panel-body" style="display:grid;gap:12px;">
+    <h3 style="margin:0;font-size:16px;color:#0f172a;">Merge Duplicate Industries</h3>
+    <div class="toolbar" style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;">
+      <input id="sourceId" class="small-input" placeholder="Source ID (to remove)">
+      <input id="targetId" class="small-input" placeholder="Target ID (to keep)">
+      <button class="btn-warning" type="button" onclick="merge()">Merge</button>
+    </div>
+  </article>
+
+  <article class="panel-card panel-body table-card">
+    <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
+      <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
+      <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
+      <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>State</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<!-- Edit / Add Modal -->
+<div class="modal fade" id="industryModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitle">Industry Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editId">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Name *</label>
+            <input type="text" class="form-control" id="editName">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">GST Number</label>
+            <input type="text" class="form-control" id="editGst" placeholder="e.g. 24AABCP1234A1Z5">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Industry Type</label>
+            <select class="form-select" id="editType">
+              <option value="">Select type</option>
+              <option value="Manufacturing">Manufacturing</option>
+              <option value="Services">Services</option>
+              <option value="Automobile">Automobile</option>
+              <option value="Retail">Retail</option>
+              <option value="Sales">Sales</option>
+              <option value="Healthcare">Healthcare</option>
+              <option value="Education">Education</option>
+              <option value="Information Technology">Information Technology</option>
+              <option value="Finance & Banking">Finance & Banking</option>
+              <option value="Agriculture">Agriculture</option>
+              <option value="Dairy & Food Products">Dairy & Food Products</option>
+              <option value="Pharmaceutical">Pharmaceutical</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Industry Sub-Type</label>
+            <input type="text" class="form-control" id="editSubType"
+                placeholder="e.g. Development of Software">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">City</label>
+            <input type="text" class="form-control" id="editCity">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">District</label>
+            <input type="text" class="form-control" id="editDistrict">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">State</label>
+            <input type="text" class="form-control" id="editState">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Website</label>
+            <input type="text" class="form-control" id="editWebsite" placeholder="https://">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Logo URL/Path</label>
+            <input type="text" class="form-control" id="editLogo">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Industry Details</label>
+            <textarea class="form-control" id="editDetails" rows="3"
+                placeholder="Brief profile of the industry..."></textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Key Activities (one per line)</label>
+            <textarea class="form-control" id="editActivities" rows="3"
+                placeholder="e.g. Manufacturing of pharmaceutical products&#10;Selling of auto parts&#10;Development of software"></textarea>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="editIsActive">
+              <label class="form-check-label">Active</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" onclick="saveIndustry()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Reject Industry</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="rejectId">
+        <label class="form-label">Rejection Reason (optional)</label>
+        <textarea class="form-control" id="rejectReason" rows="3"
+            placeholder="Explain why this industry is being rejected..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmReject()">Reject</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+let currentTab = 'all';
+const ENTITY_ENDPOINT = 'industries';
+
+function updateBulkToolbar() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  const toolbar = document.getElementById('bulkToolbar');
+  const count = document.getElementById('selectedCount');
+  if (checked.length > 0) {
+    toolbar.style.display = 'flex';
+    count.textContent = `${checked.length} selected`;
+  } else {
+    toolbar.style.display = 'none';
+  }
+  const all = document.querySelectorAll('.row-checkbox');
+  document.getElementById('selectAll').checked = all.length > 0 && checked.length === all.length;
+  document.getElementById('selectAll').indeterminate = checked.length > 0 && checked.length < all.length;
+}
+
+function clearSelection() {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+  document.getElementById('selectAll').checked = false;
+  document.getElementById('selectAll').indeterminate = false;
+  document.getElementById('bulkToolbar').style.display = 'none';
+}
+
+async function bulkDelete() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  if (!checked.length) return;
+  const ids = Array.from(checked).map(cb => cb.dataset.id);
+  const confirmed = await showBulkConfirm(ids.length);
+  if (!confirmed) return;
+  try {
+    const res = await fetch(`/api/admin/${ENTITY_ENDPOINT}/bulk-delete`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      alert(`✓ ${data.deleted || ids.length} items deleted`);
+      clearSelection();
+      load();
+    } else {
+      alert(data.message || 'Bulk delete failed');
+    }
+  } catch (err) {
+    alert('Network error during bulk delete');
+  }
+}
+
+function showBulkConfirm(count) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('bulkConfirmBar');
+    if (existing) existing.remove();
+    const bar = document.createElement('div');
+    bar.id = 'bulkConfirmBar';
+    bar.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);`;
+    bar.innerHTML = `<span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span><button id="bulkConfirmYes" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button><button id="bulkConfirmNo" style="padding:6px 12px;background:transparent;border:1px solid #aaa;color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">Cancel</button>`;
+    document.body.appendChild(bar);
+    document.getElementById('bulkConfirmYes').onclick = () => { bar.remove(); resolve(true); };
+    document.getElementById('bulkConfirmNo').onclick = () => { bar.remove(); resolve(false); };
+  });
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  load();
+}
+
+async function load() {
+  const q = document.getElementById('searchInput')?.value || '';
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (currentTab !== 'all') params.set('status', currentTab);
+
+  const res = await fetch(`/api/admin/industries?${params}`, { headers });
+  const data = await res.json();
+
+  const pendingRes = await fetch('/api/admin/industries?status=pending', { headers });
+  const pendingData = await pendingRes.json();
+  const countEl = document.getElementById('pendingCount');
+  if (countEl) countEl.textContent = (pendingData || []).length;
+
+  const statusBadge = (s) => {
+    const map = { approved: 'badge-approved', pending: 'badge-pending', rejected: 'badge-rejected' };
+    return `<span class="status-badge ${map[s] || 'badge-approved'}">${s || 'approved'}</span>`;
+  };
+
+  document.getElementById('rows').innerHTML = (data || []).map(i => `
+    <tr>
+      <td><input type="checkbox" class="row-checkbox" data-id="${i._id}" style="width:16px;height:16px;cursor:pointer;"></td>
+      <td><small class="text-muted" style="font-size:10px;">${i._id}</small><br><strong>${i.name}</strong>${i.rejectionReason ? `<br><small class="text-danger">Reason: ${i.rejectionReason}</small>` : ''}</td>
+      <td>${i.industryType || '-'}${i.industrySubType ? `<br><small class="text-muted">${i.industrySubType}</small>` : ''}</td>
+      <td>${i.state || '-'}</td>
+      <td>${statusBadge(i.approvalStatus)}</td>
+      <td>
+        <div class="icon-actions">
+          ${i.approvalStatus === 'pending' ? `<button class="toggle-action" onclick='approveIndustry("${i._id}")' title="Approve"><i data-lucide="check" style="width:16px;height:16px;"></i></button><button class="danger-action" onclick='openRejectModal("${i._id}")' title="Reject"><i data-lucide="x" style="width:16px;height:16px;"></i></button>` : ''}
+          <button class="toggle-action" onclick='openEditModal(${JSON.stringify(i)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+          <button class="danger-action" onclick='del("${i._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+        </div>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No industries found</td></tr>';
+  if (window.lucide) lucide.createIcons();
+  window.AdminUI?.staggerRows();
+}
+
+async function approveIndustry(id) {
+  if (!confirm('Approve this industry?')) return;
+  const res = await fetch(`/api/admin/industries/${id}/approve`, { method: 'PUT', headers });
+  if (res.ok) { load(); }
+  else { const d = await res.json(); alert(d.message || 'Error'); }
+}
+
+function openRejectModal(id) {
+  document.getElementById('rejectId').value = id;
+  document.getElementById('rejectReason').value = '';
+  new bootstrap.Modal(document.getElementById('rejectModal')).show();
+}
+
+async function confirmReject() {
+  const id = document.getElementById('rejectId').value;
+  const reason = document.getElementById('rejectReason').value.trim();
+  const res = await fetch(`/api/admin/industries/${id}/reject`, {
+    method: 'PUT', headers, body: JSON.stringify({ reason })
+  });
+  bootstrap.Modal.getInstance(document.getElementById('rejectModal'))?.hide();
+  if (res.ok) { load(); }
+  else { const d = await res.json(); alert(d.message || 'Error'); }
+}
+
+function openAddModal() {
+  document.getElementById('editId').value = '';
+  document.getElementById('modalTitle').textContent = 'Add Industry';
+  ['editName','editGst','editSubType','editCity','editDistrict','editState','editWebsite','editLogo','editDetails','editActivities'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('editType').value = '';
+  document.getElementById('editIsActive').checked = true;
+  new bootstrap.Modal(document.getElementById('industryModal')).show();
+}
+
+function openEditModal(i) {
+  document.getElementById('editId').value = i._id || '';
+  document.getElementById('modalTitle').textContent = 'Edit Industry';
+  document.getElementById('editName').value = i.name || '';
+  document.getElementById('editGst').value = i.gstNumber || '';
+  document.getElementById('editType').value = i.industryType || '';
+  document.getElementById('editSubType').value = i.industrySubType || '';
+  document.getElementById('editCity').value = i.villageCityName || '';
+  document.getElementById('editDistrict').value = i.district || '';
+  document.getElementById('editState').value = i.state || '';
+  document.getElementById('editWebsite').value = i.website || '';
+  document.getElementById('editLogo').value = i.logo || '';
+  document.getElementById('editDetails').value = i.industryDetails || '';
+  document.getElementById('editActivities').value = (i.keyActivities || []).join('\n');
+  document.getElementById('editIsActive').checked = i.isActive !== false;
+  new bootstrap.Modal(document.getElementById('industryModal')).show();
+}
+
+async function saveIndustry() {
+  const id = document.getElementById('editId').value;
+  const payload = {
+    name: document.getElementById('editName').value.trim(),
+    gstNumber: document.getElementById('editGst').value.trim(),
+    industryType: document.getElementById('editType').value,
+    industrySubType: document.getElementById('editSubType').value.trim(),
+    villageCityName: document.getElementById('editCity').value.trim(),
+    district: document.getElementById('editDistrict').value.trim(),
+    state: document.getElementById('editState').value.trim(),
+    website: document.getElementById('editWebsite').value.trim(),
+    logo: document.getElementById('editLogo').value.trim(),
+    industryDetails: document.getElementById('editDetails').value.trim(),
+    keyActivities: document.getElementById('editActivities').value.split('\n').map(s => s.trim()).filter(Boolean),
+    isActive: document.getElementById('editIsActive').checked,
+  };
+  if (!payload.name) { alert('Name is required'); return; }
+
+  const url = id ? `/api/admin/industries/${id}` : '/api/admin/industries';
+  const method = id ? 'PUT' : 'POST';
+
+  if (!id) {
+    payload.approvalStatus = 'approved';
+  }
+
+  const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+  bootstrap.Modal.getInstance(document.getElementById('industryModal'))?.hide();
+  if (res.ok) { load(); }
+  else { const d = await res.json(); alert(d.message || 'Error'); }
+}
+
+async function del(id) {
+  if (!confirm('Delete this industry?')) return;
+  await fetch(`/api/admin/industries/${id}`, { method: 'DELETE', headers });
+  load();
+}
+
+async function merge() {
+  const sourceId = document.getElementById('sourceId').value.trim();
+  const targetId = document.getElementById('targetId').value.trim();
+  if (!sourceId || !targetId) { alert('Enter both source and target IDs'); return; }
+  if (!confirm(`Merge ${sourceId} → ${targetId}? This cannot be undone.`)) return;
+  const res = await fetch('/api/admin/industries/merge', {
+    method: 'POST', headers, body: JSON.stringify({ sourceId, targetId })
+  });
+  const d = await res.json();
+  alert(d.message || 'Done');
+  load();
+}
+
+document.getElementById('selectAll').addEventListener('change', (e) => {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
+  updateBulkToolbar();
+});
+
+document.getElementById('rows').addEventListener('change', (e) => {
+  if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
+});
+
+document.addEventListener('DOMContentLoaded', load);
+</script>
+{% endblock %}

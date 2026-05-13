@@ -1,0 +1,603 @@
+{# -----------------------------------------------------------------
+   NAVBAR PARTIAL - Single source of truth for all navbar logic.
+   Contains: HTML structure, CSS styles, auth-aware link injection,
+   scroll morphing, mobile hamburger, custom cursor, progress bar.
+
+   Jinja variable hide_navbar (default False):
+     Set to True in pages.py for login/register/forgot-password.
+     When True: renders nothing at all - zero HTML, zero JS, zero
+     API call. No CSS hack needed anywhere.
+----------------------------------------------------------------- #}
+
+{% if not hide_navbar %}
+
+<style>
+#nav {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100% - 32px), var(--content-max, 1160px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 1.1rem;
+  border-radius: 14px;
+  z-index: 900;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(15,15,30,0.72);
+  transition:
+    top 0.42s ease,
+    width 0.42s ease,
+    height 0.42s ease,
+    border-radius 0.42s ease,
+    padding 0.42s ease,
+    background 0.42s ease,
+    border-color 0.42s ease,
+    box-shadow 0.42s ease;
+  will-change: top, width, border-radius, padding, background, box-shadow;
+}
+
+#nav.scrolled {
+  top: 0;
+  width: 100%;
+  border-radius: 0;
+  padding: 0.65rem 2rem;
+  border: 1px solid rgba(157,181,255,0.24);
+  border-bottom-color: transparent;
+  background: linear-gradient(90deg,rgba(30,35,69,0.92),rgba(36,33,78,0.92));
+  box-shadow: 0 16px 42px rgba(4,10,32,0.55), 0 0 0 1px rgba(120,146,255,0.1) inset;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--display, 'Playfair Display', serif);
+  font-size: clamp(0.9rem, 2vw, 1.15rem);
+  font-weight: 800;
+  color: var(--white, #fff);
+  text-decoration: none;
+}
+
+.nav-logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--blue2, #2563eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(37,99,235,0.5);
+}
+
+.nav-logo-mark svg { fill: white; }
+
+#nav.scrolled .nav-logo-mark { box-shadow: none; }
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-links a {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.45);
+  text-decoration: none;
+  transition: color 0.2s;
+  letter-spacing: 0.02em;
+  padding: 4px 10px;
+}
+
+.nav-links a:hover,
+.nav-links a.active { color: white; }
+
+#nav.scrolled .nav-links a { color: rgba(255,255,255,0.62); }
+#nav.scrolled .nav-links a:hover { color: #ffffff; }
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.nav-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--body, 'DM Sans', sans-serif);
+  text-decoration: none;
+  border: 1.5px solid rgba(59,123,255,0.4);
+  color: var(--blue3, #3b7bff);
+  background: transparent;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.nav-cta-btn:hover {
+  background: rgba(59,123,255,0.1);
+  border-color: var(--blue3, #3b7bff);
+  box-shadow: 0 0 20px rgba(59,123,255,0.2);
+}
+
+#nav.scrolled .nav-cta-btn {
+  color: rgba(255,255,255,0.9);
+  border-color: rgba(157,181,255,0.28);
+  background: rgba(255,255,255,0.03);
+}
+
+#nav.scrolled .nav-cta-btn:hover {
+  color: #ffffff;
+  border-color: rgba(157,181,255,0.48);
+  background: rgba(255,255,255,0.08);
+}
+
+.nav-menu-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  z-index: 910;
+  flex-shrink: 0;
+  min-width: 32px;
+  min-height: 32px;
+  justify-content: center;
+  align-items: center;
+}
+
+.nav-menu-toggle span {
+  width: 18px;
+  height: 2px;
+  background: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  display: block;
+}
+
+.nav-menu-toggle.active span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+.nav-menu-toggle.active span:nth-child(2) { opacity: 0; }
+.nav-menu-toggle.active span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+.nav-menu-drawer {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  max-height: 0;
+  overflow: hidden;
+  background: rgba(10,15,30,0.95);
+  backdrop-filter: blur(24px);
+  transition: max-height 0.3s ease;
+  z-index: 899;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.nav-menu-drawer.active {
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.nav-menu-links {
+  list-style: none;
+  margin: 0;
+  padding: 1rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.nav-menu-link,
+.nav-menu-cta {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  transition: color 0.2s;
+  display: block;
+  padding: 0.5rem 0;
+}
+
+.nav-menu-link:hover { color: white; }
+.nav-menu-cta { color: var(--blue3, #3b7bff); font-weight: 600; }
+.nav-menu-cta:hover { color: #93c5fd; }
+
+#progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--blue2,#2563eb), var(--blue3,#3b7bff), #93c5fd);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  z-index: 9999;
+  box-shadow: 0 0 12px rgba(37,99,235,0.5);
+  pointer-events: none;
+}
+
+#cursor {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--blue3, #3b7bff);
+  z-index: 9999;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+#cursor-ring {
+  position: fixed;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(59,123,255,0.45);
+  z-index: 9998;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  will-change: transform;
+  transition: scale 0.18s ease, opacity 0.18s ease, border-color 0.18s ease;
+}
+
+#cursor-ring.hovered {
+  scale: 1.6;
+  opacity: 0.6;
+  border-color: var(--blue3, #3b7bff);
+}
+
+@media (max-width: 768px) {
+  .nav-links  { display: none; }
+  .nav-actions { display: none; }
+  .nav-menu-toggle { display: flex; }
+
+  #nav.scrolled {
+    padding: 0.65rem 1rem;
+  }
+
+  #cursor,
+  #cursor-ring { display: none; }
+}
+</style>
+
+<div id="progress"></div>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<nav id="nav">
+  <a href="{{ url_for('pages.home') }}" class="nav-logo">
+    <div class="nav-logo-mark">
+      <svg viewBox="0 0 16 16" width="11" height="11">
+        <path d="M3 2h10v1H3zM3 5h7v1H3zM3 8h10v1H3zM3 11h5v1H3z" fill="white"/>
+      </svg>
+    </div>
+    ReportGen
+  </a>
+
+  <ul class="nav-links" id="navLinks"></ul>
+  <div class="nav-actions" id="navUserActions"></div>
+
+  <button id="nav-menu-toggle" class="nav-menu-toggle" aria-label="Toggle menu">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+</nav>
+
+<div id="nav-menu-drawer" class="nav-menu-drawer">
+  <ul class="nav-menu-links" id="navMenuLinks"></ul>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const IS_LANDING = window.location.pathname === '/';
+  const CURRENT_PATH = window.location.pathname;
+
+  const LANDING_LINKS_HTML = `
+    <li><a href="/#how">How it works</a></li>
+    <li><a href="/#preview">Preview</a></li>
+    <li><a href="/#testimonials">Reviews</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+  `;
+
+  const LANDING_MOBILE_LINKS_HTML = `
+    <li><a href="/#how" class="nav-menu-link">How it works</a></li>
+    <li><a href="/#preview" class="nav-menu-link">Preview</a></li>
+    <li><a href="/#testimonials" class="nav-menu-link">Reviews</a></li>
+    <li><a href="/#pricing" class="nav-menu-link">Pricing</a></li>
+  `;
+
+  const navEl = document.getElementById('nav');
+  const navLinks = document.getElementById('navLinks');
+  const navUserActions = document.getElementById('navUserActions');
+  const navMenuLinks = document.getElementById('navMenuLinks');
+  const menuToggle = document.getElementById('nav-menu-toggle');
+  const menuDrawer = document.getElementById('nav-menu-drawer');
+  const progressBar = document.getElementById('progress');
+  const cursor = document.getElementById('cursor');
+  const cursorRing = document.getElementById('cursor-ring');
+
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return String(name).trim().split(/\s+/).slice(0, 2)
+      .map((p) => p.charAt(0).toUpperCase()).join('') || 'U';
+  };
+
+  const wireCursorHover = () => {
+    if (!cursor || !cursorRing) return;
+    document.querySelectorAll('a, button, input, textarea, select, [role="button"]')
+      .forEach((el) => {
+        el.addEventListener('mouseenter', () => cursorRing.classList.add('hovered'));
+        el.addEventListener('mouseleave', () => cursorRing.classList.remove('hovered'));
+      });
+  };
+
+  const renderGuestNav = () => {
+    if (navLinks) navLinks.innerHTML = IS_LANDING ? LANDING_LINKS_HTML : '';
+
+    if (navUserActions) {
+      navUserActions.innerHTML = `
+        <a href="/login" class="nav-cta-btn" style="border-color:rgba(59,123,255,0.4);">Login</a>
+        <a href="/register" class="nav-cta-btn"
+           style="background:var(--blue2,#2563eb);border-color:var(--blue2,#2563eb);color:#fff;">
+          Generate Free ->
+        </a>
+      `;
+    }
+
+    if (navMenuLinks) {
+      navMenuLinks.innerHTML = (IS_LANDING ? LANDING_MOBILE_LINKS_HTML : '') + `
+        <li style="border-top:1px solid rgba(255,255,255,0.1);padding-top:0.75rem;margin-top:0.75rem;">
+          <a href="/login" class="nav-menu-link">Login</a>
+        </li>
+        <li>
+          <a href="/register" class="nav-menu-cta">Generate Free -></a>
+        </li>
+      `;
+    }
+
+    if (IS_LANDING) {
+      document.querySelectorAll('[data-generate-link="1"]').forEach((el) => {
+        el.setAttribute('href', '/register');
+      });
+      document.querySelectorAll('[data-generate-link-resume="1"]').forEach((el) => {
+        el.setAttribute('href', '/register');
+      });
+    }
+
+    wireCursorHover();
+  };
+
+  const renderUserNav = (user) => {
+    let desktopLinks = '';
+    let mobileLinks = '';
+
+    if (user.role === 'admin') {
+      desktopLinks = `<li><a href="/admin/dashboard">Admin Panel -></a></li>`;
+      mobileLinks = `<li><a href="/admin/dashboard" class="nav-menu-link">Admin Panel -></a></li>`;
+    } else {
+      desktopLinks = `
+        <li><a href="/student/dashboard">My Reports</a></li>
+        <li><a href="/student/profile">My Profile</a></li>
+        <li><a href="/student/create">Create Report</a></li>
+        <li><a href="/student/resumes">My Resumes</a></li>
+      `;
+      mobileLinks = `
+        <li><a href="/student/dashboard" class="nav-menu-link">My Reports</a></li>
+        <li><a href="/student/profile" class="nav-menu-link">My Profile</a></li>
+        <li><a href="/student/create" class="nav-menu-cta">Create Report -></a></li>
+        <li><a href="/student/resumes" class="nav-menu-cta">My Resumes -></a></li>
+      `;
+    }
+
+    if (navLinks) {
+      navLinks.innerHTML = desktopLinks;
+      navLinks.querySelectorAll('a').forEach((a) => {
+        const href = a.getAttribute('href');
+        if (href && CURRENT_PATH.startsWith(href)) a.classList.add('active');
+      });
+    }
+
+    if (navUserActions) {
+      navUserActions.innerHTML = `
+        <div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
+          <button class="nav-cta-btn"
+            style="background:rgba(255,255,255,0.08);border-color:rgba(152,177,255,0.42);"
+            id="userMenuBtn">
+            ${getInitials(user.name)} • ${user.name || 'User'}
+          </button>
+          <button class="nav-cta-btn"
+            style="border-color:rgba(248,113,113,0.55);color:#fecaca;background:rgba(127,29,29,0.24);"
+            id="logoutBtn" type="button">
+            Logout
+          </button>
+        </div>
+      `;
+    }
+
+    mobileLinks += `
+      <li style="border-top:1px solid rgba(255,255,255,0.1);padding-top:0.75rem;margin-top:0.75rem;">
+        <a href="#" class="nav-menu-link" style="color:rgba(255,150,150,0.9);"
+           onclick="window.__navLogout && window.__navLogout(); return false;">Logout</a>
+      </li>
+    `;
+
+    if (navMenuLinks) navMenuLinks.innerHTML = mobileLinks;
+
+    document.querySelectorAll('[data-generate-link="1"]').forEach((el) => {
+      el.setAttribute('href', '/student/create');
+    });
+    document.querySelectorAll('[data-generate-link-resume="1"]').forEach((el) => {
+      el.setAttribute('href', '/student/resume/builder');
+    });
+
+    const userBtn = document.getElementById('userMenuBtn');
+    if (userBtn) {
+      userBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.showToast) showToast(`Welcome back, ${user.name}!`, 'info', 2000);
+      });
+    }
+
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        if (window.__navLogout) window.__navLogout();
+      });
+    }
+
+    wireCursorHover();
+  };
+
+  const initAuth = async () => {
+    const token = localStorage.getItem('token');
+    const userJson = localStorage.getItem('user');
+
+    let serverUser = null;
+    let serverCheckOk = false;
+
+    try {
+      const meRes = await fetch('/api/auth/me', {
+        method: 'GET',
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      serverCheckOk = true;
+      if (meRes.ok) serverUser = await meRes.json();
+    } catch (_) {
+      serverCheckOk = false;
+    }
+
+    if (serverUser && serverUser.role) {
+      localStorage.setItem('user', JSON.stringify(serverUser));
+      renderUserNav(serverUser);
+      return;
+    }
+
+    if (serverCheckOk) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      renderGuestNav();
+      return;
+    }
+
+    if (token && userJson) {
+      try {
+        const localUser = JSON.parse(userJson);
+        if (localUser && localUser.role) {
+          renderUserNav(localUser);
+          return;
+        }
+      } catch (_) {}
+    }
+
+    renderGuestNav();
+  };
+
+  const MORPH_IN = 88;
+  const MORPH_OUT = 56;
+  let rafPending = false;
+
+  const handleScroll = () => {
+    if (!navEl) return;
+    const y = window.scrollY;
+    if (y > MORPH_IN && !navEl.classList.contains('scrolled')) navEl.classList.add('scrolled');
+    if (y < MORPH_OUT && navEl.classList.contains('scrolled')) navEl.classList.remove('scrolled');
+
+    if (progressBar) {
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      progressBar.style.transform = `scaleX(${total > 0 ? y / total : 0})`;
+    }
+  };
+
+  window.addEventListener('scroll', () => {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => { rafPending = false; handleScroll(); });
+  }, { passive: true });
+
+  handleScroll();
+
+  let menuOpen = false;
+
+  const openMenu = () => {
+    menuOpen = true;
+    menuToggle && menuToggle.classList.add('active');
+    menuDrawer && menuDrawer.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeMenu = () => {
+    menuOpen = false;
+    menuToggle && menuToggle.classList.remove('active');
+    menuDrawer && menuDrawer.classList.remove('active');
+    document.body.style.overflow = '';
+  };
+
+  if (menuToggle) menuToggle.addEventListener('click', () => menuOpen ? closeMenu() : openMenu());
+
+  document.addEventListener('click', (e) => {
+    if (menuOpen && menuDrawer && !menuDrawer.contains(e.target) && !menuToggle.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#nav-menu-drawer a')) closeMenu();
+  });
+
+  if (cursor && cursorRing && window.matchMedia('(pointer: fine)').matches) {
+    let cx = 0;
+    let cy = 0;
+    let crPending = false;
+
+    window.addEventListener('mousemove', (e) => {
+      cx = e.clientX;
+      cy = e.clientY;
+      if (crPending) return;
+      crPending = true;
+      requestAnimationFrame(() => {
+        crPending = false;
+        cursor.style.transform = `translate(${cx - 5}px, ${cy - 5}px)`;
+        cursorRing.style.transform = `translate(${cx - 18}px, ${cy - 18}px)`;
+      });
+    });
+
+    document.addEventListener('touchstart', () => {
+      cursor.style.display = 'none';
+      cursorRing.style.display = 'none';
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAuth);
+  } else {
+    initAuth();
+  }
+})();
+</script>
+
+{% endif %}

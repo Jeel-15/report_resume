@@ -315,20 +315,50 @@
 
   const IS_LANDING = window.location.pathname === '/';
   const CURRENT_PATH = window.location.pathname;
+  const CURRENT_HASH = window.location.hash || '';
 
-  const LANDING_LINKS_HTML = `
-    <li><a href="/#how">How it works</a></li>
-    <li><a href="/#preview">Preview</a></li>
-    <li><a href="/#testimonials">Reviews</a></li>
-    <li><a href="/#pricing">Pricing</a></li>
-  `;
+  const LANDING_DESKTOP_LINKS = [
+    { href: '/#how', label: 'How it works' },
+    { href: '/#preview', label: 'Preview' },
+    { href: '/#testimonials', label: 'Reviews' },
+    { href: '/#pricing', label: 'Pricing' },
+    { href: '/about', label: 'About' },
+    { href: '/faq', label: 'FAQ' },
+    { href: '/contact', label: 'Contact' },
+  ];
 
-  const LANDING_MOBILE_LINKS_HTML = `
-    <li><a href="/#how" class="nav-menu-link">How it works</a></li>
-    <li><a href="/#preview" class="nav-menu-link">Preview</a></li>
-    <li><a href="/#testimonials" class="nav-menu-link">Reviews</a></li>
-    <li><a href="/#pricing" class="nav-menu-link">Pricing</a></li>
-  `;
+  const LANDING_MOBILE_LINKS = [
+    { href: '/#how', label: 'How it works', className: 'nav-menu-link' },
+    { href: '/#preview', label: 'Preview', className: 'nav-menu-link' },
+    { href: '/#testimonials', label: 'Reviews', className: 'nav-menu-link' },
+    { href: '/#pricing', label: 'Pricing', className: 'nav-menu-link' },
+    { href: '/about', label: 'About', className: 'nav-menu-link' },
+    { href: '/faq', label: 'FAQ', className: 'nav-menu-link' },
+    { href: '/contact', label: 'Contact', className: 'nav-menu-link' },
+    { href: '/privacy', label: 'Privacy', className: 'nav-menu-link' },
+    { href: '/terms', label: 'Terms', className: 'nav-menu-link' },
+    { href: '/refund', label: 'Refund', className: 'nav-menu-link' },
+  ];
+
+  const PUBLIC_DESKTOP_LINKS = [
+    { href: '/', label: 'Home' },
+    { href: '/about', label: 'About' },
+    { href: '/faq', label: 'FAQ' },
+    { href: '/contact', label: 'Contact' },
+    { href: '/privacy', label: 'Privacy' },
+    { href: '/terms', label: 'Terms' },
+    { href: '/refund', label: 'Refund' },
+  ];
+
+  const PUBLIC_MOBILE_LINKS = [
+    { href: '/', label: 'Home', className: 'nav-menu-link' },
+    { href: '/about', label: 'About', className: 'nav-menu-link' },
+    { href: '/faq', label: 'FAQ', className: 'nav-menu-link' },
+    { href: '/contact', label: 'Contact', className: 'nav-menu-link' },
+    { href: '/privacy', label: 'Privacy', className: 'nav-menu-link' },
+    { href: '/terms', label: 'Terms', className: 'nav-menu-link' },
+    { href: '/refund', label: 'Refund', className: 'nav-menu-link' },
+  ];
 
   const navEl = document.getElementById('nav');
   const navLinks = document.getElementById('navLinks');
@@ -346,6 +376,28 @@
       .map((p) => p.charAt(0).toUpperCase()).join('') || 'U';
   };
 
+  const buildLinkList = (items, itemClass = '') => items.map((item) => {
+    const classes = itemClass ? ` class="${itemClass}"` : '';
+    return `<li><a href="${item.href}"${classes}>${item.label}</a></li>`;
+  }).join('');
+
+  const markActiveLinks = (scope) => {
+    if (!scope) return;
+    scope.querySelectorAll('a').forEach((a) => {
+      const href = a.getAttribute('href') || '';
+      if (!href) return;
+
+      const isHashLink = href.startsWith('/#');
+      const isActive = href === '/'
+        ? CURRENT_PATH === '/'
+        : (isHashLink
+          ? (CURRENT_PATH === '/' && CURRENT_HASH === href.slice(1))
+          : (CURRENT_PATH === href || CURRENT_PATH.startsWith(href + '/')));
+
+      if (isActive) a.classList.add('active');
+    });
+  };
+
   const wireCursorHover = () => {
     if (!cursor || !cursorRing) return;
     document.querySelectorAll('a, button, input, textarea, select, [role="button"]')
@@ -356,7 +408,12 @@
   };
 
   const renderGuestNav = () => {
-    if (navLinks) navLinks.innerHTML = IS_LANDING ? LANDING_LINKS_HTML : '';
+    if (navLinks) {
+      navLinks.innerHTML = IS_LANDING
+        ? buildLinkList(LANDING_DESKTOP_LINKS)
+        : buildLinkList(PUBLIC_DESKTOP_LINKS);
+      markActiveLinks(navLinks);
+    }
 
     if (navUserActions) {
       navUserActions.innerHTML = `
@@ -369,7 +426,7 @@
     }
 
     if (navMenuLinks) {
-      navMenuLinks.innerHTML = (IS_LANDING ? LANDING_MOBILE_LINKS_HTML : '') + `
+      navMenuLinks.innerHTML = `${buildLinkList(IS_LANDING ? LANDING_MOBILE_LINKS : PUBLIC_MOBILE_LINKS, (IS_LANDING ? 'nav-menu-link' : 'nav-menu-link'))}
         <li style="border-top:1px solid rgba(255,255,255,0.1);padding-top:0.75rem;margin-top:0.75rem;">
           <a href="/login" class="nav-menu-link">Login</a>
         </li>
@@ -377,6 +434,7 @@
           <a href="/register" class="nav-menu-cta">Generate Free -></a>
         </li>
       `;
+      markActiveLinks(navMenuLinks);
     }
 
     if (IS_LANDING) {
@@ -415,10 +473,7 @@
 
     if (navLinks) {
       navLinks.innerHTML = desktopLinks;
-      navLinks.querySelectorAll('a').forEach((a) => {
-        const href = a.getAttribute('href');
-        if (href && CURRENT_PATH.startsWith(href)) a.classList.add('active');
-      });
+      markActiveLinks(navLinks);
     }
 
     if (navUserActions) {
@@ -446,6 +501,7 @@
     `;
 
     if (navMenuLinks) navMenuLinks.innerHTML = mobileLinks;
+    if (navMenuLinks) markActiveLinks(navMenuLinks);
 
     document.querySelectorAll('[data-generate-link="1"]').forEach((el) => {
       el.setAttribute('href', '/student/create');

@@ -1663,8 +1663,21 @@ class BulletEditor {
     }
 
     _handleKeyDown(e) {
-        const focusedSpan = document.activeElement;
-        if (!focusedSpan || !focusedSpan.classList.contains('be-text')) return;
+        // Resolve the actual focused .be-text span.
+        // document.activeElement may be the contenteditable container, so prefer the
+        // current selection's anchor node and walk up to the closest .be-text.
+        let focusedSpan = null;
+        const sel = window.getSelection && window.getSelection();
+        if (sel && sel.rangeCount) {
+            const node = sel.anchorNode;
+            const el = (node && node.nodeType === Node.TEXT_NODE) ? node.parentElement : node;
+            focusedSpan = el && el.closest ? el.closest('.be-text') : null;
+        }
+        // Fallback to activeElement if needed
+        if (!focusedSpan && document.activeElement && document.activeElement.classList) {
+            focusedSpan = document.activeElement.classList.contains('be-text') ? document.activeElement : null;
+        }
+        if (!focusedSpan) return;
 
         // Enter: create new bullet below current
         if (e.key === 'Enter') {

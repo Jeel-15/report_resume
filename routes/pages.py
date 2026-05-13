@@ -1,10 +1,11 @@
 import os
 import re
 import datetime
-from flask import Blueprint, Response, render_template
+from flask import Blueprint, Response, render_template, request
 from models.user import User
 from models.report import Report
 from models.video_guide import VideoGuide
+from models.contact_submission import ContactSubmission
 
 pages_bp = Blueprint('pages', __name__)
 
@@ -259,9 +260,68 @@ def about():
     return render_template('about.html')
 
 
-@pages_bp.route('/contact')
+@pages_bp.route('/contact', methods=['GET', 'POST'])
 def contact():
-    return render_template('contact.html')
+    contact_values = {
+        'name': '',
+        'email': '',
+        'subject': '',
+        'message': '',
+    }
+    contact_error = ''
+    contact_success = False
+
+    if request.method == 'POST':
+        contact_values = {
+            'name': str(request.form.get('name', '') or '').strip(),
+            'email': str(request.form.get('email', '') or '').strip(),
+            'subject': str(request.form.get('subject', '') or '').strip(),
+            'message': str(request.form.get('message', '') or '').strip(),
+        }
+
+        subject_labels = {
+            'report-issue': 'Report Generation Issue',
+            'resume-issue': 'Resume Builder Issue',
+            'account': 'Account / Login',
+            'payment': 'Payment / Billing',
+            'university': 'University Not Listed',
+            'other': 'Other',
+        }
+
+        if not all(contact_values.values()):
+            contact_error = 'Please complete every field before sending the message.'
+        elif '@' not in contact_values['email']:
+            contact_error = 'Please enter a valid email address.'
+        elif contact_values['subject'] not in subject_labels:
+            contact_error = 'Please choose a support topic.'
+        else:
+            try:
+                contact_request = ContactSubmission(
+                    name=contact_values['name'],
+                    email=contact_values['email'],
+                    subject=subject_labels[contact_values['subject']],
+                    subjectKey=contact_values['subject'],
+                    message=contact_values['message'],
+                    ipAddress=str(request.headers.get('X-Forwarded-For', request.remote_addr or '') or '').split(',')[0].strip(),
+                    userAgent=str(request.headers.get('User-Agent', '') or '').strip(),
+                )
+                contact_request.save()
+                contact_success = True
+                contact_values = {
+                    'name': '',
+                    'email': '',
+                    'subject': '',
+                    'message': '',
+                }
+            except Exception:
+                contact_error = 'We could not save your message right now. Please email support@reportgen.in.'
+
+    return render_template(
+        'contact.html',
+        contact_values=contact_values,
+        contact_error=contact_error,
+        contact_success=contact_success,
+    )
 
 
 @pages_bp.route('/faq')

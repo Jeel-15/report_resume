@@ -28,56 +28,56 @@
     .faq-cta p { color:#64748b;margin-bottom:24px; }
     .faq-cta-btn { display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#2563eb,#3b7bff);color:white;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;text-decoration:none;box-shadow:0 4px 16px rgba(37,99,235,0.35);cursor:pointer;font-family:'DM Sans',sans-serif; }
 </style>
-+{% endblock %}
-+
-+{% block content %}
-+{% include 'partials/landing_navbar.html' %}
-+
-+<div class="faq-page">
-+    <div class="faq-hero">
-+        <div class="faq-eyebrow">✦ Help Center</div>
-+        <h1 class="faq-h1">Frequently Asked<br>Questions</h1>
-+        <p class="faq-sub">Everything you need to know about ReportGen.</p>
-+    </div>
-+
-+    <div class="faq-container">
-+        <div class="faq-category">About the Platform</div>
-+
-+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What is ReportGen?<span class="faq-icon">+</span></div><div class="faq-a">ReportGen is an AI-powered platform that helps Indian university students generate professional internship reports and resumes in minutes. You fill in details about your internship, and our AI writes a complete, formatted report tailored to your university's requirements.</div></div>
-+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Which universities are supported?<span class="faq-icon">+</span></div><div class="faq-a">We currently support 50+ Indian universities including GTU (Gujarat Technological University), SPPU (Savitribai Phule Pune University), Mumbai University, Anna University, VTU, and many more. Each university has custom report section templates configured by our academic team. If your university is not listed, contact us and we'll add it.</div></div>
-+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How long does report generation take?<span class="faq-icon">+</span></div><div class="faq-a">Report generation typically takes 1–3 minutes. Our AI writes each section simultaneously for speed. You'll see the status update in real time on your dashboard.</div></div>
-+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is it plagiarism to use AI-generated reports?<span class="faq-icon">+</span></div><div class="faq-a">This depends on your university's academic integrity policy. ReportGen generates content based on YOUR specific internship details — it is not copied from any existing source. Every report is unique to you. However, we strongly recommend reviewing and editing the generated content to add your personal experience and voice. Using the platform to submit work that is entirely AI-generated without review may violate your institution's policies. Use ReportGen as a writing assistant, not a replacement for your own experience.</div></div>
-+
-+        <div class="faq-category">Using the Platform</div>
-+
-+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Can I edit the generated report?<span class="faq-icon">+</span></div><div class="faq-a">Yes, absolutely. Every section of the generated report is fully editable. You can modify any text, add your own content, upload images, and preview the final PDF before downloading. The report editor is built into the platform.</div></div>
-+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What does the downloaded PDF look like?<span class="faq-icon">+</span></div><div class="faq-a">The PDF includes a professional cover page with your name, roll number, college name, and company logos. It follows standard academic formatting with proper section headings, page numbers, and consistent typography. Visit our <a href="/#preview">sample output section</a> on the homepage to see an example.</div></div>
-+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What is the Resume Builder?<span class="faq-icon">+</span></div><div class="faq-a">The Resume Builder is a separate feature that helps you create a professional single-page resume. You fill in your education, experience, skills, projects, and certifications in a step-by-step form, and the platform generates a cleanly formatted PDF resume ready for job applications. AI Enhance buttons can improve each section with professional language.</div></div>
-+
-+        <div class="faq-category">Account & Pricing</div>
-+
-+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is there a free plan?<span class="faq-icon">+</span></div><div class="faq-a">Yes! The free plan allows you to generate 1 internship report. This is enough for most students who need a single report per semester. Paid plans offer more report generations and priority support. See our <a href="/#pricing">pricing section</a> for details.</div></div>
-+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Can I generate multiple reports?<span class="faq-icon">+</span></div><div class="faq-a">Yes. With paid plans you can generate multiple reports — useful if you have multiple internship semesters or want to start fresh after editing. Each generated report is saved to your account and can be accessed anytime.</div></div>
-+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How do I reset my password?<span class="faq-icon">+</span></div><div class="faq-a">Click "Forgot Password" on the login page. Enter your registered email and you'll receive an OTP to reset your password. If you don't receive the email, check your spam folder or contact support.</div></div>
-+
-+        <div class="faq-cta">
-+            <h3>Still have questions?</h3>
-+            <p>Our support team is happy to help.</p>
-+            <a href="/contact" class="faq-cta-btn">Contact Support →</a>
-+        </div>
-+    </div>
-+</div>
-+
-+{% include 'partials/landing_footer.html' %}
-+{% endblock %}
-+
-+{% block extra_js %}
-+<script>
-+function toggleFaq(el) {
-+    const item = el.closest('.faq-item');
-+    const isOpen = item.classList.contains('open');
-+    document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
-+    if (!isOpen) item.classList.add('open');
-+}
-+</script>
-+{% endblock %}
+{% endblock %}
+
+{% block content %}
+{% include 'partials/landing_navbar.html' %}
+
+<div class="faq-page">
+    <div class="faq-hero">
+        <div class="faq-eyebrow">✦ Help Center</div>
+        <h1 class="faq-h1">Frequently Asked<br>Questions</h1>
+        <p class="faq-sub">Everything you need to know about ReportGen.</p>
+    </div>
+
+    <div class="faq-container">
+        <div class="faq-category">About the Platform</div>
+
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What is ReportGen?<span class="faq-icon">+</span></div><div class="faq-a">ReportGen is an AI-powered platform that helps Indian university students generate professional internship reports and resumes in minutes. You fill in details about your internship, and our AI writes a complete, formatted report tailored to your university's requirements.</div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Which universities are supported?<span class="faq-icon">+</span></div><div class="faq-a">We currently support 50+ Indian universities including GTU (Gujarat Technological University), SPPU (Savitribai Phule Pune University), Mumbai University, Anna University, VTU, and many more. Each university has custom report section templates configured by our academic team. If your university is not listed, contact us and we'll add it.</div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How long does report generation take?<span class="faq-icon">+</span></div><div class="faq-a">Report generation typically takes 1–3 minutes. Our AI writes each section simultaneously for speed. You'll see the status update in real time on your dashboard.</div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is it plagiarism to use AI-generated reports?<span class="faq-icon">+</span></div><div class="faq-a">This depends on your university's academic integrity policy. ReportGen generates content based on YOUR specific internship details — it is not copied from any existing source. Every report is unique to you. However, we strongly recommend reviewing and editing the generated content to add your personal experience and voice. Using the platform to submit work that is entirely AI-generated without review may violate your institution's policies. Use ReportGen as a writing assistant, not a replacement for your own experience.</div></div>
+
+        <div class="faq-category">Using the Platform</div>
+
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Can I edit the generated report?<span class="faq-icon">+</span></div><div class="faq-a">Yes, absolutely. Every section of the generated report is fully editable. You can modify any text, add your own content, upload images, and preview the final PDF before downloading. The report editor is built into the platform.</div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What does the downloaded PDF look like?<span class="faq-icon">+</span></div><div class="faq-a">The PDF includes a professional cover page with your name, roll number, college name, and company logos. It follows standard academic formatting with proper section headings, page numbers, and consistent typography. Visit our <a href="/#preview">sample output section</a> on the homepage to see an example.</div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What is the Resume Builder?<span class="faq-icon">+</span></div><div class="faq-a">The Resume Builder is a separate feature that helps you create a professional single-page resume. You fill in your education, experience, skills, projects, and certifications in a step-by-step form, and the platform generates a cleanly formatted PDF resume ready for job applications. AI Enhance buttons can improve each section with professional language.</div></div>
+
+        <div class="faq-category">Account & Pricing</div>
+
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is there a free plan?<span class="faq-icon">+</span></div><div class="faq-a">Yes! The free plan allows you to generate 1 internship report. This is enough for most students who need a single report per semester. Paid plans offer more report generations and priority support. See our <a href="/#pricing">pricing section</a> for details.</div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Can I generate multiple reports?<span class="faq-icon">+</span></div><div class="faq-a">Yes. With paid plans you can generate multiple reports — useful if you have multiple internship semesters or want to start fresh after editing. Each generated report is saved to your account and can be accessed anytime.</div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How do I reset my password?<span class="faq-icon">+</span></div><div class="faq-a">Click "Forgot Password" on the login page. Enter your registered email and you'll receive an OTP to reset your password. If you don't receive the email, check your spam folder or contact support.</div></div>
+
+        <div class="faq-cta">
+            <h3>Still have questions?</h3>
+            <p>Our support team is happy to help.</p>
+            <a href="/contact" class="faq-cta-btn">Contact Support →</a>
+        </div>
+    </div>
+</div>
+
+{% include 'partials/landing_footer.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleFaq(el) {
+    const item = el.closest('.faq-item');
+    const isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+    if (!isOpen) item.classList.add('open');
+}
+</script>
+{% endblock %}

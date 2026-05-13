@@ -18,6 +18,7 @@ from .report_section_template import UniversityReportTemplate, ReportSectionItem
 from .resume import Resume, ResumeEducation, ResumeExperience, ResumeProject, ResumeVolunteering, ResumeCertification, ResumeLanguage
 from .career_objective import CareerObjective
 from .resume_keyword import ResumeKeyword
+from .contact_submission import ContactSubmission
 
 __all__ = [
     'User',
@@ -52,4 +53,5 @@ __all__ = [
     'ResumeLanguage',
     'CareerObjective',
     'ResumeKeyword',
+    'ContactSubmission',
 ]

@@ -1,0 +1,244 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'audit_log' %}
+
+{% block title %}Audit Log - ReportGen Admin{% endblock %}
+
+{% block page_css %}
+<style>
+  .audit-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .audit-filter-bar .small-input,
+  .audit-filter-bar .small-select {
+    min-width: 160px;
+  }
+
+  .small-select {
+    border: 1px solid var(--rg-line);
+    background: var(--rg-card);
+    color: var(--rg-text);
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+
+  .small-select:focus {
+    outline: none;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+
+  .details-cell {
+    max-width: 240px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--rg-text-dim);
+  }
+
+  .empty-state {
+    display: none;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 13px;
+    padding: 10px 0 2px;
+  }
+
+  .audit-note {
+    margin-top: 2px;
+    padding: 12px 14px;
+    border: 1px solid #dbe7ff;
+    border-radius: 12px;
+    background: #f8fbff;
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+</style>
+{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">🔍 Audit Log</h1>
+    <p class="page-subtitle">Track admin actions, targets, and request metadata.</p>
+  </div>
+
+  <article class="panel-card panel-body" style="display:grid;gap:10px;">
+    <div class="audit-filter-bar">
+      <input id="filterFrom" type="date" class="small-input">
+      <input id="filterTo" type="date" class="small-input">
+      <select id="filterAction" class="small-select">
+        <option value="">All Actions</option>
+        <option value="impersonate_student">impersonate_student</option>
+        <option value="admin_generate_report">admin_generate_report</option>
+        <option value="email_report">email_report</option>
+        <option value="reset_password">reset_password</option>
+        <option value="update_email">update_email</option>
+        <option value="approve_industry">approve_industry</option>
+        <option value="reject_industry">reject_industry</option>
+        <option value="bulk_import">bulk_import</option>
+        <option value="delete_user">delete_user</option>
+        <option value="delete_report">delete_report</option>
+        <option value="create_video_guide">create_video_guide</option>
+      </select>
+      <button class="btn-primary" type="button" id="btnFilter">Search</button>
+      <button class="btn-ghost" type="button" id="btnExportPayments">Export Payments CSV</button>
+      <button class="btn-ghost" type="button" id="btnExportStudents">Export Students CSV</button>
+    </div>
+    <div class="audit-note">
+      Dates are interpreted in Asia/Kolkata time, and only actions recorded after Phase 4 audit logging was enabled are shown here. Older admin actions were not backfilled.
+    </div>
+  </article>
+
+  <article class="panel-card panel-body table-card">
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Admin</th>
+            <th>Action</th>
+            <th>Target Type</th>
+            <th>Target ID</th>
+            <th>IP Address</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="auditTableBody">
+          <tr><td colspan="7" style="text-align:center;color:#94a3b8;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="emptyState" class="empty-state">No records found</div>
+  </article>
+</section>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+const IST_TIMEZONE = 'Asia/Kolkata';
+const tsFormatter = new Intl.DateTimeFormat('en-IN', {
+  timeZone: IST_TIMEZONE,
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: true,
+});
+
+function formatTs(value) {
+  if (!value) return '-';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '-';
+  return tsFormatter.format(d);
+}
+
+function compactDetails(details) {
+  const raw = JSON.stringify(details || {});
+  return raw.length > 60 ? `${raw.slice(0, 60)}...` : raw;
+}
+
+function esc(value) {
+  return String(value == null ? '' : value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function buildFilterQuery() {
+  const from = document.getElementById('filterFrom').value;
+  const to = document.getElementById('filterTo').value;
+  const action = document.getElementById('filterAction').value;
+
+  const qs = new URLSearchParams();
+  if (from) qs.set('from', from);
+  if (to) qs.set('to', to);
+  if (action) qs.set('action', action);
+  return qs;
+}
+
+async function loadLogs() {
+  const tbody = document.getElementById('auditTableBody');
+  const emptyState = document.getElementById('emptyState');
+  const qs = buildFilterQuery();
+  const url = `/api/admin/audit-logs${qs.toString() ? `?${qs.toString()}` : ''}`;
+
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;">Loading...</td></tr>';
+  emptyState.style.display = 'none';
+
+  try {
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    const payload = await res.json();
+    if (!res.ok) {
+      throw new Error(payload.message || 'Failed to fetch logs');
+    }
+
+    const logs = Array.isArray(payload.logs) ? payload.logs : [];
+    if (!logs.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;">No records found</td></tr>';
+      emptyState.style.display = 'block';
+      return;
+    }
+
+    tbody.innerHTML = logs.map(l => `
+      <tr>
+        <td>${esc(formatTs(l.createdAt))}</td>
+        <td>${esc(l.adminName || '-')}</td>
+        <td>${esc(l.action || '-')}</td>
+        <td>${esc(l.targetType || '-')}</td>
+        <td>${esc(l.targetId || '-')}</td>
+        <td>${esc(l.ipAddress || '-')}</td>
+        <td class="details-cell" title="${esc(JSON.stringify(l.details || {}))}">${esc(compactDetails(l.details || {}))}</td>
+      </tr>
+    `).join('');
+
+    if (window.AdminUI) {
+      window.AdminUI.staggerRows();
+    }
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ef4444;">${esc(err.message || 'Failed to load')}</td></tr>`;
+    emptyState.style.display = 'none';
+  }
+}
+
+function buildExportUrl(basePath) {
+  const from = document.getElementById('filterFrom').value;
+  const to = document.getElementById('filterTo').value;
+  const qs = new URLSearchParams();
+  if (from) qs.set('from', from);
+  if (to) qs.set('to', to);
+  qs.set('token', token);
+  return `${basePath}?${qs.toString()}`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btnFilter').addEventListener('click', loadLogs);
+
+  document.getElementById('btnExportPayments').addEventListener('click', () => {
+    const url = buildExportUrl('/api/admin/exports/reports');
+    window.open(url, '_blank');
+  });
+
+  document.getElementById('btnExportStudents').addEventListener('click', () => {
+    const url = buildExportUrl('/api/admin/exports/students');
+    window.open(url, '_blank');
+  });
+
+  loadLogs();
+});
+</script>
+{% endblock %}

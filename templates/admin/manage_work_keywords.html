@@ -1,0 +1,325 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'work-keywords' %}
+
+{% block title %}Work Keywords - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Manage Work Keywords</h1>
+    <p class="page-subtitle">Define industry/job-profile keyword libraries used in report generation.</p>
+  </div>
+
+  <div class="stats-inline">
+    <a href="/admin/bulk-import" class="btn-ghost"><i data-lucide="upload" style="width:14px;height:14px;"></i>Bulk Import</a>
+    <button class="btn-ghost" type="button" onclick="downloadTemplate()"><i data-lucide="download" style="width:14px;height:14px;"></i>Template</button>
+    <button class="btn-ghost" type="button" onclick="loadKeywords()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
+    <button class="btn-primary" type="button" onclick="openCreate()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Keyword</button>
+  </div>
+
+  <article class="panel-card panel-body" style="display:grid;gap:12px;">
+    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filters</h3>
+    <div class="toolbar" style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) minmax(220px,1fr) 160px;gap:12px;">
+      <input id="filterIndustryType" class="small-input" placeholder="Industry type (e.g. Sales)">
+      <input id="filterJobProfile" class="small-input" placeholder="Job profile (e.g. Sales Executive)">
+      <input id="filterSearch" class="small-input" placeholder="Search keyword text...">
+      <select id="filterActive" class="small-input">
+        <option value="">All</option>
+        <option value="true">Active only</option>
+        <option value="false">Inactive only</option>
+      </select>
+    </div>
+  </article>
+
+  <article class="panel-card panel-body table-card">
+    <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
+      <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
+      <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
+      <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
+            <th>Keyword</th>
+            <th>Industry Type</th>
+            <th>Job Profile</th>
+            <th>Major</th>
+            <th>Sort</th>
+            <th>Active</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="8" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<div class="modal fade" id="keywordModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="keywordModalTitle">Add Work Keyword</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="keywordId">
+        <div class="mb-3">
+          <label class="form-label">Keyword *</label>
+          <input class="form-control" id="keywordText" placeholder="Sale of dairy products">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Industry Type</label>
+          <input class="form-control" id="keywordIndustryType" placeholder="Sales">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Job Profile</label>
+          <input class="form-control" id="keywordJobProfile" placeholder="Sales Executive">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Major (Optional)</label>
+          <select class="form-control" id="keywordMajor">
+            <option value="">All Majors (Universal)</option>
+          </select>
+          <small class="form-text text-muted">Leave as "All Majors" for keywords applicable to every major.</small>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Sort Order</label>
+          <input class="form-control" id="keywordSortOrder" type="number" value="0">
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="keywordActive" checked>
+          <label class="form-check-label" for="keywordActive">Active</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveKeyword()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+let modal = null;
+const ENTITY_ENDPOINT = 'work-keywords';
+
+function updateBulkToolbar() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  const toolbar = document.getElementById('bulkToolbar');
+  const count = document.getElementById('selectedCount');
+  if (checked.length > 0) {
+    toolbar.style.display = 'flex';
+    count.textContent = `${checked.length} selected`;
+  } else {
+    toolbar.style.display = 'none';
+  }
+  const all = document.querySelectorAll('.row-checkbox');
+  document.getElementById('selectAll').checked = all.length > 0 && checked.length === all.length;
+  document.getElementById('selectAll').indeterminate = checked.length > 0 && checked.length < all.length;
+}
+
+function clearSelection() {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+  document.getElementById('selectAll').checked = false;
+  document.getElementById('selectAll').indeterminate = false;
+  document.getElementById('bulkToolbar').style.display = 'none';
+}
+
+async function bulkDelete() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  if (!checked.length) return;
+  const ids = Array.from(checked).map(cb => cb.dataset.id);
+  const confirmed = await showBulkConfirm(ids.length);
+  if (!confirmed) return;
+  try {
+    const res = await fetch(`/api/admin/${ENTITY_ENDPOINT}/bulk-delete`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      alert(`✓ ${data.deleted || ids.length} items deleted`);
+      clearSelection();
+      loadKeywords();
+    } else {
+      alert(data.message || 'Bulk delete failed');
+    }
+  } catch (err) {
+    alert('Network error during bulk delete');
+  }
+}
+
+function showBulkConfirm(count) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('bulkConfirmBar');
+    if (existing) existing.remove();
+    const bar = document.createElement('div');
+    bar.id = 'bulkConfirmBar';
+    bar.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);`;
+    bar.innerHTML = `<span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span><button id="bulkConfirmYes" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button><button id="bulkConfirmNo" style="padding:6px 12px;background:transparent;border:1px solid #aaa;color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">Cancel</button>`;
+    document.body.appendChild(bar);
+    document.getElementById('bulkConfirmYes').onclick = () => { bar.remove(); resolve(true); };
+    document.getElementById('bulkConfirmNo').onclick = () => { bar.remove(); resolve(false); };
+  });
+}
+
+async function loadKeywords() {
+  const params = new URLSearchParams();
+  const industryType = document.getElementById('filterIndustryType').value.trim();
+  const jobProfile = document.getElementById('filterJobProfile').value.trim();
+  const q = document.getElementById('filterSearch').value.trim();
+  const isActive = document.getElementById('filterActive').value;
+  if (industryType) params.set('industryType', industryType);
+  if (jobProfile) params.set('jobProfile', jobProfile);
+  if (q) params.set('q', q);
+  if (isActive) params.set('isActive', isActive);
+
+  const res = await fetch(`/api/admin/work-keywords?${params.toString()}`, { headers });
+  const data = await res.json();
+
+  document.getElementById('rows').innerHTML = (data || []).map(item => `
+    <tr>
+      <td><input type="checkbox" class="row-checkbox" data-id="${item._id}" style="width:16px;height:16px;cursor:pointer;"></td>
+      <td>${item.keyword || '-'}</td>
+      <td>${item.industryType || '-'}</td>
+      <td>${item.jobProfile || '-'}</td>
+      <td>${item.major ? item.major.name : '<span style="color:#94a3b8;">All Majors</span>'}</td>
+      <td>${item.sortOrder ?? 0}</td>
+      <td>${item.isActive ? 'Yes' : 'No'}</td>
+      <td>
+        <div class="icon-actions">
+          <button class="toggle-action" onclick='openEdit(${JSON.stringify(item)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+          <button class="danger-action" onclick="deleteKeyword('${item._id}')" title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="8" style="text-align:center;color:#94a3b8;">No keywords found</td></tr>';
+
+  if (window.lucide) lucide.createIcons();
+  window.AdminUI?.staggerRows();
+  clearSelection();
+}
+
+function openCreate() {
+  document.getElementById('keywordModalTitle').textContent = 'Add Work Keyword';
+  document.getElementById('keywordId').value = '';
+  document.getElementById('keywordText').value = '';
+  document.getElementById('keywordIndustryType').value = '';
+  document.getElementById('keywordJobProfile').value = '';
+  document.getElementById('keywordMajor').value = '';
+  document.getElementById('keywordSortOrder').value = '0';
+  document.getElementById('keywordActive').checked = true;
+  modal.show();
+}
+
+function openEdit(item) {
+  document.getElementById('keywordModalTitle').textContent = 'Edit Work Keyword';
+  document.getElementById('keywordId').value = item._id || '';
+  document.getElementById('keywordText').value = item.keyword || '';
+  document.getElementById('keywordIndustryType').value = item.industryType || '';
+  document.getElementById('keywordJobProfile').value = item.jobProfile || '';
+  document.getElementById('keywordMajor').value = item.major ? item.major._id : '';
+  document.getElementById('keywordSortOrder').value = String(item.sortOrder ?? 0);
+  document.getElementById('keywordActive').checked = item.isActive !== false;
+  modal.show();
+}
+
+async function saveKeyword() {
+  const id = document.getElementById('keywordId').value;
+  const payload = {
+    keyword: document.getElementById('keywordText').value.trim(),
+    industryType: document.getElementById('keywordIndustryType').value.trim(),
+    jobProfile: document.getElementById('keywordJobProfile').value.trim(),
+    major: document.getElementById('keywordMajor').value || '',
+    sortOrder: Number(document.getElementById('keywordSortOrder').value || 0),
+    isActive: document.getElementById('keywordActive').checked,
+  };
+
+  if (!payload.keyword) {
+    alert('Keyword is required');
+    return;
+  }
+
+  const url = id ? `/api/admin/work-keywords/${id}` : '/api/admin/work-keywords';
+  const method = id ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+  const data = await res.json();
+  if (!res.ok) {
+    alert(data.message || 'Save failed');
+    return;
+  }
+
+  modal.hide();
+  loadKeywords();
+}
+
+async function deleteKeyword(id) {
+  if (!confirm('Delete this keyword?')) return;
+  await fetch(`/api/admin/work-keywords/${id}`, { method: 'DELETE', headers });
+  loadKeywords();
+}
+
+async function downloadTemplate() {
+  const res = await fetch('/api/admin/bulk-import/template/work-keywords', { headers: { 'Authorization': `Bearer ${token}` } });
+  if (!res.ok) {
+    alert('Unable to download template');
+    return;
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'work_keywords_template.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function loadMajorsForDropdown() {
+  try {
+    const res = await fetch('/api/student/majors', { headers });
+    const data = await res.json();
+    const select = document.getElementById('keywordMajor');
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">All Majors (Universal)</option>';
+    (data || []).forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m._id;
+      opt.text = m.name + (m.degree ? ` (${m.degree})` : '');
+      select.appendChild(opt);
+    });
+    select.value = currentValue;
+  } catch(e) {
+    console.error('Failed to load majors:', e);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  modal = new bootstrap.Modal(document.getElementById('keywordModal'));
+  ['filterIndustryType', 'filterJobProfile', 'filterSearch', 'filterActive'].forEach(id => {
+    const el = document.getElementById(id);
+    const eventName = id === 'filterActive' ? 'change' : 'input';
+    el.addEventListener(eventName, loadKeywords);
+  });
+  document.getElementById('selectAll').addEventListener('change', (e) => {
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
+    updateBulkToolbar();
+  });
+  document.getElementById('rows').addEventListener('change', (e) => {
+    if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
+  });
+  await loadMajorsForDropdown();
+  await loadKeywords();
+});
+</script>
+{% endblock %}

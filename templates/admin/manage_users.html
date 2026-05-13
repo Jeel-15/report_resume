@@ -1,0 +1,1183 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'students' %}
+
+{% block title %}Students - ReportGen Admin{% endblock %}
+
+{% block page_css %}
+<style>
+    /* -- Report status badge colours -- */
+    .rs-generated  { background: rgba(5,150,105,0.15); color: #10b981; border: 1px solid rgba(52,211,153,0.3); }
+    .rs-pending    { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(251,191,36,0.3); }
+    .rs-error      { background: rgba(239,68,68,0.15);  color: #ef4444; border: 1px solid rgba(252,165,165,0.3); }
+    .rs-none       { background: rgba(148,163,184,0.15);color: #94a3b8; border: 1px solid rgba(203,213,225,0.4); }
+
+    .report-badge {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    /* -- Actions dropdown (Professional Design) -- */
+    .table-card,
+    .data-table-wrap {
+        overflow: visible !important;
+    }
+
+    .actions-wrap { position: relative; display: inline-block; }
+    
+    .actions-trigger {
+        padding: 6px 10px;
+        font-size: 13px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        background: #f8fafc;
+        color: #475569;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        min-width: 76px;
+        justify-content: center;
+    }
+    .actions-trigger:hover {
+        background: #e2e8f0;
+        color: #334155;
+        border-color: #cbd5e1;
+    }
+    .actions-trigger:active {
+        background: #cbd5e1;
+    }
+
+    /* Hidden original menus (rendered via portal) */
+    .actions-menu {
+        display: none !important;
+    }
+    .actions-menu.open { display: none !important; }
+
+    /* Portal menu styling - professional dropdown */
+    #menu-portal .actions-menu {
+        display: block !important;
+        position: fixed;
+        width: 240px;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(2, 6, 23, 0.12), 0 1px 3px rgba(2, 6, 23, 0.1);
+        padding: 8px;
+        z-index: 5000;
+        pointer-events: all;
+        animation: menuSlideIn 0.15s ease;
+    }
+    @keyframes menuSlideIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Grouped actions */
+    .action-group {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .action-group + .action-group {
+        border-top: 1px solid #e2e8f0;
+        margin-top: 6px;
+        padding-top: 6px;
+    }
+
+    .action-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 10px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #334155;
+        cursor: pointer;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        transition: all 0.1s ease;
+        position: relative;
+    }
+
+    .action-item:hover {
+        background: #f0f4f8;
+        color: #0f172a;
+        padding-left: 12px;
+    }
+
+    .action-item:active {
+        background: #e2e8f0;
+    }
+
+    /* Icon styling */
+    .action-item .icon {
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    /* Dangerous action (delete) */
+    .action-item.danger {
+        color: #dc2626;
+    }
+    .action-item.danger:hover {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .action-item.danger:active {
+        background: #fecaca;
+    }
+
+    /* Secondary action (informational) */
+    .action-item.secondary {
+        color: #6b7280;
+        font-weight: 400;
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    .action-item.secondary:hover {
+        background: #f3f4f6;
+        color: #374151;
+    }
+
+    /* Disable row transforms here */
+    .stagger-table tbody tr,
+    .stagger-table tbody tr.show {
+        transform: none !important;
+    }
+
+    .stagger-table tbody tr {
+        opacity: 1 !important;
+    }
+
+    /* -- Modals -- */
+    .ph2-modal-backdrop {
+        display: none; position: fixed; inset: 0;
+        background: rgba(15,23,42,0.45); backdrop-filter: blur(2px);
+        z-index: 300; align-items: center; justify-content: center;
+    }
+    .ph2-modal-backdrop.open { display: flex; }
+    .ph2-modal {
+        background: #fff; border-radius: 18px; width: 100%; max-width: 500px;
+        padding: 28px; box-shadow: 0 24px 60px rgba(2,6,23,0.22);
+        animation: modalIn 0.2s ease;
+    }
+    @keyframes modalIn { from { opacity:0; transform: scale(0.96); } to { opacity:1; transform: scale(1); } }
+    .ph2-modal h5 { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0 0 6px; }
+    .ph2-modal p  { font-size: 13px; color: #64748b; margin: 0 0 18px; }
+    .ph2-modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    .ph2-modal .form-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* -- Generate report form -- */
+    #generateModal textarea { min-height: 90px; font-size: 13px; }
+    .gen-progress {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1e3a8a;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .gen-progress.show { display: flex; }
+    .gen-spinner {
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        border: 2px solid #93c5fd;
+        border-top-color: #2563eb;
+        animation: genSpin 0.8s linear infinite;
+        flex-shrink: 0;
+    }
+    @keyframes genSpin { to { transform: rotate(360deg); } }
+
+    /* -- Password reveal box -- */
+    .password-reveal-box {
+        background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
+        padding: 14px 16px; font-size: 14px; color: #065f46; font-weight: 600;
+        letter-spacing: 0.06em; text-align: center; margin-top: 12px;
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+    <div>
+        <h1 class="page-title">Students</h1>
+        <p class="page-subtitle">Manage student accounts, generate reports, and dispatch communications.</p>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-inline">
+        <span class="stats-chip">Total: <b id="statTotal">0</b></span>
+        <span class="stats-chip">Active: <b id="statActive">0</b></span>
+        <span class="stats-chip">Inactive: <b id="statInactive">0</b></span>
+        <span class="stats-chip">Generated: <b id="statGenerated">0</b></span>
+        <span class="stats-chip">Pending: <b id="statPending">0</b></span>
+    </div>
+
+    <article class="panel-card panel-body table-card">
+        <!-- Toolbar with filters -->
+        <div class="toolbar" style="flex-wrap:wrap; gap:8px;">
+            <input class="small-input" type="text" placeholder="Search name or email..." id="userSearch">
+            <select class="small-input" id="filterUniversity" style="min-width:160px;">
+                <option value="">All Universities</option>
+            </select>
+            <select class="small-input" id="filterDegree" style="min-width:140px;">
+                <option value="">All Degrees</option>
+            </select>
+            <select class="small-input" id="filterReportStatus">
+                <option value="">All Report Status</option>
+                <option value="generated">✓ Generated</option>
+                <option value="pending">⏳ Pending</option>
+                <option value="error">✗ Error</option>
+                <option value="none">— No Report</option>
+            </select>
+            <button class="btn-primary" type="button" onclick="loadUsers()" style="margin-left:auto;">
+                Refresh
+            </button>
+        </div>
+
+        <!-- Bulk Delete Toolbar -->
+        <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
+          <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
+          <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
+          <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+        </div>
+
+        <!-- Table -->
+        <div class="data-table-wrap">
+            <table class="data-table stagger-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
+                        <th>Student</th>
+                        <th>Roll No</th>
+                        <th>Degree / Major</th>
+                        <th>College</th>
+                        <th>Last Report</th>
+                        <th>Registered</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersBody">
+                    <tr><td colspan="8" style="text-align:center;color:#94a3b8;">Loading students...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-foot">
+            <span style="font-size:13px;color:#64748b;" id="usersFoot">Showing 0 students</span>
+        </div>
+    </article>
+</section>
+
+<!-- =====================
+     MODAL: Student Profile Detail
+===================== -->
+<div class="ph2-modal-backdrop" id="profileModal">
+    <div class="ph2-modal" style="max-width:600px;">
+        <h5 id="profileModalTitle">Student Details</h5>
+        <p id="profileModalSub"></p>
+        <div id="profileModalBody" style="display:grid;grid-template-columns:160px 1fr;row-gap:8px;column-gap:12px;font-size:14px;color:#334155;"></div>
+        <div class="ph2-modal-footer">
+            <button class="btn-ghost" type="button" onclick="closeModal('profileModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- =====================
+     MODAL: Generate Report
+===================== -->
+<div class="ph2-modal-backdrop" id="generateModal">
+    <div class="ph2-modal">
+        <h5>Generate Report</h5>
+        <p id="generateModalSub">Fill in the required fields to generate a report for this student.</p>
+        <input type="hidden" id="genUserId">
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label">Major *</label>
+                <select class="form-control" id="genMajor" style="min-height:40px;"></select>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Project Title *</label>
+                <input type="text" class="form-control" id="genProjectTitle" placeholder="Enter project title">
+            </div>
+            <div class="col-12">
+                <label class="form-label">Brief Description *</label>
+                <textarea class="form-control" id="genBriefDescription" placeholder="Describe the internship work..."></textarea>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Academic Year</label>
+                <input type="text" class="form-control" id="genAcademicYear" placeholder="2025-2026">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Duration</label>
+                <input type="text" class="form-control" id="genDuration" placeholder="e.g. 6 weeks">
+            </div>
+        </div>
+        <div id="genProgress" class="gen-progress">
+            <span class="gen-spinner"></span>
+            <span id="genProgressText">Submitting request...</span>
+        </div>
+        <div class="ph2-modal-footer">
+            <button class="btn-ghost" type="button" id="genCancelBtn" onclick="closeModal('generateModal')">Cancel</button>
+            <button class="btn-primary" type="button" id="genSubmitBtn" onclick="submitGenerate()">Generate Report</button>
+        </div>
+    </div>
+</div>
+
+<!-- =====================
+     MODAL: Reset Password
+===================== -->
+<div class="ph2-modal-backdrop" id="resetModal">
+    <div class="ph2-modal">
+        <h5>Reset Password</h5>
+        <p id="resetModalSub">A new secure password will be generated and emailed to the student.</p>
+        <input type="hidden" id="resetUserId">
+        <div class="password-reveal-box" id="newPasswordBox"></div>
+        <div class="ph2-modal-footer">
+            <button class="btn-ghost" type="button" id="resetCancelBtn" onclick="closeModal('resetModal')">Cancel</button>
+            <button class="btn-primary" type="button" id="resetConfirmBtn" onclick="submitResetPassword()">Reset Password</button>
+        </div>
+    </div>
+</div>
+
+<!-- =====================
+     MODAL: Update Email
+===================== -->
+<div class="ph2-modal-backdrop" id="emailUpdateModal">
+    <div class="ph2-modal">
+        <h5>Update Student Email</h5>
+        <p id="emailUpdateSub">This will change the login email for the student.</p>
+        <input type="hidden" id="emailUpdateUserId">
+        <label class="form-label">New Email Address</label>
+        <input type="email" class="form-control" id="newEmailInput" placeholder="student@example.com" style="margin-top:6px;">
+        <div class="ph2-modal-footer">
+            <button class="btn-ghost" type="button" onclick="closeModal('emailUpdateModal')">Cancel</button>
+            <button class="btn-primary" type="button" onclick="submitUpdateEmail()">Update Email</button>
+        </div>
+    </div>
+</div>
+
+<!-- =====================
+     MODAL: Delete Confirm
+===================== -->
+<div class="ph2-modal-backdrop" id="deleteModal">
+    <div class="ph2-modal">
+        <h5>Delete Student</h5>
+        <p id="deleteModalText">This will permanently delete the student and all their reports.</p>
+        <input type="hidden" id="deleteUserId">
+        <div class="ph2-modal-footer">
+            <button class="btn-ghost" type="button" onclick="closeModal('deleteModal')">Cancel</button>
+            <button class="btn-primary" type="button" onclick="submitDelete()"
+                style="background:#ef4444;border-color:#ef4444;">Delete</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = window.AdminUI?.getAuthToken() || localStorage.getItem('token');
+if (!token) location.href = '/login';
+const authH = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+const ENTITY_ENDPOINT = 'users';
+
+let allUsers = [];
+let allMajors = [];
+let allDegrees = [];
+
+// ─────────────────────────────────────────────────────────────
+// Multi-select functions for bulk delete
+// ─────────────────────────────────────────────────────────────
+
+function updateBulkToolbar() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  const toolbar = document.getElementById('bulkToolbar');
+  const count = document.getElementById('selectedCount');
+  if (checked.length > 0) {
+    toolbar.style.display = 'flex';
+    count.textContent = `${checked.length} selected`;
+  } else {
+    toolbar.style.display = 'none';
+  }
+  const all = document.querySelectorAll('.row-checkbox');
+  document.getElementById('selectAll').checked = all.length > 0 && checked.length === all.length;
+  document.getElementById('selectAll').indeterminate = checked.length > 0 && checked.length < all.length;
+}
+
+function clearSelection() {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+  document.getElementById('selectAll').checked = false;
+  document.getElementById('selectAll').indeterminate = false;
+  document.getElementById('bulkToolbar').style.display = 'none';
+}
+
+async function bulkDelete() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  if (!checked.length) return;
+  const ids = Array.from(checked).map(cb => cb.dataset.id);
+  const confirmed = await showBulkConfirm(ids.length);
+  if (!confirmed) return;
+  try {
+    const res = await fetch(`/api/admin/${ENTITY_ENDPOINT}/bulk-delete`, {
+      method: 'POST',
+      headers: authH,
+      body: JSON.stringify({ ids })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      alert(`✓ ${data.deleted || ids.length} items deleted`);
+      clearSelection();
+      loadUsers();
+    } else {
+      alert(data.message || 'Bulk delete failed');
+    }
+  } catch (err) {
+    alert('Network error during bulk delete');
+  }
+}
+
+function showBulkConfirm(count) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('bulkConfirmBar');
+    if (existing) existing.remove();
+    const bar = document.createElement('div');
+    bar.id = 'bulkConfirmBar';
+    bar.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);`;
+    bar.innerHTML = `<span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span><button id="bulkConfirmYes" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button><button id="bulkConfirmNo" style="padding:6px 12px;background:transparent;border:1px solid #aaa;color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">Cancel</button>`;
+    document.body.appendChild(bar);
+    document.getElementById('bulkConfirmYes').onclick = () => { bar.remove(); resolve(true); };
+    document.getElementById('bulkConfirmNo').onclick = () => { bar.remove(); resolve(false); };
+  });
+}
+
+// -- Helpers ---------------------------------------------------------------
+
+function closeModal(id) {
+    document.getElementById(id)?.classList.remove('open');
+}
+
+function openModal(id) {
+    document.getElementById(id)?.classList.add('open');
+    // Close all action menus when any modal opens
+    document.querySelectorAll('.actions-menu.open').forEach((m) => m.classList.remove('open'));
+    if (typeof MenuManager !== 'undefined') {
+        MenuManager.close();
+    }
+}
+
+// Close modals when backdrop clicked
+document.querySelectorAll('.ph2-modal-backdrop').forEach((bd) => {
+    bd.addEventListener('click', (e) => { if (e.target === bd) bd.classList.remove('open'); });
+});
+
+function reportBadge(status) {
+    const map = {
+        generated: ['rs-generated', '✓ Generated'],
+        edited:    ['rs-generated', '✓ Edited'],
+        final:     ['rs-generated', '✓ Final'],
+        generating:['rs-pending',   '⏳ Generating'],
+        pending:   ['rs-pending',   '⏳ Pending'],
+        error:     ['rs-error',     '✗ Error'],
+        none:      ['rs-none',      '— No Report'],
+    };
+    const [cls, label] = map[status] || map.none;
+    return `<span class="report-badge ${cls}">${label}</span>`;
+}
+
+const initials = (name) => {
+    const parts = String(name || 'NA').trim().split(/\s+/).filter(Boolean);
+    return (parts[0]?.[0] || 'N') + (parts[1]?.[0] || 'A');
+};
+
+// -- Action Menu System (Professional) ----------------------------------
+// Tracks currently open menu and handles all interactions
+
+const MenuManager = {
+    portal: null,
+    currentOpenId: null,
+    currentOpenElement: null,
+
+    init() {
+        // Create portal container if it doesn't exist
+        if (!this.portal) {
+            this.portal = document.getElementById('menu-portal');
+            if (!this.portal) {
+                this.portal = document.createElement('div');
+                this.portal.id = 'menu-portal';
+                document.body.appendChild(this.portal);
+            }
+        }
+
+        // Global click handler - close menu when clicking anywhere except the menu/trigger
+        document.addEventListener('click', (e) => {
+            if (this.currentOpenElement) {
+                // Don't close if clicking on the trigger button
+                if (e.target.closest('.actions-trigger') || e.target.closest('.actions-wrap')) {
+                    return;
+                }
+                // Don't close if clicking inside the portal menu
+                if (e.target.closest('#menu-portal .actions-menu')) {
+                    return;
+                }
+                // Close the menu
+                this.close();
+            }
+        });
+
+        // Close menu on scroll
+        document.getElementById('contentScroll')?.addEventListener('scroll', () => {
+            this.close();
+        });
+
+        // Close menu on window resize
+        window.addEventListener('resize', () => {
+            this.close();
+        });
+
+        // Close menu on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.currentOpenElement) {
+                this.close();
+            }
+        });
+    },
+
+    open(menuId, triggerEl) {
+        // Close any currently open menu
+        if (this.currentOpenId && this.currentOpenId !== menuId) {
+            this.close();
+        }
+
+        const originalMenu = document.getElementById(menuId);
+        if (!originalMenu) return;
+
+        // Build professional menu HTML with grouped actions
+        const menuHTML = this.buildMenuHTML(originalMenu);
+        
+        // Clear portal
+        this.portal.innerHTML = '';
+
+        // Create and style the new menu
+        const menu = document.createElement('div');
+        menu.className = 'actions-menu open';
+        menu.innerHTML = menuHTML;
+        menu.style.visibility = 'hidden';
+        this.portal.appendChild(menu);
+
+        // Attach click handlers to all action items
+        menu.querySelectorAll('.action-item').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                this.close();
+            });
+        });
+
+        // Calculate position
+        this.positionMenu(menu, triggerEl);
+
+        // Make visible
+        menu.style.visibility = 'visible';
+
+        // Track state
+        this.currentOpenId = menuId;
+        this.currentOpenElement = menu;
+    },
+
+    close() {
+        if (this.currentOpenElement) {
+            this.currentOpenElement.remove();
+        }
+        this.currentOpenId = null;
+        this.currentOpenElement = null;
+    },
+
+    positionMenu(menu, triggerEl) {
+        const triggerRect = triggerEl.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        const gap = 6;
+        const pad = 12;
+
+        // Calculate horizontal position (prefer right-aligned)
+        let left = triggerRect.right - menuRect.width;
+        if (left < pad) left = pad;
+        if (left + menuRect.width > window.innerWidth - pad) {
+            left = window.innerWidth - menuRect.width - pad;
+        }
+
+        // Calculate vertical position (prefer below, flip if needed)
+        let top = triggerRect.bottom + gap;
+        if (top + menuRect.height > window.innerHeight - pad) {
+            top = triggerRect.top - menuRect.height - gap;
+        }
+        if (top < pad) top = pad;
+
+        menu.style.left = `${Math.round(left)}px`;
+        menu.style.top = `${Math.round(top)}px`;
+    },
+
+    buildMenuHTML(originalMenu) {
+        // Parse menu items and separators from the original menu structure
+        // Structure: <button> <hr> <button> <hr> ... <button>
+        
+        const allChildren = Array.from(originalMenu.childNodes).filter(n => 
+            n.nodeType === Node.ELEMENT_NODE
+        );
+        
+        const groups = [];
+        let currentGroup = [];
+
+        allChildren.forEach((el) => {
+            if (el.tagName === 'HR' || el.classList?.contains('action-sep')) {
+                if (currentGroup.length > 0) {
+                    groups.push(currentGroup);
+                    currentGroup = [];
+                }
+            } else if (el.classList?.contains('action-item')) {
+                currentGroup.push(el);
+            }
+        });
+        if (currentGroup.length > 0) {
+            groups.push(currentGroup);
+        }
+
+        // Rebuild menu HTML with proper grouping
+        let html = '';
+        groups.forEach((group) => {
+            html += '<div class="action-group">';
+            group.forEach((btn) => {
+                const classList = btn.className.replace('action-item', '').trim();
+                const onclick = btn.getAttribute('onclick');
+                
+                // Extract icon and text separately
+                const icon = btn.querySelector('.ai')?.textContent || '';
+                const text = Array.from(btn.childNodes)
+                    .filter(n => n.nodeType === Node.TEXT_NODE || (n.nodeType === Node.ELEMENT_NODE && n.className !== 'ai'))
+                    .map(n => n.textContent?.trim())
+                    .filter(Boolean)
+                    .join(' ')
+                    .trim();
+                
+                html += `<button class="action-item ${classList}" onclick="${onclick}">
+                    ${icon ? `<span class="icon">${icon}</span>` : ''}
+                    ${text}
+                </button>`;
+            });
+            html += '</div>';
+        });
+
+        return html;
+    }
+};
+
+// Initialize menu manager when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => MenuManager.init());
+} else {
+    MenuManager.init();
+}
+
+// Open menu handler
+function toggleMenu(id, triggerEl) {
+    if (MenuManager.currentOpenId === id) {
+        MenuManager.close();
+    } else {
+        MenuManager.open(id, triggerEl);
+    }
+}
+
+// -- Load & render ---------------------------------------------------------
+
+async function loadUsers() {
+    document.getElementById('usersBody').innerHTML =
+        '<tr><td colspan="8" style="text-align:center;color:#94a3b8;">Loading students...</td></tr>';
+
+    const q = document.getElementById('userSearch').value.trim();
+    const university = document.getElementById('filterUniversity').value;
+    const degree = document.getElementById('filterDegree').value;
+    const report_status = document.getElementById('filterReportStatus').value;
+
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (university) params.set('university', university);
+    if (degree) params.set('degree', degree);
+    if (report_status) params.set('report_status', report_status);
+
+    try {
+        const users = await window.AdminUI.adminApiGet(`/api/admin/users?${params}`) || [];
+        allUsers = users;
+
+        // Update stats
+        document.getElementById('statTotal').textContent = users.length;
+        document.getElementById('statActive').textContent = users.filter((u) => u.isActive).length;
+        document.getElementById('statInactive').textContent = users.filter((u) => !u.isActive).length;
+        document.getElementById('statGenerated').textContent = users.filter((u) => ['generated', 'edited', 'final'].includes(u.lastReportStatus)).length;
+        document.getElementById('statPending').textContent = users.filter((u) => ['pending', 'generating'].includes(u.lastReportStatus)).length;
+
+        renderUsers(users);
+    } catch (err) {
+        console.error(err);
+        document.getElementById('usersBody').innerHTML =
+            '<tr><td colspan="8" style="text-align:center;color:#ef4444;">Failed to load. Please refresh.</td></tr>';
+    }
+}
+
+function renderUsers(rows) {
+    if (!rows.length) {
+        document.getElementById('usersBody').innerHTML =
+            '<tr><td colspan="8" style="text-align:center;color:#94a3b8;">No students found.</td></tr>';
+        document.getElementById('usersFoot').textContent = 'Showing 0 students';
+        clearSelection();
+        return;
+    }
+
+    document.getElementById('usersBody').innerHTML = rows.map((u) => `
+        <tr>
+            <td><input type="checkbox" class="row-checkbox" data-id="${u._id}" style="width:16px;height:16px;cursor:pointer;"></td>
+            <td>
+                <div class="name-cell">
+                    <span class="mini-avatar" style="${!u.isActive ? 'opacity:0.5;' : ''}">${initials(u.name)}</span>
+                    <div class="name-meta">
+                        <strong>${u.name || '-'}</strong>
+                        <small style="color:#94a3b8;">${u.email || '-'}</small>
+                    </div>
+                </div>
+            </td>
+            <td style="font-size:12px;color:#64748b;">${u.rollNumber || '—'}</td>
+            <td style="font-size:13px;">
+                ${u.degree?.name || '—'}
+                ${u.major?.name ? `<br><small style="color:#94a3b8;">${u.major.name}</small>` : ''}
+            </td>
+            <td style="font-size:13px;">${u.college?.name || '—'}</td>
+            <td>
+                ${reportBadge(u.lastReportStatus)}
+                ${u.lastReportId ? `<br><small><a href="/admin/report/${u.lastReportId}" style="color:#3b82f6;font-size:11px;">View report</a></small>` : ''}
+            </td>
+            <td style="font-size:12px;color:#64748b;">
+                ${u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : '—'}
+            </td>
+            <td style="text-align:right;">
+                <div class="actions-wrap">
+                    <button class="btn-ghost actions-trigger" type="button"
+                        onclick="toggleMenu('menu-${u._id}', this)">
+                        ⋮ Actions
+                    </button>
+                    <div class="actions-menu" id="menu-${u._id}">
+                        <button class="action-item" onclick="viewProfile('${u._id}')">
+                            <span class="ai">👤</span> View Profile
+                        </button>
+                        <button class="action-item" onclick="impersonateStudent('${u._id}')">
+                            <span class="ai">🔑</span> Login as Student
+                        </button>
+                        <hr class="action-sep">
+                        <button class="action-item" onclick="openGenerateModal('${u._id}', '${(u.name || '').replace(/'/g, "\\'")}')">
+                            <span class="ai">📄</span> Generate Report
+                        </button>
+                        ${u.lastReportId ? `
+                        <button class="action-item" onclick="emailReport('${u.lastReportId}', '${(u.name || '').replace(/'/g, "\\'")}')">
+                            <span class="ai">📧</span> Email Report
+                        </button>
+                        <button class="action-item" onclick="downloadReport('${u.lastReportId}')">
+                            <span class="ai">⬇️</span> Download Report
+                        </button>
+                        <button class="action-item" onclick="whatsappReport('${u.phone || ''}', '${u.lastReportId}', '${(u.name || '').replace(/'/g, "\\'")}')">
+                            <span class="ai">💬</span> WhatsApp Report
+                        </button>
+                        ` : ''}
+                        <hr class="action-sep">
+                        <button class="action-item" onclick="openResetModal('${u._id}', '${(u.name || '').replace(/'/g, "\\'")}')">
+                            <span class="ai">🔒</span> Reset Password
+                        </button>
+                        <button class="action-item" onclick="openEmailUpdateModal('${u._id}', '${(u.email || '').replace(/'/g, "\\'")}')">
+                            <span class="ai">✉️</span> Update Email
+                        </button>
+                        <hr class="action-sep">
+                        <button class="action-item danger" onclick="openDeleteModal('${u._id}', '${(u.name || '').replace(/'/g, "\\'")}')">
+                            <span class="ai">🗑</span> Delete Student
+                        </button>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    document.getElementById('usersFoot').textContent = `Showing ${rows.length} student${rows.length !== 1 ? 's' : ''}`;
+    window.AdminUI?.staggerRows?.();
+    clearSelection();
+}
+
+// -- Populate filter dropdowns ---------------------------------------------
+
+async function loadFilterOptions() {
+    try {
+        const [unis, degrees] = await Promise.all([
+            window.AdminUI.adminApiGet('/api/admin/universities'),
+            window.AdminUI.adminApiGet('/api/admin/degrees'),
+        ]);
+        allDegrees = degrees || [];
+
+        const uniSel = document.getElementById('filterUniversity');
+        (unis || []).forEach((u) => {
+            const opt = document.createElement('option');
+            opt.value = u._id;
+            opt.textContent = u.name;
+            uniSel.appendChild(opt);
+        });
+
+        const degSel = document.getElementById('filterDegree');
+        allDegrees.forEach((d) => {
+            const opt = document.createElement('option');
+            opt.value = d._id;
+            opt.textContent = d.name;
+            degSel.appendChild(opt);
+        });
+    } catch (e) {
+        console.warn('Could not load filter options', e);
+    }
+}
+
+async function loadMajorsForGenerate() {
+    try {
+        allMajors = await window.AdminUI.adminApiGet('/api/admin/majors') || [];
+        const sel = document.getElementById('genMajor');
+        sel.innerHTML = '<option value="">Select a major...</option>' +
+            allMajors.map((m) => `<option value="${m._id}">${m.name}${m.degree?.name ? ` (${m.degree.name})` : ''}</option>`).join('');
+    } catch (e) {
+        console.warn('Could not load majors', e);
+    }
+}
+
+// -- View Profile -----------------------------------------------------------
+
+async function viewProfile(userId) {
+    toggleMenu('menu-' + userId); // close menu
+    try {
+        const u = await window.AdminUI.adminApiGet(`/api/admin/users/${userId}`);
+        if (!u) return;
+        document.getElementById('profileModalTitle').textContent = u.name || 'Student';
+        document.getElementById('profileModalSub').textContent = u.email || '';
+
+        const rows = [
+            ['Email', u.email || '—'],
+            ['Phone', u.phone || '—'],
+            ['WhatsApp', u.whatsapp || '—'],
+            ['University', u.university?.name || '—'],
+            ['College', u.college?.name || '—'],
+            ['Degree', u.degree?.name || '—'],
+            ['Major', u.major?.name || '—'],
+            ['Roll No', u.rollNumber || '—'],
+            ['Enrollment No', u.enrollmentNumber || '—'],
+            ['Semester', u.semester || '—'],
+            ['Department', u.department || '—'],
+            ['Gender', u.gender || '—'],
+            ['Industry', u.industry?.name || '—'],
+            ['Supervisor', u.supervisorName || '—'],
+            ['Supervisor Contact', u.supervisorContact || '—'],
+            ['State', `${u.villageCityName || ''} ${u.district || ''} ${u.state || ''}`.trim() || '—'],
+            ['Profile Complete', u.profileCompleted ? '✓ Yes' : '✗ No'],
+            ['Account Status', u.isActive ? '✓ Active' : '✗ Disabled'],
+            ['Registered', u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : '—'],
+        ];
+
+        document.getElementById('profileModalBody').innerHTML = rows.map(([k, v]) =>
+            `<strong style="color:#475569;">${k}</strong><span>${v}</span>`
+        ).join('');
+
+        openModal('profileModal');
+    } catch (e) {
+        showToast('Could not load profile', 'error');
+    }
+}
+
+// -- Impersonation ----------------------------------------------------------
+
+async function impersonateStudent(userId) {
+    toggleMenu('menu-' + userId);
+    if (!confirm('Open a new tab logged in as this student? Changes will affect their real account.')) return;
+
+    try {
+        const res = await fetch(`/api/admin/users/${userId}/impersonate`, {
+            method: 'POST',
+            headers: authH,
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            showToast(data.message || 'Impersonation failed', 'error');
+            return;
+        }
+
+        const url = `/student/dashboard?impersonate=1&token=${encodeURIComponent(data.token)}`;
+        window.open(url, '_blank');
+        showToast(`Opened session as ${data.studentName} (15 min)`, 'info');
+    } catch (e) {
+        showToast('Network error during impersonation', 'error');
+    }
+}
+
+// -- Generate Report --------------------------------------------------------
+
+function openGenerateModal(userId, studentName) {
+    toggleMenu('menu-' + userId);
+    document.getElementById('genUserId').value = userId;
+    document.getElementById('generateModalSub').textContent = `Generating report for: ${studentName}`;
+    document.getElementById('genProjectTitle').value = '';
+    document.getElementById('genBriefDescription').value = '';
+    document.getElementById('genAcademicYear').value = '';
+    document.getElementById('genDuration').value = '';
+    setGenerateSubmitting(false);
+    openModal('generateModal');
+}
+
+function setGenerateSubmitting(isSubmitting, progressText = 'Submitting request...') {
+    const modal = document.getElementById('generateModal');
+    const submitBtn = document.getElementById('genSubmitBtn');
+    const cancelBtn = document.getElementById('genCancelBtn');
+    const progress = document.getElementById('genProgress');
+    const progressTextEl = document.getElementById('genProgressText');
+    if (!modal || !submitBtn || !cancelBtn || !progress || !progressTextEl) return;
+
+    modal.querySelectorAll('input, textarea, select').forEach((el) => {
+        if (el.id !== 'genUserId') el.disabled = isSubmitting;
+    });
+
+    submitBtn.disabled = isSubmitting;
+    submitBtn.textContent = isSubmitting ? 'Generating...' : 'Generate Report';
+    cancelBtn.disabled = isSubmitting;
+    progressTextEl.textContent = progressText;
+    progress.classList.toggle('show', isSubmitting);
+}
+
+async function submitGenerate() {
+    const userId = document.getElementById('genUserId').value;
+    const payload = {
+        major: document.getElementById('genMajor').value,
+        projectTitle: document.getElementById('genProjectTitle').value.trim(),
+        briefDescription: document.getElementById('genBriefDescription').value.trim(),
+        academicYear: document.getElementById('genAcademicYear').value.trim(),
+        duration: document.getElementById('genDuration').value.trim(),
+    };
+    if (!payload.major || !payload.projectTitle || !payload.briefDescription) {
+        showToast('Major, Project Title and Description are required', 'warning');
+        return;
+    }
+
+    setGenerateSubmitting(true, 'Sending generation request to server...');
+
+    try {
+        const res = await fetch(`/api/admin/users/${userId}/generate-report`, {
+            method: 'POST', headers: authH, body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            setGenerateSubmitting(true, 'Request accepted. Report is now generating in background...');
+            showToast('Report generation started. Status will update shortly.', 'success', 4500);
+            setTimeout(() => {
+                closeModal('generateModal');
+                setGenerateSubmitting(false);
+            }, 650);
+            loadUsers();
+            setTimeout(() => loadUsers(), 1800);
+        } else {
+            setGenerateSubmitting(false);
+            showToast(data.message || 'Failed to start generation', 'error');
+        }
+    } catch (e) {
+        setGenerateSubmitting(false);
+        showToast('Network error', 'error');
+    }
+}
+
+// -- Email Report -----------------------------------------------------------
+
+async function emailReport(reportId, studentName) {
+    if (!confirm(`Send the PDF report to ${studentName} by email?`)) return;
+
+    showToast('Generating and sending PDF...', 'info', 5000);
+    try {
+        const res = await fetch(`/api/admin/reports/${reportId}/email`, {
+            method: 'POST', headers: authH,
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(data.message || 'Report sent!', 'success');
+        } else if (res.status === 503) {
+            showToast('SMTP not configured. Check .env settings.', 'warning');
+        } else {
+            showToast(data.message || 'Failed to send', 'error');
+        }
+    } catch (e) {
+        showToast('Network error', 'error');
+    }
+}
+
+// -- Download Report --------------------------------------------------------
+
+function downloadReport(reportId) {
+    const url = `/api/reports/${reportId}/pdf?token=${encodeURIComponent(token)}`;
+    window.open(url, '_blank');
+}
+
+// -- WhatsApp Report --------------------------------------------------------
+
+function whatsappReport(phone, reportId, studentName) {
+    if (!phone) {
+        showToast('Student has no phone number saved', 'warning');
+        return;
+    }
+    const cleanPhone = phone.replace(/\D/g, '');
+    // Build a public-accessible download link using the token
+    const downloadUrl = `${window.location.origin}/api/reports/${reportId}/pdf?token=${encodeURIComponent(token)}`;
+    const message = encodeURIComponent(
+        `Hi ${studentName}, your internship report is ready.\nDownload here: ${downloadUrl}`
+    );
+    window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
+}
+
+// -- Reset Password ---------------------------------------------------------
+
+function openResetModal(userId, studentName) {
+    toggleMenu('menu-' + userId);
+    document.getElementById('resetUserId').value = userId;
+    document.getElementById('resetModalSub').textContent =
+        `Reset password for ${studentName}. A new password will be emailed if SMTP is configured.`;
+    document.getElementById('newPasswordBox').style.display = 'none';
+    document.getElementById('newPasswordBox').textContent = '';
+    document.getElementById('resetConfirmBtn').style.display = '';
+    document.getElementById('resetCancelBtn').textContent = 'Cancel';
+    openModal('resetModal');
+}
+
+async function submitResetPassword() {
+    const userId = document.getElementById('resetUserId').value;
+    try {
+        const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
+            method: 'POST', headers: authH,
+        });
+        const data = await res.json();
+        if (res.ok) {
+            // Show the new password in the modal for admin to copy if needed
+            const box = document.getElementById('newPasswordBox');
+            box.textContent = `New Password: ${data.newPassword}`;
+            box.style.display = 'block';
+            document.getElementById('resetConfirmBtn').style.display = 'none';
+            document.getElementById('resetCancelBtn').textContent = 'Close';
+            showToast(data.emailSent ? 'Password reset and emailed' : 'Password reset (email not sent)', data.emailSent ? 'success' : 'warning');
+        } else {
+            showToast(data.message || 'Reset failed', 'error');
+        }
+    } catch (e) {
+        showToast('Network error', 'error');
+    }
+}
+
+// -- Update Email -----------------------------------------------------------
+
+function openEmailUpdateModal(userId, currentEmail) {
+    toggleMenu('menu-' + userId);
+    document.getElementById('emailUpdateUserId').value = userId;
+    document.getElementById('emailUpdateSub').textContent = `Current email: ${currentEmail}`;
+    document.getElementById('newEmailInput').value = '';
+    openModal('emailUpdateModal');
+}
+
+async function submitUpdateEmail() {
+    const userId = document.getElementById('emailUpdateUserId').value;
+    const newEmail = document.getElementById('newEmailInput').value.trim();
+    if (!newEmail) {
+        showToast('Enter a new email', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/admin/users/${userId}/email`, {
+            method: 'PUT', headers: authH, body: JSON.stringify({ email: newEmail }),
+        });
+        const data = await res.json();
+        closeModal('emailUpdateModal');
+        if (res.ok) {
+            showToast(`Email updated to ${newEmail}`, 'success');
+            loadUsers();
+        } else {
+            showToast(data.message || 'Update failed', 'error');
+        }
+    } catch (e) {
+        showToast('Network error', 'error');
+    }
+}
+
+// -- Delete -----------------------------------------------------------------
+
+function openDeleteModal(userId, studentName) {
+    toggleMenu('menu-' + userId);
+    document.getElementById('deleteUserId').value = userId;
+    document.getElementById('deleteModalText').textContent =
+        `Delete "${studentName}"? This will also delete all their reports and payments. Cannot be undone.`;
+    openModal('deleteModal');
+}
+
+async function submitDelete() {
+    const userId = document.getElementById('deleteUserId').value;
+    try {
+        const res = await fetch(`/api/admin/users/${userId}`, {
+            method: 'DELETE',
+            headers: authH,
+        });
+        if (!res.ok) {
+            let msg = 'Delete failed';
+            try {
+                const data = await res.json();
+                msg = data.message || msg;
+            } catch (_) {}
+            showToast(`${msg} (${res.status})`, 'error');
+            return;
+        }
+        closeModal('deleteModal');
+        showToast('Student deleted', 'success');
+        loadUsers();
+    } catch (e) {
+        showToast('Network error — delete may have failed', 'error');
+    }
+}
+
+// -- Wire up search & filters -----------------------------------------------
+
+['userSearch', 'filterUniversity', 'filterDegree', 'filterReportStatus'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', loadUsers);
+});
+document.getElementById('userSearch')?.addEventListener('input', loadUsers);
+
+// -- Bootstrap ---------------------------------------------------------------
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await Promise.all([loadFilterOptions(), loadMajorsForGenerate()]);
+    
+    document.getElementById('selectAll').addEventListener('change', (e) => {
+        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
+        updateBulkToolbar();
+    });
+    
+    document.getElementById('usersBody').addEventListener('change', (e) => {
+        if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
+    });
+    
+    await loadUsers();
+});
+</script>
+{% endblock %}

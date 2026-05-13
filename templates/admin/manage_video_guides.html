@@ -1,0 +1,422 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'video_guides' %}
+
+{% block title %}How-To Video Guides - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+  <div>
+    <h3 class="mb-1">How-To Video Guides</h3>
+    <p class="text-muted mb-0">Add YouTube links or upload playable video files for students.</p>
+  </div>
+  <button class="btn btn-primary" type="button" onclick="openAddModal()">Add Video Guide</button>
+</div>
+
+<div class="alert alert-info mb-3">
+  Uploaded guides are stored as browser-playable files and will appear on the student dashboard.
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body table-responsive">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Title</th>
+          <th>Video Type</th>
+          <th>Active</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="5" class="text-center">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="guideModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitle">Add Video Guide</h5>
+        <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="guideId">
+        <input type="hidden" id="videoUrl">
+
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Title *</label>
+            <input id="title" class="form-control" type="text" required>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Description</label>
+            <textarea id="description" class="form-control" rows="3"></textarea>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Video Type</label>
+            <select id="videoType" class="form-select">
+              <option value="youtube">YouTube</option>
+              <option value="upload">Uploaded file</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Sort Order</label>
+            <input id="sortOrder" class="form-control" type="number" value="0">
+          </div>
+
+          <div class="col-12" id="youtubeGroup">
+            <label class="form-label">YouTube URL *</label>
+            <input id="youtubeUrlInput" class="form-control" type="text" placeholder="https://www.youtube.com/watch?v=...">
+            <div class="form-text">Paste a YouTube link to show a thumbnail preview.</div>
+          </div>
+
+          <div class="col-12" id="uploadGroup" style="display:none;">
+            <label class="form-label">Video File *</label>
+            <input id="videoFileInput" class="form-control" type="file" accept="video/mp4,video/webm,video/ogg">
+            <div class="form-text">Upload an mp4, webm, or ogg file. It will be playable on the student dashboard.</div>
+            <div id="uploadPathInfo" class="small text-muted mt-2"></div>
+          </div>
+
+          <div class="col-12">
+            <div class="form-check">
+              <input id="isActive" class="form-check-input" type="checkbox" checked>
+              <label class="form-check-label" for="isActive">Active</label>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Preview</label>
+            <div id="mediaPreview"
+                 class="border rounded p-2"
+                 style="min-height:140px;display:flex;align-items:center;justify-content:center;background:rgba(148,163,184,0.08);">
+              <span id="mediaHint" class="text-muted">Select a video type to preview it here</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveGuide()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+
+const jsonHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+let modal;
+let previewObjectUrl = '';
+let previewObjectFile = null;
+
+function esc(value) {
+  return String(value == null ? '' : value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function extractYouTubeId(url) {
+  const value = String(url || '').trim();
+  if (!value) return '';
+  const m = value.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : '';
+}
+
+function clearObjectPreview() {
+  if (previewObjectUrl) {
+    URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = '';
+    previewObjectFile = null;
+  }
+}
+
+function setModeVisibility() {
+  const videoType = document.getElementById('videoType').value;
+  document.getElementById('youtubeGroup').style.display = videoType === 'youtube' ? 'block' : 'none';
+  document.getElementById('uploadGroup').style.display = videoType === 'upload' ? 'block' : 'none';
+}
+
+function renderPreview() {
+  const videoType = document.getElementById('videoType').value;
+  const preview = document.getElementById('mediaPreview');
+  const hint = document.getElementById('mediaHint');
+  const uploadPathInfo = document.getElementById('uploadPathInfo');
+  const youtubeUrl = document.getElementById('youtubeUrlInput').value.trim();
+  const storedUrl = document.getElementById('videoUrl').value.trim();
+  const storedUploadUrl = storedUrl.startsWith('/uploads/') ? storedUrl : '';
+  const selectedFile = document.getElementById('videoFileInput').files[0];
+
+  if (videoType === 'youtube') {
+    uploadPathInfo.textContent = '';
+    clearObjectPreview();
+
+    const id = extractYouTubeId(youtubeUrl);
+    if (!id) {
+      preview.innerHTML = '<span class="text-muted">Paste a YouTube URL to preview the thumbnail</span>';
+      return;
+    }
+
+    preview.innerHTML = `
+      <img
+        src="https://img.youtube.com/vi/${id}/hqdefault.jpg"
+        alt="YouTube thumbnail"
+        style="display:block;max-width:100%;max-height:240px;border-radius:8px;">
+    `;
+    return;
+  }
+
+  let src = storedUploadUrl;
+  let label = storedUploadUrl ? `Current file: ${storedUploadUrl}` : 'No file selected yet.';
+
+  if (selectedFile) {
+    if (!previewObjectUrl || previewObjectFile !== selectedFile) {
+      clearObjectPreview();
+      previewObjectFile = selectedFile;
+      previewObjectUrl = URL.createObjectURL(selectedFile);
+    }
+    src = previewObjectUrl;
+    label = `Selected file: ${selectedFile.name} (will upload when you save)`;
+  } else {
+    clearObjectPreview();
+  }
+
+  uploadPathInfo.textContent = label;
+
+  if (!src) {
+    preview.innerHTML = '<span class="text-muted">Upload a playable video file to preview it here</span>';
+    return;
+  }
+
+  preview.innerHTML = `
+    <video
+      controls
+      playsinline
+      preload="metadata"
+      src="${esc(src)}"
+      style="width:100%;max-height:260px;border-radius:8px;background:#000;display:block;"></video>
+  `;
+}
+
+function syncYoutubeValue() {
+  renderPreview();
+}
+
+function resetForm() {
+  clearObjectPreview();
+  document.getElementById('guideId').value = '';
+  document.getElementById('title').value = '';
+  document.getElementById('description').value = '';
+  document.getElementById('videoUrl').value = '';
+  document.getElementById('youtubeUrlInput').value = '';
+  document.getElementById('videoFileInput').value = '';
+  document.getElementById('videoType').value = 'youtube';
+  document.getElementById('sortOrder').value = 0;
+  document.getElementById('isActive').checked = true;
+  setModeVisibility();
+  renderPreview();
+}
+
+async function loadGuides() {
+  const tbody = document.getElementById('rows');
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center">Loading...</td></tr>';
+
+  try {
+    const res = await fetch('/api/admin/video-guides', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load</td></tr>';
+      return;
+    }
+
+    const list = Array.isArray(data) ? data : [];
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center">No records found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    for (const g of list) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${Number(g.sortOrder || 0)}</td>
+        <td>${esc(g.title || '-')}</td>
+        <td>${g.videoType === 'upload' ? 'Uploaded file' : 'YouTube'}</td>
+        <td>${g.isActive ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-secondary">No</span>'}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-warning me-1" type="button" data-action="edit">
+            <i data-lucide="pencil" style="width:14px;height:14px;"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" type="button" data-action="delete">
+            <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+          </button>
+        </td>
+      `;
+
+      tr.querySelector('[data-action="edit"]').addEventListener('click', () => openEditModal(g._id, g));
+      tr.querySelector('[data-action="delete"]').addEventListener('click', () => deleteGuide(g._id));
+      tbody.appendChild(tr);
+    }
+
+    if (window.lucide) lucide.createIcons();
+  } catch (_) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load</td></tr>';
+  }
+}
+
+function openAddModal() {
+  document.getElementById('modalTitle').textContent = 'Add Video Guide';
+  resetForm();
+  modal.show();
+}
+
+function openEditModal(id, data) {
+  document.getElementById('modalTitle').textContent = 'Edit Video Guide';
+  document.getElementById('guideId').value = id || '';
+  document.getElementById('title').value = data.title || '';
+  document.getElementById('description').value = data.description || '';
+  document.getElementById('videoUrl').value = data.videoUrl || '';
+  document.getElementById('youtubeUrlInput').value = data.videoType === 'youtube' ? (data.videoUrl || '') : '';
+  document.getElementById('videoFileInput').value = '';
+  document.getElementById('videoType').value = data.videoType || 'youtube';
+  document.getElementById('sortOrder').value = Number(data.sortOrder || 0);
+  document.getElementById('isActive').checked = data.isActive !== false;
+  setModeVisibility();
+  renderPreview();
+  modal.show();
+}
+
+async function uploadVideoFile(file) {
+  const formData = new FormData();
+  formData.append('video', file);
+
+  const res = await fetch('/api/upload/video-guide', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: formData,
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || 'Video upload failed');
+  }
+  return data.path;
+}
+
+async function saveGuide() {
+  const id = document.getElementById('guideId').value;
+  const title = document.getElementById('title').value.trim();
+  const description = document.getElementById('description').value.trim();
+  const videoType = document.getElementById('videoType').value;
+  const sortOrder = Number(document.getElementById('sortOrder').value || 0);
+  const isActive = document.getElementById('isActive').checked;
+  let videoUrl = document.getElementById('videoUrl').value.trim();
+
+  if (!title) {
+    alert('Title is required');
+    return;
+  }
+
+  if (videoType === 'youtube') {
+    videoUrl = document.getElementById('youtubeUrlInput').value.trim();
+    if (!extractYouTubeId(videoUrl)) {
+      alert('Please enter a valid YouTube URL');
+      return;
+    }
+  } else {
+    const fileInput = document.getElementById('videoFileInput');
+    const file = fileInput.files[0];
+    if (file) {
+      try {
+        videoUrl = await uploadVideoFile(file);
+        document.getElementById('videoUrl').value = videoUrl;
+      } catch (err) {
+        alert(err.message || 'Video upload failed');
+        return;
+      }
+    } else {
+      videoUrl = document.getElementById('videoUrl').value.trim();
+    }
+
+    if (!videoUrl || !videoUrl.startsWith('/uploads/')) {
+      alert('Please upload a video file');
+      return;
+    }
+  }
+
+  const payload = {
+    title,
+    description,
+    videoUrl,
+    videoType,
+    sortOrder,
+    isActive,
+  };
+
+  const url = id ? `/api/admin/video-guides/${id}` : '/api/admin/video-guides';
+  const method = id ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method,
+    headers: jsonHeaders,
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    alert(data.message || 'Save failed');
+    return;
+  }
+
+  modal.hide();
+  resetForm();
+  loadGuides();
+}
+
+async function deleteGuide(id) {
+  if (!confirm('Delete this video guide?')) return;
+  const res = await fetch(`/api/admin/video-guides/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    alert(data.message || 'Delete failed');
+    return;
+  }
+  loadGuides();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  modal = new bootstrap.Modal(document.getElementById('guideModal'));
+  document.getElementById('youtubeUrlInput').addEventListener('input', syncYoutubeValue);
+  document.getElementById('videoFileInput').addEventListener('change', renderPreview);
+  document.getElementById('videoType').addEventListener('change', () => {
+    setModeVisibility();
+    renderPreview();
+  });
+
+  const modalEl = document.getElementById('guideModal');
+  modalEl.addEventListener('hidden.bs.modal', () => {
+    clearObjectPreview();
+  });
+
+  loadGuides();
+});
+</script>
+{% endblock %}

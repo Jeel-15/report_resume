@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Calibri', Arial, sans-serif;
+      color: #0f172a;
+      font-size: 10px;
+      line-height: 1.4;
+      -webkit-print-color-adjust: exact;
+      background: #fff;
+    }
+
+    .page {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 12px;
+    }
+
+    .resume-header {
+      text-align: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2563eb;
+      margin-bottom: 10px;
+      page-break-inside: avoid;
+    }
+
+    .resume-header.has-photo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-align: left;
+      min-height: 92px;
+    }
+
+    .resume-header-content {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .resume-photo {
+      flex: 0 0 auto;
+      width: 72px;
+      height: 92px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+    }
+
+    .candidate-name {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1.6px;
+      font-family: 'Times New Roman', 'Georgia', serif;
+      color: #0f172a;
+      line-height: 1.1;
+    }
+
+    .contact-line {
+      margin-top: 4px;
+      font-size: 10px;
+      color: #475569;
+    }
+
+    .contact-line a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+
+    .resume-body {
+      display: block;
+    }
+
+    .resume-body::after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+
+    .col-right {
+      float: right;
+      width: 36%;
+      max-width: 36%;
+      padding-left: 24px;
+      padding-bottom: 24px;
+      background-color: #fff;
+      position: relative;
+      z-index: 10;
+      box-sizing: border-box;
+    }
+
+    .col-left {
+      display: block;
+    }
+
+    .section-heading {
+      text-transform: uppercase;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 1.3px;
+      color: #0f172a;
+      padding-bottom: 4px;
+      border-bottom: 2px solid #2563eb;
+      margin-top: 10px;
+      margin-bottom: 8px;
+    }
+
+    .col-left .section-heading:first-child,
+    .col-right .section-heading:first-child {
+      margin-top: 0;
+    }
+
+    .entry { margin-bottom: 10px; page-break-inside: avoid; }
+
+    .entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .entry-title { font-weight: 700; font-size: 11px; color: #0f172a; }
+
+    .entry-role {
+      font-size: 10px;
+      font-weight: 500;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .skill-subheading {
+      font-size: 10px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .entry-meta {
+      font-size: 9.5px;
+      color: #6b7280;
+      margin-top: 1px;
+    }
+
+    .entry-links {
+      font-size: 9.5px;
+      color: #2563eb;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .entry-links a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+
+    .entry-bullets {
+      margin: 4px 0 0 14px;
+      padding: 0;
+    }
+
+    .entry-bullets li {
+      margin: 2px 0;
+      line-height: 1.45;
+      font-size: 10px;
+    }
+
+    .skills-text {
+      font-size: 10px;
+      line-height: 1.6;
+      color: #0f172a;
+    }
+
+    .links-list {
+      font-size: 10px;
+      line-height: 1.8;
+    }
+
+    .links-list a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+
+    @media print {
+      .page { padding: 4px 8px; }
+      .resume-header.has-photo {
+        min-height: 88px;
+      }
+
+      .resume-photo {
+        width: 68px;
+        height: 88px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    {% if user is defined %}
+      {% set person = user %}
+    {% elif profile is defined %}
+      {% set person = profile %}
+    {% else %}
+      {% set person = none %}
+    {% endif %}
+
+    {% set full_name = resume.fullName if resume.fullName is defined else (resume.get('fullName', '') if resume.get is defined else '') %}
+    {% set address = resume.address if resume.address is defined else (resume.get('address', '') if resume.get is defined else '') %}
+    {% set phone = resume.phone if resume.phone is defined else (resume.get('phone', '') if resume.get is defined else '') %}
+    {% set email = resume.email if resume.email is defined else (resume.get('email', '') if resume.get is defined else '') %}
+    {% set linkedin = resume.linkedinUrl if resume.linkedinUrl is defined else (resume.get('linkedinUrl', '') if resume.get is defined else '') %}
+    {% set github = resume.githubUrl if resume.githubUrl is defined else (resume.get('githubUrl', '') if resume.get is defined else '') %}
+    {% set photo = resume.photoUrl if resume.photoUrl is defined else (resume.get('photoUrl', '') if resume.get is defined else '') %}
+
+    <div class="resume-header{% if photo %} has-photo{% endif %}">
+      {% if photo %}
+      <img class="resume-photo" src="{{ photo | e }}" alt="Profile photo">
+      {% endif %}
+      <div class="resume-header-content">
+        <h1 class="candidate-name">{{ full_name or (person.name if person else '') }}</h1>
+        <div class="contact-line">
+          {% set contact_parts = [] %}
+          {% if email %}{% set _ = contact_parts.append(email) %}{% endif %}
+          {% if phone %}{% set _ = contact_parts.append(phone) %}{% endif %}
+          {% if address %}{% set _ = contact_parts.append(address) %}{% endif %}
+          {{ contact_parts | join(' | ') }}
+        </div>
+      </div>
+    </div>
+
+    {% set objective = (resume.careerObjectiveEnhanced if resume.careerObjectiveEnhanced else (resume.careerObjectiveRaw if resume.careerObjectiveRaw else (resume.get('careerObjectiveRaw', '') if resume.get is defined else ''))) %}
+    {% set objective_html = resume.careerObjectiveHtml if resume.careerObjectiveHtml is defined else '' %}
+
+    {% if objective or objective_html %}
+    <div class="section-heading">Career Objective</div>
+    <div class="entry" style="margin-bottom: 14px;">
+      {% if objective_html %}
+        {{ objective_html | safe }}
+      {% else %}
+        {{ objective }}
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="resume-body">
+      <div class="col-right">
+        {% if resume.education %}
+        <div class="section-heading">Education</div>
+        {% for edu in resume.education %}
+        {% set edu_school = edu.collegeUniversityName or '' %}
+        {% set edu_degree = edu.degreeName or '' %}
+        <div class="entry">
+          <div class="entry-title">{{ edu_school or edu_degree }}</div>
+          {% if edu_degree and edu_school %}<div class="entry-role">{{ edu_degree }}</div>{% endif %}
+          <div class="entry-meta">{{ edu.passingYear }}{% if edu.location %} | {{ edu.location }}{% endif %}</div>
+          {% if edu.percentageCgpa %}<div class="entry-meta">CGPA: {{ edu.percentageCgpa }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if resume.technicalSkills or resume.skills %}
+        <div class="section-heading">Skills</div>
+        {% if resume.technicalSkills %}
+        <div class="skill-subheading">Programming</div>
+        <div class="skills-text">{{ resume.technicalSkills | join(' • ') }}</div>
+        {% endif %}
+        {% if resume.skills %}
+        <div class="skill-subheading">Technology</div>
+        <div class="skills-text">{{ resume.skills | join(' • ') }}</div>
+        {% endif %}
+        {% endif %}
+
+        {% if resume.coursework %}
+        <div class="section-heading">Coursework</div>
+        <div class="skills-text">{{ resume.coursework | join(' • ') }}</div>
+        {% endif %}
+
+        {% if github or linkedin %}
+        <div class="section-heading">Links</div>
+        <div class="links-list">
+          {% if github %}
+          {% set gh_label = github | replace('https://github.com/', '') | replace('http://github.com/', '') | replace('https://www.github.com/', '') | replace('http://www.github.com/', '') | replace('/', '') %}
+          <div><a href="{{ github }}">GitHub:// {{ gh_label }}</a></div>
+          {% endif %}
+          {% if linkedin %}
+          {% set li_label = linkedin | replace('https://www.linkedin.com/in/', '') | replace('https://linkedin.com/in/', '') | replace('http://www.linkedin.com/in/', '') | replace('http://linkedin.com/in/', '') | replace('/', '') %}
+          <div><a href="{{ linkedin }}">LinkedIn:// {{ li_label }}</a></div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if resume.languages %}
+        <div class="section-heading">Languages</div>
+        <div class="skills-text">
+          {% set names = [] %}
+          {% for lang in resume.languages %}
+            {% if lang.languageName %}{% set _ = names.append(lang.languageName) %}{% endif %}
+          {% endfor %}
+          {{ names | join(' • ') }}
+        </div>
+        {% endif %}
+
+        {% if resume.personalSkills %}
+        <div class="section-heading">Personal Skills</div>
+        <div class="skills-text">{{ resume.personalSkills | join(' • ') }}</div>
+        {% endif %}
+      </div>
+
+        {% if resume.experience %}
+        <div class="section-heading">Experience</div>
+        {% for exp in resume.experience %}
+        {% set exp_company = exp.companyName or '' %}
+        {% set exp_position = exp.position or '' %}
+        <div class="entry">
+          <div class="entry-header">
+            <div>
+              <span class="entry-title">{{ exp_company or exp_position }}</span>
+              {% if exp_company and exp_position %}<span class="entry-role"> | {{ exp_position }}</span>{% endif %}
+            </div>
+          </div>
+          <div class="entry-meta">{{ exp.duration }}{% if exp.location %} | {{ exp.location }}{% endif %}</div>
+          {% if exp.responsibilitiesHtml %}
+            {{ exp.responsibilitiesHtml | safe }}
+          {% elif exp.responsibilities %}
+            <ul class="entry-bullets">
+              {% for line in exp.responsibilities.split('\n') %}
+                {% if line.strip() %}<li>{{ line.strip().lstrip('•-').strip() }}</li>{% endif %}
+              {% endfor %}
+            </ul>
+          {% elif exp.enhancedDuties %}
+          <ul class="entry-bullets">
+            {% for line in exp.enhancedDuties.split('\n') %}
+              {% if line.strip() %}<li>{{ line.strip().lstrip('•-').strip() }}</li>{% endif %}
+            {% endfor %}
+          </ul>
+          {% elif exp.rawDutyKeywords %}
+          <ul class="entry-bullets">
+            {% for kw in exp.rawDutyKeywords %}
+              {% if kw.strip() %}<li>{{ kw.strip() }}</li>{% endif %}
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if resume.projects %}
+        <div class="section-heading">Projects</div>
+        {% for proj in resume.projects %}
+        <div class="entry">
+          <div class="entry-header">
+            <div>
+              <span class="entry-title">{{ proj.title }}</span>
+              {% if proj.projectUrl %}<span class="entry-links"> | <a href="{{ proj.projectUrl }}">WEBAPP</a></span>{% endif %}
+              {% if proj.githubUrl %}<span class="entry-links"> | <a href="{{ proj.githubUrl }}">GITHUB</a></span>{% endif %}
+            </div>
+          </div>
+          {% if proj.descriptionHtml %}
+            {{ proj.descriptionHtml | safe }}
+          {% elif proj.description %}
+            <ul class="entry-bullets">
+              {% for line in proj.description.split('\n') %}
+                {% if line.strip() %}<li>{{ line.strip().lstrip('•-').strip() }}</li>{% endif %}
+              {% endfor %}
+            </ul>
+          {% elif proj.enhancedDescription %}
+          <ul class="entry-bullets">
+            {% for line in proj.enhancedDescription.split('\n') %}
+              {% if line.strip() %}<li>{{ line.strip().lstrip('•-').strip() }}</li>{% endif %}
+            {% endfor %}
+          </ul>
+          {% elif proj.rawKeywords %}
+          <ul class="entry-bullets">
+            {% for kw in proj.rawKeywords %}
+              {% if kw.strip() %}<li>{{ kw.strip() }}</li>{% endif %}
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if resume.volunteering %}
+        <div class="section-heading">Volunteering</div>
+        {% for vol in resume.volunteering %}
+        {% set vol_org = vol.organizationName or '' %}
+        {% set vol_role = vol.role or '' %}
+        <div class="entry">
+          <div class="entry-header">
+            <div>
+              <span class="entry-title">{{ vol_org or vol_role }}</span>
+              {% if vol_org and vol_role %}<span class="entry-role"> | {{ vol_role }}</span>{% endif %}
+            </div>
+          </div>
+          <div class="entry-meta">{{ vol.duration or '' }}</div>
+          {% if vol.descriptionHtml %}
+            {{ vol.descriptionHtml | safe }}
+          {% elif vol.description %}
+            <ul class="entry-bullets">
+              {% for line in vol.description.split('\n') %}
+                {% if line.strip() %}<li>{{ line.strip().lstrip('•-').strip() }}</li>{% endif %}
+              {% endfor %}
+            </ul>
+          {% elif vol.enhancedContributions %}
+          <ul class="entry-bullets">
+            {% for line in vol.enhancedContributions.split('\n') %}
+              {% if line.strip() %}<li>{{ line.strip().lstrip('•-').strip() }}</li>{% endif %}
+            {% endfor %}
+          </ul>
+          {% elif vol.rawContributionKeywords %}
+          <ul class="entry-bullets">
+            {% for kw in vol.rawContributionKeywords %}
+              {% if kw.strip() %}<li>{{ kw.strip() }}</li>{% endif %}
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% if resume.certifications %}
+        <div class="section-heading">Certifications</div>
+        {% for cert in resume.certifications %}
+        <div class="entry">
+          <div class="entry-header">
+            <div>
+              <span class="entry-title">{{ cert.certificationName }}</span>
+              {% if cert.issuingAuthority %}<span class="entry-role"> | {{ cert.issuingAuthority }}</span>{% endif %}
+            </div>
+          </div>
+          {% if cert.year %}<div class="entry-meta">{{ cert.year }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,470 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'universities' %}
+
+{% block title %}Universities - ReportGen Admin{% endblock %}
+
+{% block page_css %}
+<style>
+  .status-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge-approved { background: rgba(5,150,105,0.15); color: #10b981; }
+  .badge-pending  { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .badge-rejected { background: rgba(239,68,68,0.15);  color: #ef4444; }
+  .tab-btn { cursor: pointer; border-bottom: 2px solid transparent; padding: 6px 14px; font-weight: 600; background: none; border-top: none; border-left: none; border-right: none; color: #64748b; }
+  .tab-btn.active { border-bottom-color: #3b82f6; color: #1d4ed8; }
+</style>
+{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Manage Universities</h1>
+    <p class="page-subtitle">Create a clean university master list and merge duplicate records safely.</p>
+  </div>
+
+  <div class="stats-inline">
+    <span class="stats-chip">Total: <b id="uniCount">0</b></span>
+    <button class="btn-ghost" type="button" id="refreshBtn"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
+    <button class="btn-primary" type="button" id="addBtn"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add University</button>
+  </div>
+
+  <article class="panel-card panel-body" style="display:grid;gap:12px;">
+    <h3 style="margin:0;font-size:16px;color:#0f172a;">Status Filters</h3>
+    <div class="toolbar" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+      <button class="tab-btn active" id="tab-all" onclick="switchTab('all')">All</button>
+      <button class="tab-btn" id="tab-pending" onclick="switchTab('pending')">⏳ Pending Review <span id="pendingCount" class="badge bg-warning text-dark ms-1">0</span></button>
+      <button class="tab-btn" id="tab-approved" onclick="switchTab('approved')">✓ Approved</button>
+      <button class="tab-btn" id="tab-rejected" onclick="switchTab('rejected')">✗ Rejected</button>
+      <div style="flex:1 1 280px;"></div>
+      <input type="text" class="small-input" id="searchInput" placeholder="Search universities..." oninput="loadUniversities()" style="min-width:280px;max-width:360px;">
+    </div>
+  </article>
+
+  <article class="panel-card panel-body" style="display:grid;gap:12px;">
+    <h3 style="margin:0;font-size:16px;color:#0f172a;">Merge Universities</h3>
+    <div class="toolbar" style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;">
+      <input id="sourceId" class="small-input" placeholder="Source ID">
+      <input id="targetId" class="small-input" placeholder="Target ID">
+      <button class="btn-primary" type="button" id="mergeBtn">Merge</button>
+    </div>
+  </article>
+
+  <article class="panel-card panel-body table-card">
+    <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
+      <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
+      <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
+      <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
+            <th>Name</th>
+            <th>City</th>
+            <th>State</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading universities...</td></tr></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<!-- Modal for Add/Edit University -->
+<div class="modal fade" id="uniModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="uniModalTitle">Add University</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editId">
+        <div class="mb-3">
+          <label for="editName" class="form-label">Name <span style="color:red;">*</span></label>
+          <input type="text" class="form-control" id="editName" placeholder="University name">
+        </div>
+        <div class="mb-3">
+          <label for="editCity" class="form-label">City</label>
+          <input type="text" class="form-control" id="editCity" placeholder="City">
+        </div>
+        <div class="mb-3">
+          <label for="editTehsil" class="form-label">Tehsil</label>
+          <input type="text" class="form-control" id="editTehsil" placeholder="Tehsil">
+        </div>
+        <div class="mb-3">
+          <label for="editDistrict" class="form-label">District</label>
+          <input type="text" class="form-control" id="editDistrict" placeholder="District">
+        </div>
+        <div class="mb-3">
+          <label for="editState" class="form-label">State</label>
+          <input type="text" class="form-control" id="editState" placeholder="State">
+        </div>
+        <div class="mb-3">
+          <label for="editWebsite" class="form-label">Website</label>
+          <input type="text" class="form-control" id="editWebsite" placeholder="https://">
+        </div>
+        <div class="mb-3">
+          <label for="editLogo" class="form-label">Logo URL/Path</label>
+          <input type="text" class="form-control" id="editLogo" placeholder="Logo URL or path">
+        </div>
+        <div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" id="editIsActive">
+          <label class="form-check-label" for="editIsActive">Active</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveUniversity()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div class="modal fade" id="rejectUniModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Reject University</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="rejectUniId">
+        <label class="form-label">Rejection Reason (optional)</label>
+        <textarea class="form-control" id="rejectUniReason" rows="3"
+            placeholder="Explain why this university is being rejected..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmRejectUni()">Reject</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block page_js %}
+<script>
+  const rowsEl = document.getElementById('rows');
+  const uniCount = document.getElementById('uniCount');
+  const refreshBtn = document.getElementById('refreshBtn');
+  const mergeBtn = document.getElementById('mergeBtn');
+  const sourceInput = document.getElementById('sourceId');
+  const targetInput = document.getElementById('targetId');
+  const ENTITY_ENDPOINT = 'universities';
+  let currentTab = 'all';
+
+  // ─────────────────────────────────────────────────────────────
+  // Multi-select logic
+  // ─────────────────────────────────────────────────────────────
+
+  function updateBulkToolbar() {
+    const checked = document.querySelectorAll('.row-checkbox:checked');
+    const toolbar = document.getElementById('bulkToolbar');
+    const count = document.getElementById('selectedCount');
+    if (checked.length > 0) {
+      toolbar.style.display = 'flex';
+      count.textContent = `${checked.length} selected`;
+    } else {
+      toolbar.style.display = 'none';
+    }
+    const all = document.querySelectorAll('.row-checkbox');
+    document.getElementById('selectAll').checked = all.length > 0 && checked.length === all.length;
+    document.getElementById('selectAll').indeterminate = checked.length > 0 && checked.length < all.length;
+  }
+
+  function clearSelection() {
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('selectAll').checked = false;
+    document.getElementById('selectAll').indeterminate = false;
+    document.getElementById('bulkToolbar').style.display = 'none';
+  }
+
+  async function bulkDelete() {
+    const checked = document.querySelectorAll('.row-checkbox:checked');
+    if (!checked.length) return;
+    const ids = Array.from(checked).map(cb => cb.dataset.id);
+    const confirmed = await showBulkConfirm(ids.length);
+    if (!confirmed) return;
+    try {
+      const headers = authHeaders();
+      const res = await fetch(`/api/admin/${ENTITY_ENDPOINT}/bulk-delete`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ids })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        alert(`✓ ${data.deleted || ids.length} items deleted`);
+        clearSelection();
+        loadUniversities();
+      } else {
+        alert(data.message || 'Bulk delete failed');
+      }
+    } catch (err) {
+      alert('Network error during bulk delete');
+    }
+  }
+
+  function showBulkConfirm(count) {
+    return new Promise((resolve) => {
+      const existing = document.getElementById('bulkConfirmBar');
+      if (existing) existing.remove();
+      const bar = document.createElement('div');
+      bar.id = 'bulkConfirmBar';
+      bar.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);`;
+      bar.innerHTML = `<span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span><button id="bulkConfirmYes" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button><button id="bulkConfirmNo" style="padding:6px 12px;background:transparent;border:1px solid #aaa;color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">Cancel</button>`;
+      document.body.appendChild(bar);
+      document.getElementById('bulkConfirmYes').onclick = () => { bar.remove(); resolve(true); };
+      document.getElementById('bulkConfirmNo').onclick = () => { bar.remove(); resolve(false); };
+    });
+  }
+
+  const authHeaders = () => {
+    const token = window.AdminUI.getAuthToken();
+    return token ? {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    } : null;
+  };
+
+  const switchTab = (tab) => {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    loadUniversities();
+  };
+
+  const statusBadge = (s) => {
+    const map = { approved: 'badge-approved', pending: 'badge-pending', rejected: 'badge-rejected' };
+    return `<span class="status-badge ${map[s] || 'badge-approved'}">${s || 'approved'}</span>`;
+  };
+
+  const renderRows = (items) => {
+    uniCount.textContent = String(items.length || 0);
+    if (!items.length) {
+      rowsEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No universities found.</td></tr>';
+      return;
+    }
+
+    rowsEl.innerHTML = items.map((u) => `
+      <tr>
+        <td><input type="checkbox" class="row-checkbox" data-id="${u._id}" style="width:16px;height:16px;cursor:pointer;"></td>
+        <td><small class="text-muted" style="font-size:10px;">${u._id}</small><br><strong>${u.name || '-'}</strong>${u.rejectionReason ? `<br><small class="text-danger">Reason: ${u.rejectionReason}</small>` : ''}</td>
+        <td>${u.villageCityName || '-'}</td>
+        <td>${u.state || '-'}</td>
+        <td>${statusBadge(u.approvalStatus)}</td>
+        <td>
+          <div class="icon-actions">
+            ${u.approvalStatus === 'pending' ? `<button class="toggle-action" onclick='approveUniversity("${u._id}")' title="Approve"><i data-lucide="check" style="width:16px;height:16px;"></i></button><button class="danger-action" onclick='openRejectUniModal("${u._id}")' title="Reject"><i data-lucide="x" style="width:16px;height:16px;"></i></button>` : ''}
+            <button class="toggle-action edit-btn" onclick='openEditModal(${JSON.stringify(u)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+            <button class="danger-action del-btn" data-id="${u._id}" title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    if (window.lucide) lucide.createIcons();
+    window.AdminUI?.staggerRows();
+    bindRowActions();
+    clearSelection();
+  };
+
+  const loadUniversities = async () => {
+    rowsEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading universities...</td></tr>';
+    try {
+      const q = document.getElementById('searchInput')?.value || '';
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (currentTab !== 'all') params.set('status', currentTab);
+
+      const data = await window.AdminUI.adminApiGet(`/api/admin/universities?${params}`) || [];
+
+      const pendingRes = await window.AdminUI.adminApiGet('/api/admin/universities?status=pending');
+      const pendingData = pendingRes || [];
+      const countEl = document.getElementById('pendingCount');
+      if (countEl) countEl.textContent = (pendingData || []).length;
+
+      renderRows(data);
+    } catch (err) {
+      console.error(err);
+      rowsEl.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ef4444;">Failed to load universities.</td></tr>';
+    }
+  };
+
+  const openAddModal = () => {
+    document.getElementById('editId').value = '';
+    document.getElementById('editName').value = '';
+    document.getElementById('editCity').value = '';
+    document.getElementById('editTehsil').value = '';
+    document.getElementById('editDistrict').value = '';
+    document.getElementById('editState').value = '';
+    document.getElementById('editWebsite').value = '';
+    document.getElementById('editLogo').value = '';
+    document.getElementById('editIsActive').checked = true;
+    document.getElementById('uniModalTitle').textContent = 'Add University';
+    const modal = new bootstrap.Modal(document.getElementById('uniModal'));
+    modal.show();
+  };
+
+  const openEditModal = (u) => {
+    document.getElementById('editId').value = u._id || '';
+    document.getElementById('editName').value = u.name || '';
+    document.getElementById('editCity').value = u.villageCityName || '';
+    document.getElementById('editTehsil').value = u.tehsil || '';
+    document.getElementById('editDistrict').value = u.district || '';
+    document.getElementById('editState').value = u.state || '';
+    document.getElementById('editWebsite').value = u.website || '';
+    document.getElementById('editLogo').value = u.logo || '';
+    document.getElementById('editIsActive').checked = u.isActive !== false;
+    document.getElementById('uniModalTitle').textContent = 'Edit University';
+    const modal = new bootstrap.Modal(document.getElementById('uniModal'));
+    modal.show();
+  };
+
+  const saveUniversity = async () => {
+    const editId = document.getElementById('editId').value;
+    const headers = authHeaders();
+    if (!headers) return;
+
+    const payload = {
+      name: document.getElementById('editName').value.trim(),
+      villageCityName: document.getElementById('editCity').value.trim(),
+      tehsil: document.getElementById('editTehsil').value.trim(),
+      district: document.getElementById('editDistrict').value.trim(),
+      state: document.getElementById('editState').value.trim(),
+      website: document.getElementById('editWebsite').value.trim(),
+      logo: document.getElementById('editLogo').value.trim(),
+      isActive: document.getElementById('editIsActive').checked
+    };
+
+    try {
+      const url = editId
+        ? `/api/admin/universities/${editId}`
+        : '/api/admin/universities';
+      const method = editId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const d = await response.json();
+        alert(d.message || 'Error saving university');
+        return;
+      }
+
+      const modal = bootstrap.Modal.getInstance(document.getElementById('uniModal'));
+      if (modal) modal.hide();
+      await loadUniversities();
+    } catch (err) {
+      console.error(err);
+      alert('Error saving university');
+    }
+  };
+
+  const deleteUniversity = async (id) => {
+    if (!confirm('Delete university?')) return;
+    const headers = authHeaders();
+    if (!headers) return;
+
+    await fetch(`/api/admin/universities/${id}`, {
+      method: 'DELETE',
+      headers
+    });
+
+    await loadUniversities();
+  };
+
+  const mergeUniversities = async () => {
+    const sourceId = sourceInput.value.trim();
+    const targetId = targetInput.value.trim();
+    if (!sourceId || !targetId) {
+      if (window.showToast) window.showToast('Both Source ID and Target ID are required.', 'warning');
+      return;
+    }
+
+    const headers = authHeaders();
+    if (!headers) return;
+
+    await fetch('/api/admin/universities/merge', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ sourceId, targetId })
+    });
+
+    sourceInput.value = '';
+    targetInput.value = '';
+    await loadUniversities();
+  };
+
+  const approveUniversity = async (id) => {
+    if (!confirm('Approve this university?')) return;
+    const headers = authHeaders();
+    if (!headers) return;
+    const res = await fetch(`/api/admin/universities/${id}/approve`, { method: 'PUT', headers });
+    if (res.ok) { loadUniversities(); }
+    else { const d = await res.json(); alert(d.message || 'Error'); }
+  };
+
+  const openRejectUniModal = (id) => {
+    document.getElementById('rejectUniId').value = id;
+    document.getElementById('rejectUniReason').value = '';
+    new bootstrap.Modal(document.getElementById('rejectUniModal')).show();
+  };
+
+  const confirmRejectUni = async () => {
+    const id = document.getElementById('rejectUniId').value;
+    const reason = document.getElementById('rejectUniReason').value.trim();
+    const headers = authHeaders();
+    if (!headers) return;
+    const res = await fetch(`/api/admin/universities/${id}/reject`, {
+      method: 'PUT', headers, body: JSON.stringify({ reason })
+    });
+    bootstrap.Modal.getInstance(document.getElementById('rejectUniModal'))?.hide();
+    if (res.ok) { loadUniversities(); }
+    else { const d = await res.json(); alert(d.message || 'Error'); }
+  };
+
+  const bindRowActions = () => {
+    rowsEl.querySelectorAll('.del-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          await deleteUniversity(btn.dataset.id);
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    });
+  };
+
+  refreshBtn.addEventListener('click', loadUniversities);
+  mergeBtn.addEventListener('click', mergeUniversities);
+  document.getElementById('addBtn').addEventListener('click', openAddModal);
+  
+  // Setup selectAll checkbox
+  document.getElementById('selectAll').addEventListener('change', (e) => {
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
+    updateBulkToolbar();
+  });
+
+  // Setup individual checkboxes via event delegation
+  rowsEl.addEventListener('change', (e) => {
+    if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
+  });
+
+  document.addEventListener('DOMContentLoaded', loadUniversities);
+</script>
+{% endblock %}

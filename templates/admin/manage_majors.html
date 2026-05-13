@@ -1,0 +1,821 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'majors' %}
+
+{% block title %}Majors - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Manage Major Policies</h1>
+    <p class="page-subtitle">Configure language and content policy for each major. Report sections are managed from the dedicated Report Sections page.</p>
+  </div>
+
+  <div class="stats-inline">
+    <button class="btn-primary" type="button" onclick="openAddMajorModal()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Major</button>
+    <a class="btn-outline-secondary" href="/admin/report-sections" title="Manage report sections hierarchy"><i data-lucide="file-stack" style="width:14px;height:14px;"></i>Report Sections</a>
+    <button class="btn-outline-secondary" type="button" onclick="downloadMajorsCsv()" title="Download majors data as CSV"><i data-lucide="download" style="width:14px;height:14px;"></i>Export CSV</button>
+    <a class="btn-outline-secondary" href="/admin/bulk-import" title="Bulk import degrees, departments and majors"><i data-lucide="upload" style="width:14px;height:14px;"></i>Bulk Import</a>
+  </div>
+
+  <article class="panel-card panel-body" style="display:grid;gap:12px;">
+    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filter by Degree</h3>
+    <div class="toolbar" style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) 140px;gap:12px;">
+      <select id="filterDegree" class="small-input"></select>
+      <select id="filterDepartment" class="small-input"></select>
+      <button class="btn-ghost" type="button" onclick="loadMajors()">Apply</button>
+    </div>
+  </article>
+
+  <article class="panel-card panel-body table-card">
+    <div class="data-table-wrap">
+      <div id="bulkToolbar" style="
+        display:none;
+        align-items:center;
+        gap:12px;
+        padding:10px 16px;
+        background:#fff3cd;
+        border:1px solid #ffc107;
+        border-radius:8px;
+        margin-bottom:12px;
+        font-size:13px;
+      ">
+        <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
+        <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
+        <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+      </div>
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
+            <th>Name</th><th>Degree</th><th>Department</th><th>Language</th><th>Content Type</th><th>Policy</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="8" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<div class="modal fade" id="addMajorModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add Major</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Degree <span class="text-danger">*</span></label>
+            <select id="am_degree" class="form-select"></select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Department</label>
+            <span class="text-muted" style="font-size:12px;">(optional)</span>
+            <select id="am_department" class="form-select">
+              <option value="">No department</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Major Name <span class="text-danger">*</span></label>
+            <input id="am_name" class="form-control" placeholder="e.g. Computer Engineering">
+          </div>
+          <div class="col-12">
+            <div class="alert alert-info py-2 px-3 mb-0" style="font-size:12px;">
+              <i data-lucide="info" style="width:13px;height:13px;"></i>
+              Report generation policy will be auto-inherited from the degree defaults. You can configure it per-major using the ⚙ Policy button after creation.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveNewMajor()">Create Major</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="majorPolicyModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="policyModalTitle">Major Policy</h5>
+          <div class="text-muted" id="policyModalSubtitle" style="font-size:12px;margin-top:2px;"></div>
+        </div>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="policy_majorId">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Report Language</label>
+            <input id="policy_reportLanguage" class="form-control" value="English">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Report Content Type</label>
+            <div style="display:flex;gap:8px;flex-direction:column;">
+              <div id="policy_selectedChips" class="d-flex flex-wrap gap-2" style="min-height:36px;padding:6px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;">
+                <span class="text-muted" style="font-size:12px;align-self:center;">No types selected</span>
+              </div>
+              <div class="dropdown">
+                <button type="button" class="btn btn-outline-primary w-100" id="policy_contentTypeDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                  + Add Content Type
+                </button>
+                <ul class="dropdown-menu w-100" id="policy_contentTypeList" aria-labelledby="policy_contentTypeDropdown">
+                  <li><a class="dropdown-item policy-ct-option" href="#">Text</a></li>
+                  <li><a class="dropdown-item policy-ct-option" href="#">Image</a></li>
+                  <li><a class="dropdown-item policy-ct-option" href="#">Data Analysis</a></li>
+                  <li><a class="dropdown-item policy-ct-option" href="#">Table</a></li>
+                  <li><a class="dropdown-item policy-ct-option" href="#">Chart</a></li>
+                  <li><a class="dropdown-item policy-ct-option" href="#">Mixed</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <div class="px-3 py-1" style="display:flex;gap:6px;">
+                      <input type="text" class="form-control form-control-sm" id="policy_customContentType" placeholder="Custom...">
+                      <button class="btn btn-sm btn-outline-primary" type="button" id="policy_addCustomCT">Add</button>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <input id="policy_reportContentType" type="hidden" value="Text">
+            <div class="form-text">Click + to add types, click ✕ on a chip to remove.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Allowed Languages (comma separated)</label>
+            <input id="policy_allowedLanguages" class="form-control" placeholder="English, Hindi">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Derived Features</label>
+            <div id="policy_derivedContentFeatures" class="d-flex flex-wrap gap-2"></div>
+            <div class="form-text">Auto-generated from selected report content types.</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Generation Instruction</label>
+            <textarea id="policy_generationInstruction" class="form-control" rows="3" placeholder="e.g. Focus on accounting principles..."></textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label">AI Prompt Context</label>
+            <textarea id="policy_aiPromptContext" class="form-control" rows="3" placeholder="e.g. Commerce/Accounting internship. Focus on: financial statements..."></textarea>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="policy_strictLanguageOnly">
+              <label class="form-check-label" for="policy_strictLanguageOnly">Strict Language Only</label>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="policy_imagesRequired">
+              <label class="form-check-label" for="policy_imagesRequired">Enable Images</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveMajorPolicy()">Save Policy</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Project Titles Modal -->
+<div class="modal fade" id="titlesModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Project Titles — <span id="titlesMajorName"></span></h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" id="newTitleInput" placeholder="Enter new project title...">
+          <button class="btn btn-primary" id="saveProjectTitleBtn" onclick="saveProjectTitle()">Add</button>
+          <button class="btn btn-outline-secondary" id="cancelProjectTitleEditBtn" type="button" onclick="cancelProjectTitleEdit()" style="display:none;">Cancel</button>
+        </div>
+        <div id="projectTitleEditorHint" class="text-muted mb-3" style="font-size:12px;"></div>
+        <div id="titlesList" style="max-height:360px;overflow-y:auto;">
+          <p class="text-muted">Loading...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+const ENTITY_ENDPOINT = 'majors';
+let modal;
+let addMajorModal = null;
+let majorPolicyModal = null;
+let degrees = [];
+let filterDepartments = [];
+let formDepartments = [];
+let currentMajorIdForTitles = '';
+let currentProjectTitleId = '';
+
+// ─────────────────────────────────────────────────────────────
+// Multi-select logic
+// ─────────────────────────────────────────────────────────────
+
+function updateBulkToolbar() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  const toolbar = document.getElementById('bulkToolbar');
+  const count = document.getElementById('selectedCount');
+  if (checked.length > 0) {
+    toolbar.style.display = 'flex';
+    count.textContent = `${checked.length} selected`;
+  } else {
+    toolbar.style.display = 'none';
+  }
+  const all = document.querySelectorAll('.row-checkbox');
+  document.getElementById('selectAll').checked = all.length > 0 && checked.length === all.length;
+  document.getElementById('selectAll').indeterminate = checked.length > 0 && checked.length < all.length;
+}
+
+function clearSelection() {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+  document.getElementById('selectAll').checked = false;
+  document.getElementById('selectAll').indeterminate = false;
+  document.getElementById('bulkToolbar').style.display = 'none';
+}
+
+async function bulkDelete() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  if (!checked.length) return;
+  const ids = Array.from(checked).map(cb => cb.dataset.id);
+  const confirmed = await showBulkConfirm(ids.length);
+  if (!confirmed) return;
+  try {
+    const res = await fetch(`/api/admin/${ENTITY_ENDPOINT}/bulk-delete`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      alert(`✓ ${data.deleted || ids.length} items deleted`);
+      clearSelection();
+      loadMajors();
+    } else {
+      alert(data.message || 'Bulk delete failed');
+    }
+  } catch (err) {
+    alert('Network error during bulk delete');
+  }
+}
+
+function showBulkConfirm(count) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('bulkConfirmBar');
+    if (existing) existing.remove();
+    const bar = document.createElement('div');
+    bar.id = 'bulkConfirmBar';
+    bar.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);`;
+    bar.innerHTML = `<span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span><button id="bulkConfirmYes" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button><button id="bulkConfirmNo" style="padding:6px 12px;background:transparent;border:1px solid #aaa;color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">Cancel</button>`;
+    document.body.appendChild(bar);
+    document.getElementById('bulkConfirmYes').onclick = () => { bar.remove(); resolve(true); };
+    document.getElementById('bulkConfirmNo').onclick = () => { bar.remove(); resolve(false); };
+  });
+}
+
+function parseCsv(value) {
+  return String(value || '').split(',').map(v => v.trim()).filter(Boolean);
+}
+
+function normalizeKey(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function parseContentTypeValue(value) {
+  const out = [];
+  const used = new Set();
+  parseCsv(value).forEach((item) => {
+    const key = normalizeKey(item);
+    if (!key || used.has(key)) return;
+    used.add(key);
+    out.push(item.trim());
+  });
+  return out;
+}
+
+function renderPolicyDerivedFeatures() {
+  const wrap = document.getElementById('policy_derivedContentFeatures');
+  if (!wrap) return;
+
+  const features = parseContentTypeValue(document.getElementById('policy_reportContentType').value)
+    .map(v => v.toLowerCase());
+
+  if (!features.length) {
+    wrap.innerHTML = '<span class="text-muted">No derived features yet.</span>';
+    return;
+  }
+
+  wrap.innerHTML = features.map((feature) => (
+    `<span class="badge bg-light text-dark border">${feature}</span>`
+  )).join('');
+  renderPolicyChips();
+}
+
+function setPolicyContentTypeValue(values) {
+  document.getElementById('policy_reportContentType').value = (values || []).join(', ');
+  renderPolicyDerivedFeatures();
+}
+
+function renderPolicyChips() {
+  const current = parseContentTypeValue(document.getElementById('policy_reportContentType').value);
+  const wrap = document.getElementById('policy_selectedChips');
+  
+  if (!current || current.length === 0) {
+    wrap.innerHTML = '<span class="text-muted" style="font-size:12px;align-self:center;">No types selected</span>';
+    return;
+  }
+  
+  wrap.innerHTML = current.map((item) => {
+    return `
+    <span class="badge bg-primary" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:13px;">
+      ${item}
+      <span class="remove-chip" data-value="${item.replace(/"/g, '&quot;')}" style="cursor:pointer;font-weight:bold;margin-left:4px;">✕</span>
+    </span>
+    `;
+  }).join('');
+  
+  wrap.querySelectorAll('.remove-chip').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const value = btn.dataset.value;
+      const current = parseContentTypeValue(document.getElementById('policy_reportContentType').value);
+      const filtered = current.filter((item) => item !== value);
+      setPolicyContentTypeValue(filtered);
+      renderPolicyChips();
+    });
+  });
+}
+
+function applyPolicyContentTypeValue(value) {
+  const current = parseContentTypeValue(document.getElementById('policy_reportContentType').value);
+  const additions = parseContentTypeValue(value);
+  const merged = [...current];
+  additions.forEach((item) => {
+    if (!merged.some((existing) => normalizeKey(existing) === normalizeKey(item))) {
+      merged.push(item);
+    }
+  });
+  setPolicyContentTypeValue(merged);
+  renderPolicyChips();
+}
+
+function openAddMajorModal() {
+  document.getElementById('am_name').value = '';
+  setDegreeOptions('am_degree', '');
+  document.getElementById('am_department').innerHTML = '<option value="">No department</option>';
+  addMajorModal.show();
+}
+
+async function saveNewMajor() {
+  const name = document.getElementById('am_name').value.trim();
+  const degreeId = document.getElementById('am_degree').value;
+  const deptId = document.getElementById('am_department').value;
+
+  if (!name || !degreeId) {
+    alert('Degree and Major Name are required');
+    return;
+  }
+
+  const payload = { name, degree: degreeId };
+  if (deptId) payload.department = deptId;
+
+  const res = await fetch('/api/admin/majors', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    alert(data.message || 'Create failed');
+    return;
+  }
+
+  addMajorModal.hide();
+  loadMajors();
+}
+
+function renderPolicyDerivedFeaturesPreview() {
+  renderPolicyDerivedFeatures();
+}
+
+function hasConfiguredPolicy(m) {
+  const degreeId = m.degree?._id || m.degree || '';
+  const degreeDoc = degrees.find(d => String(d._id) === String(degreeId));
+  const defaults = degreeDoc?.policy || {};
+  const reportPolicy = m.reportPolicy || {};
+
+  const matchesDefaults =
+    (m.reportLanguage || 'English') === (defaults.reportLanguage || 'English') &&
+    (m.reportContentType || 'Text') === (defaults.reportContentType || 'Text') &&
+    (m.aiPromptContext || '') === (defaults.aiPromptContext || '') &&
+    (reportPolicy.generationInstruction || '') === (defaults.generationInstruction || '') &&
+    !!reportPolicy.strictLanguageOnly === !!defaults.strictLanguageOnly &&
+    !!reportPolicy.imagesRequired === !!defaults.imagesRequired &&
+    JSON.stringify(reportPolicy.allowedLanguages || []) === JSON.stringify(defaults.allowedLanguages || []);
+
+  return !matchesDefaults;
+}
+
+function openMajorPolicy(m) {
+  document.getElementById('policy_majorId').value = m._id;
+  document.getElementById('policyModalTitle').textContent = m.name || 'Major Policy';
+  document.getElementById('policyModalSubtitle').textContent = `${m.degree?.name || ''}${m.department?.name ? ' › ' + m.department.name : ''}`;
+  document.getElementById('policy_reportLanguage').value = m.reportLanguage || 'English';
+  document.getElementById('policy_reportContentType').value = m.reportContentType || 'Text';
+  document.getElementById('policy_allowedLanguages').value = (m.reportPolicy?.allowedLanguages || []).join(', ');
+  document.getElementById('policy_generationInstruction').value = m.reportPolicy?.generationInstruction || '';
+  document.getElementById('policy_aiPromptContext').value = m.aiPromptContext || '';
+  document.getElementById('policy_strictLanguageOnly').checked = m.reportPolicy?.strictLanguageOnly === true;
+  document.getElementById('policy_imagesRequired').checked = m.reportPolicy?.imagesRequired === true;
+  renderPolicyDerivedFeatures();
+  renderPolicyChips();
+  majorPolicyModal.show();
+}
+
+async function saveMajorPolicy() {
+  const id = document.getElementById('policy_majorId').value;
+  if (!id) return;
+
+  const reportContentTypes = parseContentTypeValue(document.getElementById('policy_reportContentType').value);
+  const autoContentFeatures = reportContentTypes.map(v => v.toLowerCase());
+
+  const payload = {
+    reportLanguage: document.getElementById('policy_reportLanguage').value.trim() || 'English',
+    reportContentType: document.getElementById('policy_reportContentType').value.trim() || 'Text',
+    aiPromptContext: document.getElementById('policy_aiPromptContext').value.trim(),
+    reportPolicy: {
+      strictLanguageOnly: document.getElementById('policy_strictLanguageOnly').checked,
+      allowedLanguages: parseCsv(document.getElementById('policy_allowedLanguages').value),
+      generationInstruction: document.getElementById('policy_generationInstruction').value.trim(),
+      contentFeatures: autoContentFeatures,
+      imagesRequired: document.getElementById('policy_imagesRequired').checked
+    }
+  };
+
+  const res = await fetch(`/api/admin/majors/${id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    alert(data.message || 'Save failed');
+    return;
+  }
+
+  majorPolicyModal.hide();
+  loadMajors();
+}
+
+function setDegreeOptions(id, selected = '') {
+  const select = document.getElementById(id);
+  select.innerHTML = '<option value="">Select Degree</option>' + degrees.map(d => {
+    const selectedAttr = String(d._id) === String(selected) ? 'selected' : '';
+    return `<option value="${d._id}" ${selectedAttr}>${d.name}</option>`;
+  }).join('');
+}
+
+function setDepartmentOptions(id, items = [], selected = '') {
+  const select = document.getElementById(id);
+  select.innerHTML = '<option value="">All Departments</option>';
+  if (id === 'department') {
+    select.innerHTML = '<option value="">No department (legacy)</option>';
+  }
+  select.innerHTML += (items || []).map(d => {
+    const selectedAttr = String(d._id) === String(selected) ? 'selected' : '';
+    return `<option value="${d._id}" ${selectedAttr}>${d.name}</option>`;
+  }).join('');
+}
+
+async function loadDepartmentsByDegree(degreeId) {
+  if (!degreeId) return [];
+  const res = await fetch(`/api/admin/departments?degree=${encodeURIComponent(degreeId)}`, { headers });
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function loadDegrees() {
+  try {
+    console.log('Loading degrees...');
+    const res = await fetch('/api/admin/degrees', { headers });
+    console.log('Degrees response status:', res.status);
+    
+    if (!res.ok) {
+      console.error('Failed to load degrees:', res.status);
+      return;
+    }
+    
+    degrees = await res.json();
+    console.log('Degrees loaded:', degrees?.length || 0);
+    
+    setDegreeOptions('filterDegree', document.getElementById('filterDegree').value || '');
+    setDegreeOptions('am_degree', document.getElementById('am_degree')?.value || '');
+
+    const selectedFilterDegree = document.getElementById('filterDegree').value || '';
+    filterDepartments = selectedFilterDegree ? await loadDepartmentsByDegree(selectedFilterDegree) : [];
+    setDepartmentOptions('filterDepartment', filterDepartments, document.getElementById('filterDepartment').value || '');
+  } catch (err) {
+    console.error('loadDegrees error:', err);
+  }
+}
+
+async function loadMajors() {
+  try {
+    const degree = document.getElementById('filterDegree').value;
+    const department = document.getElementById('filterDepartment').value;
+    const params = new URLSearchParams();
+    if (degree) params.set('degree', degree);
+    if (department) params.set('department', department);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const url = '/api/admin/majors' + qs;
+    console.log('Loading majors from:', url);
+    
+    const res = await fetch(url, { headers });
+    console.log('Response status:', res.status);
+    
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      console.error('API error:', res.status, errData);
+      document.getElementById('rows').innerHTML = `<tr><td colspan="8" style="text-align:center;color:#dc2626;">Error: ${errData.message || 'Failed to load majors'}</td></tr>`;
+      return;
+    }
+    
+    const data = await res.json();
+    console.log('Majors loaded:', data?.length || 0, 'items');
+    
+    document.getElementById('rows').innerHTML = (data || []).map(m => {
+      const policyBadge = hasConfiguredPolicy(m)
+        ? '<span class="status-badge" style="background:rgba(16,185,129,0.15);color:#10b981;">Configured</span>'
+        : '<span class="status-badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Default</span>';
+
+      return `
+      <tr>
+        <td><input type="checkbox" class="row-checkbox" data-id="${m._id}" style="width:16px;height:16px;cursor:pointer;"></td>
+        <td><strong>${m.name}</strong></td>
+        <td>${m.degree?.name || '-'}</td>
+        <td>${m.department?.name || '<span class="text-muted" style="font-size:12px;">None</span>'}</td>
+        <td>${m.reportLanguage || '-'}</td>
+        <td>${m.reportContentType || '-'}</td>
+        <td>${policyBadge}</td>
+        <td>
+          <div class="icon-actions">
+            <button class="toggle-action" onclick='openMajorPolicy(${JSON.stringify(m)})' title="Configure Policy"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
+            <button class="toggle-action" onclick='manageProjectTitles("${m._id}", ${JSON.stringify(m.name)})' title="Project Titles"><i data-lucide="list" style="width:16px;height:16px;"></i></button>
+            <button class="danger-action" onclick='deleteMajor("${m._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+          </div>
+        </td>
+      </tr>
+    `;
+    }).join('') || '<tr><td colspan="8" style="text-align:center;color:#94a3b8;">No majors found</td></tr>';
+    if (window.lucide) lucide.createIcons();
+    window.AdminUI?.staggerRows();
+    clearSelection();
+  } catch (err) {
+    console.error('loadMajors error:', err);
+    document.getElementById('rows').innerHTML = `<tr><td colspan="8" style="text-align:center;color:#dc2626;">Error: ${err.message}</td></tr>`;
+  }
+}
+
+async function deleteMajor(id) {
+  if (!confirm('Delete this major?')) return;
+  await fetch(`/api/admin/majors/${id}`, { method: 'DELETE', headers });
+  loadMajors();
+}
+
+async function manageProjectTitles(majorId, majorName) {
+    currentMajorIdForTitles = majorId;
+    document.getElementById('titlesMajorName').textContent = majorName;
+  cancelProjectTitleEdit();
+    new bootstrap.Modal(document.getElementById('titlesModal')).show();
+    await loadProjectTitles();
+}
+
+async function loadProjectTitles() {
+    const res = await fetch(`/api/admin/project-titles?major=${currentMajorIdForTitles}`, { headers });
+    const data = await res.json();
+    const listEl = document.getElementById('titlesList');
+
+    if (!data || data.length === 0) {
+        listEl.innerHTML = '<p class="text-muted">No project titles yet. Add one above.</p>';
+        return;
+    }
+
+    listEl.innerHTML = data.map(t => `
+        <div class="d-flex align-items-center justify-content-between p-2 border rounded mb-2">
+            <span style="font-size:14px;">${t.title}</span>
+            <div>
+                <span class="badge ${t.isActive ? 'bg-success' : 'bg-secondary'} me-2">
+                    ${t.isActive ? 'Active' : 'Inactive'}
+                </span>
+          <button class="btn btn-sm btn-outline-primary me-1"
+            onclick='editProjectTitle("${t._id}", ${JSON.stringify(t.title)})'
+            title="Edit title">
+            <i data-lucide="pencil" style="width:14px;height:14px;"></i>
+          </button>
+                <button class="btn btn-sm btn-outline-warning me-1"
+                    onclick='toggleProjectTitle("${t._id}", ${!t.isActive})'>
+                    ${t.isActive ? 'Disable' : 'Enable'}
+                </button>
+                <button class="btn btn-sm btn-outline-danger"
+                    onclick='deleteProjectTitle("${t._id}")'>Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+  function setProjectTitleEditorState(isEditing, title = '') {
+    const input = document.getElementById('newTitleInput');
+    const saveBtn = document.getElementById('saveProjectTitleBtn');
+    const cancelBtn = document.getElementById('cancelProjectTitleEditBtn');
+    const hint = document.getElementById('projectTitleEditorHint');
+
+    input.value = title;
+    saveBtn.textContent = isEditing ? 'Save Changes' : 'Add';
+    cancelBtn.style.display = isEditing ? 'inline-flex' : 'none';
+    hint.textContent = isEditing
+      ? 'Editing this title. Save changes or cancel to add a different title.'
+      : 'Add multiple titles for this major without leaving the modal.';
+  }
+
+  function editProjectTitle(id, title) {
+    currentProjectTitleId = id;
+    setProjectTitleEditorState(true, title);
+    document.getElementById('newTitleInput').focus();
+  }
+
+  function cancelProjectTitleEdit() {
+    currentProjectTitleId = '';
+    setProjectTitleEditorState(false, '');
+  }
+
+  async function saveProjectTitle() {
+    const title = document.getElementById('newTitleInput').value.trim();
+    if (!title) { alert('Enter a title'); return; }
+
+    const isEditing = !!currentProjectTitleId;
+    const url = isEditing
+      ? `/api/admin/project-titles/${currentProjectTitleId}`
+      : '/api/admin/project-titles';
+    const payload = isEditing
+      ? { title }
+      : { title, major: currentMajorIdForTitles };
+
+    const res = await fetch(url, {
+      method: isEditing ? 'PUT' : 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      cancelProjectTitleEdit();
+        await loadProjectTitles();
+    } else {
+        const d = await res.json();
+        alert(d.message || 'Error');
+    }
+}
+
+  async function addProjectTitle() {
+    await saveProjectTitle();
+  }
+
+async function toggleProjectTitle(id, newActiveState) {
+    await fetch(`/api/admin/project-titles/${id}`, {
+        method: 'PUT', headers,
+        body: JSON.stringify({ isActive: newActiveState })
+    });
+    await loadProjectTitles();
+}
+
+async function deleteProjectTitle(id) {
+    if (!confirm('Delete this project title?')) return;
+    await fetch(`/api/admin/project-titles/${id}`, { method: 'DELETE', headers });
+    await loadProjectTitles();
+}
+
+function downloadMajorsCsv() {
+  const rows = document.querySelectorAll('#rows > tr');
+  const csvRows = [];
+  
+  // CSV Header
+  csvRows.push(['Name', 'Degree', 'Department', 'Language', 'Content Type', 'Image Policy', 'Allowed Languages', 'Instruction'].join(','));
+  
+  // CSV Data rows
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    if (cells.length < 6) return; // Skip invalid rows
+    
+    const name = cells[0]?.innerText?.trim() || '';
+    const degree = cells[1]?.innerText?.trim() || '';
+    const department = cells[2]?.innerText?.trim() || '';
+    const language = cells[3]?.innerText?.trim() || '';
+    const contentType = cells[4]?.innerText?.trim() || '';
+    
+    // Escape CSV values
+    const escape = (val) => {
+      if (!val) return '""';
+      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+        return `"${val.replace(/"/g, '""')}"`;
+      }
+      return val;
+    };
+    
+    csvRows.push([
+      escape(name),
+      escape(degree),
+      escape(department),
+      escape(language),
+      escape(contentType),
+      escape(''),
+      escape(''),
+      escape('')
+    ].join(','));
+  });
+  
+  // Create and download file
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `majors_export_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('policy-ct-option')) {
+    e.preventDefault();
+    const value = e.target.textContent.trim();
+    if (value) applyPolicyContentTypeValue(value);
+  }
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+  addMajorModal = new bootstrap.Modal(document.getElementById('addMajorModal'));
+  majorPolicyModal = new bootstrap.Modal(document.getElementById('majorPolicyModal'));
+  cancelProjectTitleEdit();
+
+  document.getElementById('newTitleInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveProjectTitle();
+    }
+  });
+
+  document.getElementById('am_degree').addEventListener('change', async (e) => {
+    const degreeId = e.target.value || '';
+    const depts = degreeId ? await loadDepartmentsByDegree(degreeId) : [];
+    const select = document.getElementById('am_department');
+    select.innerHTML = '<option value="">No department</option>' + depts.map(d => `<option value="${d._id}">${d.name}</option>`).join('');
+  });
+
+  document.getElementById('policy_reportContentType').addEventListener('input', renderPolicyDerivedFeatures);
+  document.getElementById('policy_addCustomCT').addEventListener('click', () => {
+    const input = document.getElementById('policy_customContentType');
+    const value = String(input.value || '').trim();
+    if (!value) return;
+    applyPolicyContentTypeValue(value);
+    input.value = '';
+  });
+
+  document.getElementById('filterDegree').addEventListener('change', async (e) => {
+    const degreeId = e.target.value || '';
+    filterDepartments = degreeId ? await loadDepartmentsByDegree(degreeId) : [];
+    setDepartmentOptions('filterDepartment', filterDepartments, '');
+    await loadMajors();
+  });
+  document.getElementById('filterDepartment').addEventListener('change', loadMajors);
+
+  // Setup selectAll checkbox
+  document.getElementById('selectAll').addEventListener('change', (e) => {
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
+    updateBulkToolbar();
+  });
+
+  // Setup individual checkboxes via event delegation
+  document.getElementById('rows').addEventListener('change', (e) => {
+    if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
+  });
+
+  await loadDegrees();
+  await loadMajors();
+});
+</script>
+{% endblock %}

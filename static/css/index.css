@@ -1,0 +1,70 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   INDEX - Master CSS Import File
+   ═══════════════════════════════════════════════════════════════════════════════
+   
+   This file orchestrates the import order for all CSS modules.
+   Import order is critical:
+   1. Design system (variables, base styles)
+   2. Animations (keyframes, utilities)
+   3. Components (navbar, footer, etc.)
+   4. Utilities (helper classes)
+   
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/*
+  IMPORTANT — CSS OWNERSHIP MAP:
+  
+  design-system.css → CSS variables only (colors, spacing, z-index, etc.)
+  animations.css    → Keyframes and animation utility classes
+  navbar.css        → EMPTY (navbars are styled inline in base.html and landing.html)
+  footer.css        → #footer element styles (used in landing_footer.html)
+  utilities.css     → Layout helpers (.grid, .hidden, .sr-only etc.)
+  
+  DO NOT add component styles here. All component styles live in:
+  - templates/base.html → app navbar, cards, forms, buttons (student/admin)
+  - templates/landing.html → landing page everything
+  - templates/admin/layout.html → admin sidebar and layout
+*/
+
+@import url('design-system.css');
+@import url('animations.css');
+@import url('navbar.css');
+@import url('footer.css');
+@import url('utilities.css');
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   BROWSER RESETS & DEFAULTS
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   FOCUS VISIBLE STYLING
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-blue-2);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   MAIN CONTENT AREA
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+main {
+  min-height: calc(100vh - 300px);
+  padding-top: var(--spacing-2xl);
+  padding-bottom: var(--spacing-2xl);
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   ALL SYSTEMS GO
+   ═════════════════════════════════════════════════════════════════════════════ */

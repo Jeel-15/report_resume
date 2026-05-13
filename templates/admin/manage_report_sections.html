@@ -1,0 +1,1433 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'report_sections' %}
+
+{% block title %}Report Sections - ReportGen Admin{% endblock %}
+
+{% block page_css %}
+<style>
+  :root {
+    --studio-bg: linear-gradient(180deg, #f7f8fc 0%, #f3f5fa 100%);
+    --studio-card: #ffffff;
+    --studio-line: #e5e9f2;
+    --studio-primary: #2c69f6;
+    --studio-primary-soft: #edf3ff;
+    --studio-text: #1e293b;
+    --studio-muted: #64748b;
+    --studio-success: #1d9b63;
+    --studio-warning: #ca7b00;
+    --studio-none: #7b8798;
+  }
+
+  .studio-shell {
+    display: grid;
+    gap: 16px;
+    background: var(--studio-bg);
+    border-radius: 18px;
+    padding: 18px;
+  }
+
+  .studio-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .studio-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 2rem;
+    line-height: 1.1;
+  }
+
+  .studio-subtitle {
+    margin: 6px 0 0;
+    color: var(--studio-muted);
+  }
+
+  .studio-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    gap: 10px;
+    width: min(100%, 640px);
+  }
+
+  .kpi-card {
+    border: 1px solid var(--studio-line);
+    border-radius: 12px;
+    background: var(--studio-card);
+    padding: 10px 12px;
+  }
+
+  .kpi-label {
+    color: var(--studio-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .kpi-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--studio-text);
+  }
+
+  .studio-layout {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .studio-panel {
+    background: var(--studio-card);
+    border: 1px solid var(--studio-line);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+  }
+
+  .panel-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--studio-line);
+  }
+
+  .panel-body {
+    padding: 14px 16px;
+  }
+
+  .panel-title {
+    margin: 0;
+    color: #0f172a;
+  }
+
+  .panel-note {
+    margin: 4px 0 0;
+    color: var(--studio-muted);
+    font-size: 0.9rem;
+  }
+
+  .scope-sticky {
+    position: sticky;
+    top: 12px;
+  }
+
+  .mode-switch,
+  .level-switch {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .mode-btn,
+  .level-btn {
+    border: 1px solid #c9d7ff;
+    background: #ffffff;
+    color: #3355a5;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .mode-btn.active,
+  .level-btn.active {
+    background: var(--studio-primary);
+    color: #ffffff;
+    border-color: var(--studio-primary);
+    box-shadow: 0 6px 18px rgba(44, 105, 246, 0.25);
+  }
+
+  .scope-grid {
+    display: grid;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .scope-actions {
+    display: grid;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .workspace-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .workspace-actions .btn-primary,
+  .scope-actions .btn-primary,
+  .scope-actions .btn-ghost {
+    width: 100%;
+  }
+
+  .content-mode {
+    display: none;
+  }
+
+  .content-mode.active {
+    display: block;
+  }
+
+  .editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .editor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .meta-card {
+    background: #f8fafc;
+    border: 1px solid var(--studio-line);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  .inheritance-info {
+    color: var(--studio-muted);
+    font-size: 0.9rem;
+    margin-top: 8px;
+  }
+
+  .table-shell {
+    border: 1px solid var(--studio-line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .table-shell table {
+    margin-bottom: 0;
+  }
+
+  .table-shell thead th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .preview-card {
+    margin-top: 12px;
+    border: 1px dashed #c6d2eb;
+    border-radius: 12px;
+    padding: 12px;
+    background: #f8fbff;
+  }
+
+  .overview-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto auto;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .overview-list {
+    display: grid;
+    gap: 10px;
+    max-height: 66vh;
+    overflow: auto;
+    padding-right: 4px;
+  }
+
+  .hier-node {
+    border: 1px solid var(--studio-line);
+    border-radius: 12px;
+    background: #ffffff;
+  }
+
+  .hier-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .hier-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .hier-label {
+    margin: 0;
+    font-weight: 700;
+    color: #1f2a44;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hier-type {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--studio-muted);
+    font-weight: 700;
+  }
+
+  .hier-body {
+    display: grid;
+    gap: 8px;
+    padding: 0 12px 12px;
+  }
+
+  .child-wrap {
+    border-left: 2px solid #dbe7ff;
+    margin-left: 8px;
+    padding-left: 12px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .status-badge {
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.74rem;
+    font-weight: 700;
+  }
+
+  .status-custom { background: #dcfce7; color: #166534; }
+  .status-inherited { background: #dbeafe; color: #1e40af; }
+  .status-legacy { background: #ffedd5; color: #9a3412; }
+  .status-none { background: #eef2f7; color: #475569; }
+  .status-error { background: #fee2e2; color: #991b1b; }
+
+  .row-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .row-actions .btn {
+    font-size: 0.78rem;
+    padding: 4px 8px;
+  }
+
+  .pill-count {
+    border: 1px solid #d2dcf0;
+    border-radius: 999px;
+    padding: 2px 8px;
+    color: #475569;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .toggle-children {
+    border: none;
+    background: transparent;
+    color: #3659ab;
+    font-weight: 600;
+    padding: 0;
+  }
+
+  .section-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+    background: rgba(15, 23, 42, 0.45);
+    padding: 16px;
+  }
+
+  .section-modal.open { display: flex; }
+
+  .section-modal-card {
+    width: min(860px, 100%);
+    max-height: 84vh;
+    overflow: auto;
+    border-radius: 14px;
+    border: 1px solid var(--studio-line);
+    background: #ffffff;
+    padding: 14px;
+  }
+
+  .section-modal-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .section-list {
+    display: grid;
+    gap: 8px;
+  }
+
+  .section-list-item {
+    border: 1px solid var(--studio-line);
+    border-radius: 10px;
+    padding: 10px;
+    background: #f8fafc;
+  }
+
+  @media (max-width: 1100px) {
+    .studio-layout {
+      grid-template-columns: 1fr;
+    }
+    .scope-sticky {
+      position: static;
+    }
+  }
+
+  @media (max-width: 820px) {
+    .studio-kpis {
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+    }
+    .overview-toolbar {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block admin_content %}
+<section class="studio-shell">
+  <div class="studio-top">
+    <div>
+      <h1 class="studio-title">Report Sections Studio</h1>
+      <p class="studio-subtitle">Redesigned for scale: fast navigation, clear hierarchy, and zero-loss functionality.</p>
+    </div>
+    <div class="workspace-actions">
+      <button class="btn-ghost" type="button" id="loadTemplateBtn">Load Template</button>
+      <button class="btn-primary" type="button" id="saveTemplateBtn">Save Template</button>
+    </div>
+  </div>
+
+  <div class="studio-kpis" id="kpiGrid">
+    <div class="kpi-card"><div class="kpi-label">Universities</div><div class="kpi-value" id="kpiUniversities">0</div></div>
+    <div class="kpi-card"><div class="kpi-label">Loaded Mode</div><div class="kpi-value" id="kpiMode">Editor</div></div>
+  </div>
+
+  <div class="studio-layout">
+    <aside class="studio-panel scope-sticky">
+      <div class="panel-head">
+        <h3 class="panel-title">Navigation</h3>
+        <p class="panel-note">Switch mode, level, and target scope.</p>
+      </div>
+      <div class="panel-body">
+        <div class="mode-switch" id="modeSwitch">
+          <button class="mode-btn active" type="button" data-mode="editor">Editor</button>
+          <button class="mode-btn" type="button" data-mode="overview">Overview</button>
+        </div>
+
+        <hr>
+
+        <div class="level-switch" id="levelSwitch" style="display:none;">
+          <button class="level-btn active" type="button" data-level="university">University</button>
+          <button class="level-btn" type="button" data-level="college">College</button>
+          <button class="level-btn" type="button" data-level="major">Major</button>
+        </div>
+
+        <div id="scopeUniversity" class="scope-grid">
+          <div>
+            <label class="form-label">University</label>
+            <select id="universitySelect" class="form-select"></select>
+          </div>
+        </div>
+
+
+
+        <hr>
+        <div class="mb-2">
+          <label class="form-label fw-bold">System Default Template</label>
+          <p class="small text-muted mb-2">Used when a university has no custom sections configured.</p>
+          <button class="btn-ghost w-100" type="button" id="loadDefaultBtn">Load System Default</button>
+        </div>
+        <hr>
+        <div class="scope-actions">
+          <button class="btn-ghost" type="button" id="scopeLoadBtn">Load Selected Template</button>
+          <button class="btn-primary" type="button" id="scopeSaveBtn">Save Selected Template</button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="studio-panel">
+      <div id="editorMode" class="content-mode active">
+        <div class="panel-head">
+          <div class="editor-toolbar">
+            <div>
+              <h3 class="panel-title">Section Template Editor</h3>
+              <p class="panel-note">Edit without losing inheritance context.</p>
+            </div>
+            <div class="editor-actions">
+              <button class="btn btn-sm btn-outline-secondary" type="button" id="addSectionBtn">Add Section</button>
+              <button class="btn btn-sm btn-outline-secondary" type="button" id="copyInheritedBtn">Use Inherited as Base</button>
+              <button class="btn btn-sm btn-outline-danger" type="button" id="clearSectionsBtn">Clear All</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="inheritanceWrap" class="meta-card">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+                <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="isActive" checked>
+                <label class="form-check-label" for="isActive">Template Active</label>
+              </div>
+            </div>
+            <div id="inheritanceInfo" class="inheritance-info"></div>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label">Description</label>
+            <textarea id="templateDescription" class="form-control" rows="2" placeholder="Template description..."></textarea>
+          </div>
+
+          <div class="table-shell table-responsive">
+            <table class="table table-bordered align-middle">
+              <thead>
+                <tr>
+                  <th style="width:18%;">Key</th>
+                  <th style="width:22%;">Title</th>
+                  <th>Description</th>
+                  <th style="width:10%;">Order</th>
+                  <th style="width:16%;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sectionsBody">
+                <tr><td colspan="5" class="text-center text-muted">Load a template to start editing.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="preview-card">
+            <h6 class="mb-2">Inherited Sections Preview</h6>
+            <div id="inheritedPreview" class="small text-muted">No inherited sections for current selection.</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="overviewMode" class="content-mode">
+        <div class="panel-head">
+          <h3 class="panel-title">Overview & Status</h3>
+          <p class="panel-note">Built for large data: search, collapse, and quick jump-to-edit actions.</p>
+        </div>
+        <div class="panel-body">
+          <div class="overview-toolbar">
+            <input id="overviewSearch" class="form-control" placeholder="Search university, college, or major..." type="text">
+            <button class="btn btn-sm btn-outline-secondary" id="expandAllBtn" type="button">Expand All</button>
+            <button class="btn btn-sm btn-outline-secondary" id="collapseAllBtn" type="button">Collapse All</button>
+          </div>
+          <div id="overviewContent" class="overview-list">
+            <div class="text-muted small">Loading hierarchy...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<div id="sectionsModal" class="section-modal" aria-hidden="true">
+  <div class="section-modal-card">
+    <div class="section-modal-top">
+      <div>
+        <h4 class="mb-0" id="sectionsModalTitle">Effective Sections</h4>
+        <div class="small text-muted" id="sectionsModalSource"></div>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="sectionsModalClose">Close</button>
+    </div>
+    <div id="sectionsModalBody"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+
+const headers = {
+  'Authorization': `Bearer ${token}`,
+  'Content-Type': 'application/json',
+};
+
+let currentMode = 'editor';
+let currentLevel = 'university';
+let universities = [];
+let colleges = [];
+let majors = [];
+let currentTemplate = null;
+let isEditingDefault = false; // true when editing system default template
+let collegeSelectRequestSeq = 0;
+const statusCache = new Map();
+
+function slugify(text) {
+  const value = String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/-+/g, '_');
+  return value || '';
+}
+
+function toSafeText(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function capitalize(text) {
+  return String(text || '').charAt(0).toUpperCase() + String(text || '').slice(1);
+}
+
+function refId(value) {
+  if (!value) return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'object') {
+    return String(value._id || value.id || value.$oid || '');
+  }
+  return '';
+}
+
+function collegeUniversityId(college) {
+  return String(
+    refId(college?.university) ||
+    refId(college?.universityId) ||
+    ''
+  );
+}
+
+async function fetchCollegesForUniversity(universityId) {
+  if (!universityId) return [];
+  try {
+    const url = `/api/admin/colleges?university=${encodeURIComponent(String(universityId))}&limit=500`;
+    const data = await fetchJson(url, { headers: { 'Authorization': `Bearer ${token}` } });
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn('[fetchCollegesForUniversity] Error:', err.message);
+    return [];
+  }
+}
+
+function ensureSelect2Initialized(selectEl) {
+  if (!selectEl || selectEl.tagName !== 'SELECT') return;
+  if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) return;
+
+  const $select = window.jQuery(selectEl);
+  const optionCount = Array.from(selectEl.options || []).filter((opt) => {
+    if (opt.disabled) return false;
+    const value = String(opt.value || '').trim();
+    const text = String(opt.textContent || '').trim();
+    if (!value && !text) return false;
+    if (!value) return false;
+    return true;
+  }).length;
+
+  // Follow global behavior: searchable only for larger lists.
+  if (optionCount < 8) {
+    if ($select.hasClass('select2-hidden-accessible')) {
+      $select.select2('destroy');
+    }
+    return;
+  }
+
+  if ($select.hasClass('select2-hidden-accessible')) {
+    $select.trigger('change.select2');
+    return;
+  }
+
+  $select.select2({
+    width: '100%',
+    minimumResultsForSearch: 0,
+    placeholder: selectEl.getAttribute('data-placeholder') || undefined,
+  });
+
+  // ── FIX: Select2 swallows native 'change' events when it wraps a <select>.
+  // We must also listen to Select2's own 'select2:select' + 'select2:unselect'
+  // events and relay them to our handler functions by element id.
+  const elId = selectEl.id;
+  // Remove any previously-bound handler to avoid double-firing.
+  $select.off('select2:select.scopeRelay select2:unselect.scopeRelay');
+  $select.on('select2:select.scopeRelay select2:unselect.scopeRelay', function () {
+    const currentVal = this.value || '';
+    if (elId === 'collegeUniversitySelect') {
+      populateCollegeSelect(currentVal);
+    } else if (elId === 'universitySelect') {
+      const collegeUni = document.getElementById('collegeUniversitySelect');
+      if (collegeUni) {
+        // Keep the two university selectors in sync.
+        const wasSelect2 = !!(window.jQuery && window.jQuery.fn && window.jQuery.fn.select2 &&
+          window.jQuery(collegeUni).hasClass('select2-hidden-accessible'));
+        if (wasSelect2) {
+          window.jQuery(collegeUni).val(currentVal).trigger('change');
+        } else {
+          collegeUni.value = currentVal;
+        }
+      }
+      populateCollegeSelect(currentVal);
+    }
+  });
+}
+
+function refreshScopeSelectEnhancements() {
+  // Defer until after scope visibility/options are fully applied in the DOM.
+  setTimeout(() => {
+    ensureSelect2Initialized(document.getElementById('universitySelect'));
+    ensureSelect2Initialized(document.getElementById('collegeUniversitySelect'));
+    ensureSelect2Initialized(document.getElementById('collegeSelect'));
+    ensureSelect2Initialized(document.getElementById('majorSelect'));
+  }, 0);
+}
+
+function getSelectedEntityId() {
+  // University-only: always use university select
+  return document.getElementById('universitySelect').value || '';
+}
+
+function getTemplateEndpoint(entityId, level = currentLevel) {
+  // University-only: always use university endpoint
+  return `/api/admin/university-report-templates/${entityId}`;
+}
+
+function setEditorDisabled(disabled) {
+  const body = document.getElementById('sectionsBody');
+  // disable all interactive controls within the sections table
+  body.querySelectorAll('input, button, textarea, select').forEach((el) => {
+    el.disabled = !!disabled;
+  });
+  document.getElementById('addSectionBtn').disabled = !!disabled;
+  document.getElementById('clearSectionsBtn').disabled = !!disabled;
+  // also disable top-level template fields so edit is fully blocked when inherited
+  const desc = document.getElementById('templateDescription');
+  if (desc) desc.disabled = !!disabled;
+  const activeEl = document.getElementById('isActive');
+  if (activeEl) activeEl.disabled = !!disabled;
+  const copyBtn = document.getElementById('copyInheritedBtn');
+  if (copyBtn) copyBtn.disabled = !!disabled;
+}
+
+function renderSections(rows) {
+  const body = document.getElementById('sectionsBody');
+  const sections = Array.isArray(rows) ? rows : [];
+
+  if (!sections.length) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No sections configured.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = sections.map((row, index) => `
+    <tr>
+      <td><input class="form-control sec-key" value="${toSafeText(row.key || '')}" placeholder="introduction"></td>
+      <td><input class="form-control sec-title" value="${toSafeText(row.title || '')}" placeholder="Introduction"></td>
+      <td><input class="form-control sec-description" value="${toSafeText(row.description || '')}" placeholder="What should this section include?"></td>
+      <td><input class="form-control sec-sort-order" type="number" min="0" value="${toSafeText(row.sortOrder ?? index)}"></td>
+      <td>
+        <div class="d-flex gap-1">
+          <button class="btn btn-sm btn-outline-secondary move-up" type="button" title="Move up">↑</button>
+          <button class="btn btn-sm btn-outline-secondary move-down" type="button" title="Move down">↓</button>
+          <button class="btn btn-sm btn-outline-danger remove-row" type="button" title="Remove">×</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  attachRowEvents();
+}
+
+function attachRowEvents() {
+  const body = document.getElementById('sectionsBody');
+
+  body.querySelectorAll('tr').forEach((tr) => {
+    const titleInput = tr.querySelector('.sec-title');
+    const keyInput = tr.querySelector('.sec-key');
+
+    titleInput?.addEventListener('input', () => {
+      if (!keyInput.value.trim()) keyInput.value = slugify(titleInput.value);
+    });
+
+    tr.querySelector('.remove-row')?.addEventListener('click', () => {
+      tr.remove();
+      normalizeSortOrder();
+      if (!body.querySelector('tr')) renderSections([]);
+    });
+
+    tr.querySelector('.move-up')?.addEventListener('click', () => {
+      const prev = tr.previousElementSibling;
+      if (prev) {
+        tr.parentNode.insertBefore(tr, prev);
+        normalizeSortOrder();
+      }
+    });
+
+    tr.querySelector('.move-down')?.addEventListener('click', () => {
+      const next = tr.nextElementSibling;
+      if (next) {
+        tr.parentNode.insertBefore(next, tr);
+        normalizeSortOrder();
+      }
+    });
+  });
+}
+
+function normalizeSortOrder() {
+  document.querySelectorAll('#sectionsBody tr').forEach((tr, index) => {
+    const field = tr.querySelector('.sec-sort-order');
+    if (field && String(field.value || '').trim() === '') field.value = String(index);
+  });
+}
+
+function readSectionsFromUi() {
+  const rows = Array.from(document.querySelectorAll('#sectionsBody tr'));
+  return rows.map((tr, index) => {
+    const title = tr.querySelector('.sec-title')?.value?.trim() || '';
+    const keyRaw = tr.querySelector('.sec-key')?.value?.trim() || '';
+    const description = tr.querySelector('.sec-description')?.value?.trim() || '';
+    const sortOrder = tr.querySelector('.sec-sort-order')?.value?.trim() || String(index);
+    if (!title && !keyRaw && !description) return null;
+
+    const key = keyRaw || slugify(title) || `section_${index + 1}`;
+    return { key, title: title || `Section ${index + 1}`, description, sortOrder };
+  }).filter(Boolean);
+}
+
+function renderInheritedPreview(rows, level = '') {
+  const el = document.getElementById('inheritedPreview');
+  if (!el) return; // Element might not exist
+  
+  const sections = Array.isArray(rows) ? rows : [];
+  if (!sections.length) {
+    el.innerHTML = 'No inherited sections for current selection.';
+    return;
+  }
+  const levelText = level ? `<div class="mb-1"><strong>Inherited from:</strong> ${toSafeText(level)}</div>` : '';
+  el.innerHTML = `${levelText}<ol class="mb-0">${sections.map((item) => `<li><strong>${toSafeText(item.title || 'Untitled')}</strong> <span class="text-muted">(${toSafeText(item.key || '-')})</span><br><span>${toSafeText(item.description || '')}</span></li>`).join('')}</ol>`;
+}
+
+function setScopeVisibility() {
+  // University-only: always show university scope
+  document.getElementById('scopeUniversity').style.display = '';
+  document.querySelectorAll('.level-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.level === 'university');
+  });
+  document.getElementById('inheritanceWrap').style.display = '';
+  refreshScopeSelectEnhancements();
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+  document.getElementById('editorMode').classList.toggle('active', mode === 'editor');
+  document.getElementById('overviewMode').classList.toggle('active', mode === 'overview');
+  document.getElementById('kpiMode').textContent = capitalize(mode);
+  if (mode === 'overview') loadOverview();
+}
+
+async function fetchJson(url, options = {}) {
+  const res = await fetch(url, options);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.message || `Request failed (${res.status})`);
+  }
+  return data;
+}
+
+// Build a fast lookup: universityId -> number of colleges linked to it
+function buildCollegeCountMap() {
+  const countMap = {};
+  for (const c of colleges) {
+    const uid = collegeUniversityId(c);
+    if (uid) countMap[uid] = (countMap[uid] || 0) + 1;
+  }
+  return countMap;
+}
+
+function populateUniversitySelects() {
+  const countMap = buildCollegeCountMap();
+
+  const makeOption = (u) => {
+    const count = countMap[u._id] || 0;
+    const label = toSafeText(u.name || 'Unnamed University');
+    const hint = count > 0 ? ` (${count} college${count !== 1 ? 's' : ''})` : ' — no colleges';
+    return `<option value="${u._id}">${label}${hint}</option>`;
+  };
+
+  const options = ['<option value="">Select University</option>']
+    .concat(universities.map(makeOption))
+    .join('');
+
+  const uniSelect = document.getElementById('universitySelect');
+  if (uniSelect) uniSelect.innerHTML = options;
+
+  const collegeUniSelect = document.getElementById('collegeUniversitySelect');
+  if (collegeUniSelect) collegeUniSelect.innerHTML = options;
+
+  refreshScopeSelectEnhancements();
+}
+
+function setCollegeOptions(selected, universityId = '') {
+  const normalized = Array.isArray(selected) ? selected : [];
+
+  const collegeSelect = document.getElementById('collegeSelect');
+  if (!collegeSelect) return; // Element doesn't exist in university-only mode
+
+  const hint = document.getElementById('collegeSelectHint');
+
+  const options = ['<option value="">Select College</option>']
+    .concat(normalized.map((c) => `<option value="${c._id}">${toSafeText(c.name || 'Unnamed College')}</option>`))
+    .join('');
+
+  const isSelect2Active = !!(window.jQuery && window.jQuery.fn && window.jQuery.fn.select2 && window.jQuery(collegeSelect).hasClass('select2-hidden-accessible'));
+
+  console.log('[SET_COLLEGE_OPTIONS] universityId:', universityId);
+  console.log('[SET_COLLEGE_OPTIONS] select2 active:', isSelect2Active);
+  console.log('[SET_COLLEGE_OPTIONS] matched colleges:', normalized.length);
+  console.log('[SET_COLLEGE_OPTIONS] options html:', options);
+
+  if (isSelect2Active) {
+    const $collegeSelect = window.jQuery(collegeSelect);
+    $collegeSelect.select2('destroy');
+    const freshSelect = collegeSelect.cloneNode(false);
+    freshSelect.innerHTML = options;
+    freshSelect.value = '';
+    collegeSelect.parentNode.replaceChild(freshSelect, collegeSelect);
+  } else {
+    collegeSelect.innerHTML = options;
+    collegeSelect.value = '';
+  }
+
+  if (hint) {
+    if (!universityId) {
+      hint.style.display = 'none';
+      hint.textContent = '';
+    } else if (!normalized.length) {
+      const uni = universities.find((u) => String(u._id || '') === String(universityId));
+      hint.style.display = '';
+      hint.textContent = `No colleges are linked to ${uni?.name || 'this university'} yet.`;
+    } else {
+      hint.style.display = 'none';
+      hint.textContent = '';
+    }
+  }
+
+  refreshScopeSelectEnhancements();
+}
+
+async function populateCollegeSelect(universityId = '') {
+  const collegeSelect = document.getElementById('collegeSelect');
+  if (!collegeSelect) return; // Element doesn't exist in university-only mode
+
+  const targetId = String(universityId || '');
+  const requestSeq = ++collegeSelectRequestSeq;
+
+  // Show loading state immediately so the user sees activity
+  if (targetId) {
+    const isSelect2Active = !!(window.jQuery && window.jQuery.fn && window.jQuery.fn.select2 && window.jQuery(collegeSelect).hasClass('select2-hidden-accessible'));
+    if (isSelect2Active) {
+      window.jQuery(collegeSelect).select2('destroy');
+      const freshSelect = collegeSelect.cloneNode(false);
+      freshSelect.innerHTML = '<option value="">Loading colleges...</option>';
+      freshSelect.value = '';
+      collegeSelect.parentNode.replaceChild(freshSelect, collegeSelect);
+    } else {
+      collegeSelect.innerHTML = '<option value="">Loading colleges...</option>';
+      collegeSelect.value = '';
+    }
+    const hint = document.getElementById('collegeSelectHint');
+    if (hint) { hint.style.display = 'none'; hint.textContent = ''; }
+  }
+
+  console.log('[POPULATE_COLLEGE] targetId:', targetId);
+  if (colleges.length) {
+    colleges.forEach((college, index) => {
+      console.log('[POPULATE_COLLEGE] college[' + index + ']:', {
+        _id: college?._id,
+        name: college?.name,
+        universityId: collegeUniversityId(college),
+      });
+    });
+  }
+
+  // Step 1: try in-memory filter first (fast path)
+  const selected = targetId
+    ? colleges.filter((c) => collegeUniversityId(c) === targetId)
+    : colleges;
+
+  console.log('[POPULATE_COLLEGE] matched colleges:', selected.length);
+
+  if (selected.length > 0 || !targetId) {
+    if (requestSeq !== collegeSelectRequestSeq) return;
+    // We have local results — no server call needed
+    setCollegeOptions(selected, targetId);
+    refreshScopeSelectEnhancements();
+    return;
+  }
+
+  // Step 2: local filter is empty — fetch fresh from server (handles cases where
+  // the initial bulk load missed this university's colleges, or data was added later)
+  const serverMatched = await fetchCollegesForUniversity(targetId);
+  if (requestSeq !== collegeSelectRequestSeq) return;
+  console.log('[POPULATE_COLLEGE] server matched colleges:', serverMatched.length);
+  if (serverMatched.length) {
+    // Merge any new colleges into the in-memory list so future filters work
+    const knownIds = new Set(colleges.map((c) => String(c._id || '')));
+    serverMatched.forEach((c) => {
+      const cid = String(c._id || '');
+      if (cid && !knownIds.has(cid)) {
+        colleges.push(c);
+        knownIds.add(cid);
+      }
+    });
+    setCollegeOptions(serverMatched, targetId);
+  } else {
+    // Truly no colleges for this university
+    setCollegeOptions([], targetId);
+  }
+
+  refreshScopeSelectEnhancements();
+}
+
+function populateMajorSelect() {
+  const majorSelect = document.getElementById('majorSelect');
+  if (!majorSelect) return; // Element doesn't exist in university-only mode
+
+  majorSelect.innerHTML = ['<option value="">Select Major</option>']
+    .concat(majors.map((m) => `<option value="${m._id}">${toSafeText(m.name || 'Unnamed Major')}${m.degree?.name ? ` (${toSafeText(m.degree.name)})` : ''}</option>`))
+    .join('');
+
+  refreshScopeSelectEnhancements();
+}
+
+function refreshKpis() {
+  const kpiUniversities = document.getElementById('kpiUniversities');
+  if (kpiUniversities) kpiUniversities.textContent = String(universities.length);
+}
+
+function addEmptySectionRow() {
+  const existing = readSectionsFromUi();
+  existing.push({ key: '', title: '', description: '', sortOrder: String(existing.length) });
+  renderSections(existing);
+}
+
+function clearSectionRows() {
+  renderSections([]);
+}
+
+function refreshInheritanceUi() {
+  // University-only: no inheritance toggling needed
+  const info = document.getElementById('inheritanceInfo');
+  if (info) {
+    info.textContent = 'University template is the root baseline for all report sections.';
+  }
+  setEditorDisabled(false);
+}
+
+function hydrateTemplate(template) {
+  currentTemplate = template;
+  document.getElementById('templateDescription').value = template.description || '';
+  document.getElementById('isActive').checked = template.isActive !== false;
+  renderSections(template.sections || []);
+  renderInheritedPreview(template.inheritedSections || [], template.inheritanceLevel || '');
+  refreshInheritanceUi();
+}
+
+async function loadTemplate() {
+  isEditingDefault = false;
+  const entityId = getSelectedEntityId();
+  if (!entityId) {
+    alert('Please select a university first.');
+    return;
+  }
+  try {
+    const data = await fetchJson(getTemplateEndpoint(entityId), { headers: { 'Authorization': `Bearer ${token}` } });
+    hydrateTemplate(data);
+    document.getElementById('inheritanceInfo').textContent = `Editing: University Template`;
+  } catch (err) {
+    alert(err.message || 'Failed to load template');
+  }
+}
+
+
+async function loadDefaultTemplate() {
+  isEditingDefault = true;
+  try {
+    const data = await fetchJson('/api/admin/default-report-template', { headers: { 'Authorization': `Bearer ${token}` } });
+    hydrateTemplate(data);
+    document.getElementById('inheritanceInfo').textContent = '⭐ Editing: System Default Template — used when no university template is configured.';
+  } catch (err) {
+    alert(err.message || 'Failed to load system default template');
+  }
+}
+
+function validateSections(sections) {
+  const seen = new Set();
+  for (let i = 0; i < sections.length; i += 1) {
+    const item = sections[i];
+    if (!item.key || !item.title) {
+      throw new Error(`Section ${i + 1} needs both key and title.`);
+    }
+    const normalized = item.key.toLowerCase();
+    if (seen.has(normalized)) {
+      throw new Error(`Duplicate section key: ${item.key}`);
+    }
+    seen.add(normalized);
+  }
+}
+
+async function saveTemplate() {
+  const payload = {
+    description: document.getElementById('templateDescription').value.trim(),
+    isActive: document.getElementById('isActive').checked,
+    sections: readSectionsFromUi(),
+  };
+
+  validateSections(payload.sections);
+
+  if (isEditingDefault) {
+    // Save system default template
+    try {
+      const data = await fetchJson('/api/admin/default-report-template', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(payload),
+      });
+      statusCache.clear();
+      hydrateTemplate(data);
+      document.getElementById('inheritanceInfo').textContent =
+        '⭐ Editing: System Default Template — used when no university template is configured.';
+      alert('System default template saved successfully.');
+      if (currentMode === 'overview') loadOverview();
+    } catch (err) {
+      alert(err.message || 'Failed to save system default template');
+    }
+    return;
+  }
+
+  // Save university-specific template
+  const entityId = getSelectedEntityId();
+  if (!entityId) {
+    alert('Please select a university first.');
+    return;
+  }
+
+  try {
+    const data = await fetchJson(getTemplateEndpoint(entityId), {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    statusCache.clear();
+    hydrateTemplate(data);
+    alert('Template saved successfully.');
+    if (currentMode === 'overview') loadOverview();
+  } catch (err) {
+    alert(err.message || 'Failed to save template');
+  }
+}
+
+function copyInheritedToEditor() {
+  const inherited = currentTemplate?.inheritedSections || [];
+  if (!inherited.length) {
+    alert('No inherited sections found for current selection.');
+    return;
+  }
+
+  if (currentLevel === 'college') {
+    const el = document.getElementById('useUniversityDefault'); if (el) el.checked = false;
+  }
+  if (currentLevel === 'major') {
+    const el2 = document.getElementById('useLevelAboveDefault'); if (el2) el2.checked = false;
+  }
+
+  renderSections(inherited.map((item, idx) => ({
+    key: item.key || '',
+    title: item.title || '',
+    description: item.description || '',
+    sortOrder: item.sortOrder ?? String(idx),
+  })));
+  refreshInheritanceUi();
+}
+
+function statusBadge(source, sectionsCount = 0) {
+  if (source === 'major_custom' || source === 'college_custom' || source === 'university_default') {
+    return `<span class="status-badge status-custom">Custom (${sectionsCount})</span>`;
+  }
+  if (source === 'major_legacy') return '<span class="status-badge status-legacy">Legacy</span>';
+  if (source === 'none') return '<span class="status-badge status-none">None</span>';
+  if (source && source.includes('inherited')) return '<span class="status-badge status-inherited">Inherited</span>';
+  return '<span class="status-badge status-inherited">Inherited</span>';
+}
+
+async function getConfigStatus(level, id) {
+  const key = `${level}:${id}`;
+  if (statusCache.has(key)) return statusCache.get(key);
+
+  try {
+    const response = await fetchJson(getTemplateEndpoint(id, level), { headers });
+    const sections = Array.isArray(response.sections) ? response.sections.length : 0;
+    const result = {
+      source: response.source || (sections > 0 ? 'university_default' : 'none'),
+      sections,
+    };
+    statusCache.set(key, result);
+    return result;
+  } catch (err) {
+    const fallback = { source: 'error', sections: 0 };
+    statusCache.set(key, fallback);
+    return fallback;
+  }
+}
+
+function getCollegeForMajor(major) {
+  return major?.college?._id || major?.degree?.college?._id || '';
+}
+
+function textMatch(text, query) {
+  if (!query) return true;
+  return String(text || '').toLowerCase().includes(query);
+}
+
+async function loadOverview() {
+  const search = String(document.getElementById('overviewSearch').value || '').trim().toLowerCase();
+  const content = document.getElementById('overviewContent');
+  content.innerHTML = '<div class="text-muted small">Loading hierarchy...</div>';
+
+  if (!universities.length) {
+    content.innerHTML = '<div class="text-muted small">No universities found.</div>';
+    return;
+  }
+
+  const rows = [];
+
+  for (const university of universities) {
+    const universityId = String(university._id || '');
+    const hasUniversityMatch = textMatch(university.name, search);
+    if (!hasUniversityMatch && search) continue;
+
+    const uStatus = await getConfigStatus('university', universityId);
+
+    let universityHtml = `
+      <div class="hier-node" data-level="university" data-id="${toSafeText(universityId)}">
+        <div class="hier-head">
+          <div class="hier-left">
+            <span class="hier-type">University</span>
+            <h4 class="hier-label">${toSafeText(university.name || 'Unnamed University')}</h4>
+            ${statusBadge(uStatus.source, uStatus.sections)}
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-sm btn-outline-primary" data-action="edit" data-level="university" data-id="${toSafeText(universityId)}">Edit</button>
+            <button class="btn btn-sm btn-outline-secondary" data-action="view" data-level="university" data-id="${toSafeText(universityId)}">View</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    rows.push(universityHtml);
+  }
+
+  content.innerHTML = rows.length ? rows.join('') : '<div class="text-muted small">No universities match your search.</div>';
+}
+
+function collapseNode(targetNode, collapse) {
+  const body = targetNode.querySelector(':scope > .hier-body');
+  const toggle = targetNode.querySelector(':scope > .hier-head [data-action="toggle"]');
+  if (!body || !toggle) return;
+  body.style.display = collapse ? 'none' : '';
+  toggle.textContent = collapse ? 'Expand' : 'Collapse';
+}
+
+function setCollapseAll(collapse) {
+  document.querySelectorAll('#overviewContent .hier-node').forEach((node) => {
+    collapseNode(node, collapse);
+  });
+}
+
+function switchToUniversity(uniId) {
+  setMode('editor');
+  currentLevel = 'university';
+  setScopeVisibility();
+  document.getElementById('universitySelect').value = uniId;
+  loadTemplate();
+}
+
+async function switchToCollege(uniId, collegeId) {
+  setMode('editor');
+  currentLevel = 'college';
+  setScopeVisibility();
+  // Sync the university selector (handle Select2 if active)
+  const $collegeUniSel = document.getElementById('collegeUniversitySelect');
+  if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2 &&
+      window.jQuery($collegeUniSel).hasClass('select2-hidden-accessible')) {
+    window.jQuery($collegeUniSel).val(uniId).trigger('change');
+  } else {
+    $collegeUniSel.value = uniId;
+  }
+  // Wait for the college list to be populated before setting the college value.
+  await populateCollegeSelect(uniId);
+  const $collegeSel = document.getElementById('collegeSelect');
+  if ($collegeSel) $collegeSel.value = collegeId;
+  loadTemplate();
+}
+
+function switchToMajor(majorId) {
+  setMode('editor');
+  currentLevel = 'major';
+  setScopeVisibility();
+  document.getElementById('majorSelect').value = majorId;
+  loadTemplate();
+}
+
+function openSectionsModal(title, source, sections) {
+  document.getElementById('sectionsModalTitle').textContent = title || 'Effective Sections';
+  document.getElementById('sectionsModalSource').textContent = source ? `Source: ${source}` : '';
+  const body = document.getElementById('sectionsModalBody');
+
+  if (!Array.isArray(sections) || !sections.length) {
+    body.innerHTML = '<div class="text-muted">No sections configured.</div>';
+  } else {
+    body.innerHTML = `<div class="section-list">${sections.map((section) => `
+      <div class="section-list-item">
+        <div><strong>${toSafeText(section.title || 'Untitled')}</strong> <span class="text-muted">(${toSafeText(section.key || '-')})</span></div>
+        <div class="small text-muted mt-1">${toSafeText(section.description || 'No description')}</div>
+      </div>
+    `).join('')}</div>`;
+  }
+
+  document.getElementById('sectionsModal').classList.add('open');
+}
+
+function closeSectionsModal() {
+  document.getElementById('sectionsModal').classList.remove('open');
+}
+
+async function viewEffectiveSections(level, id) {
+  try {
+    const response = await fetchJson(getTemplateEndpoint(id, level), { headers });
+    const title = response.major?.name || response.college?.name || response.university?.name || 'Selection';
+    openSectionsModal(title, response.source || 'unknown', response.sections || []);
+  } catch (err) {
+    alert(err.message || 'Unable to fetch sections.');
+  }
+}
+
+async function initializePage() {
+  try {
+    const [universityData, collegeData, majorData] = await Promise.all([
+      fetchJson('/api/admin/universities', { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetchJson('/api/admin/colleges', { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetchJson('/api/admin/majors', { headers: { 'Authorization': `Bearer ${token}` } }),
+    ]);
+
+    universities = Array.isArray(universityData) ? universityData : [];
+    colleges = Array.isArray(collegeData) ? collegeData : [];
+    majors = Array.isArray(majorData) ? majorData : [];
+
+    console.log('[INIT] Universities loaded:', universities.length);
+    console.log('[INIT] Colleges loaded (deprecated):', colleges.length);
+    console.log('[INIT] Majors loaded (deprecated):', majors.length);
+
+    populateUniversitySelects();
+    // University-only: skip college and major population
+    refreshKpis();
+
+    if (universities.length) {
+      // University-only: set first university as default
+      const firstUniversity = String(universities[0]._id || '');
+      document.getElementById('universitySelect').value = firstUniversity;
+    }
+
+    setScopeVisibility();
+    setMode('editor');
+  } catch (err) {
+    alert(err.message || 'Failed to initialize report sections page.');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.mode-btn').forEach((btn) => {
+    btn.addEventListener('click', () => setMode(btn.dataset.mode));
+  });
+
+  document.querySelectorAll('.level-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      // University-only: skip level switching
+      return;
+    });
+  });
+
+  // University-only: no college selector listener needed
+  // Keep universitySelect listener for future use if colleges are re-added
+
+
+  document.getElementById('overviewSearch').addEventListener('input', () => {
+    loadOverview();
+  });
+
+  document.getElementById('expandAllBtn').addEventListener('click', () => setCollapseAll(false));
+  document.getElementById('collapseAllBtn').addEventListener('click', () => setCollapseAll(true));
+
+  // University-only: no inheritance toggle listeners needed
+  const useUnivDefault = document.getElementById('useUniversityDefault');
+  const useLevelAbove = document.getElementById('useLevelAboveDefault');
+  if (useUnivDefault) useUnivDefault.addEventListener('change', refreshInheritanceUi);
+  if (useLevelAbove) useLevelAbove.addEventListener('change', refreshInheritanceUi);
+
+  document.getElementById('addSectionBtn').addEventListener('click', addEmptySectionRow);
+  document.getElementById('clearSectionsBtn').addEventListener('click', clearSectionRows);
+  document.getElementById('loadTemplateBtn').addEventListener('click', loadTemplate);
+  document.getElementById('saveTemplateBtn').addEventListener('click', saveTemplate);
+  document.getElementById('scopeLoadBtn').addEventListener('click', loadTemplate);
+  document.getElementById('loadDefaultBtn').addEventListener('click', loadDefaultTemplate);
+  document.getElementById('scopeSaveBtn').addEventListener('click', saveTemplate);
+  document.getElementById('copyInheritedBtn').addEventListener('click', copyInheritedToEditor);
+
+  document.getElementById('overviewContent').addEventListener('click', (event) => {
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+
+    if (action === 'toggle') {
+      const node = target.closest('.hier-node');
+      const body = node?.querySelector(':scope > .hier-body');
+      if (!node || !body) return;
+      const shouldCollapse = body.style.display !== 'none';
+      collapseNode(node, shouldCollapse);
+      return;
+    }
+
+    const level = target.dataset.level;
+    const id = target.dataset.id;
+    if (!level || !id) return;
+
+    if (action === 'edit') {
+      // University-only: always use university editor
+      if (level === 'university') {
+        switchToUniversity(id);
+      }
+      return;
+    }
+
+    if (action === 'view') {
+      viewEffectiveSections(level, id);
+    }
+  });
+
+  document.getElementById('sectionsModalClose').addEventListener('click', closeSectionsModal);
+  document.getElementById('sectionsModal').addEventListener('click', (event) => {
+    if (event.target.id === 'sectionsModal') closeSectionsModal();
+  });
+
+  initializePage();
+});
+</script>
+{% endblock %}

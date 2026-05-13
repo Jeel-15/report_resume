@@ -1,0 +1,452 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'degrees' %}
+
+{% block title %}Degrees - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Manage Degrees</h1>
+    <p class="page-subtitle">Maintain degree master records used by major policies and student profiles.</p>
+  </div>
+
+  <div class="stats-inline">
+    <div class="toolbar" style="display:grid;grid-template-columns:minmax(280px,420px) auto;gap:10px;align-items:start;">
+      <div>
+        <input id="degreeName" class="small-input" placeholder="New degree name">
+        <div id="addDegreeMsg" style="font-size:13px;margin-top:6px;display:none;"></div>
+      </div>
+      <button class="btn-primary" type="button" onclick="addDegree()">Add</button>
+    </div>
+  </div>
+
+  <article class="panel-card panel-body table-card">
+    <div id="bulkToolbar" style="
+      display:none;
+      align-items:center;
+      gap:12px;
+      padding:10px 16px;
+      background:#fff3cd;
+      border:1px solid #ffc107;
+      border-radius:8px;
+      margin-bottom:12px;
+      font-size:13px;
+    ">
+      <span id="selectedCount" style="font-weight:600;color:#856404;">
+        0 selected
+      </span>
+      <button 
+        onclick="bulkDelete()" 
+        style="
+          padding:6px 16px;
+          background:#dc2626;
+          color:#fff;
+          border:none;
+          border-radius:6px;
+          font-size:13px;
+          font-weight:600;
+          cursor:pointer;
+        "
+      >
+        🗑 Delete Selected
+      </button>
+      <button 
+        onclick="clearSelection()" 
+        style="
+          padding:6px 12px;
+          background:transparent;
+          border:1px solid #aaa;
+          border-radius:6px;
+          font-size:13px;
+          cursor:pointer;
+        "
+      >
+        ✕ Clear
+      </button>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead><tr><th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th><th>Name</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="4" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<div class="modal fade" id="renameModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Rename Degree</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="renameId">
+        <label class="form-label">Degree Name</label>
+        <input class="form-control" id="renameInput" placeholder="Enter new degree name">
+        <div id="renameErrorMsg" style="color:#ef4444;font-size:13px;margin-top:6px;display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveRename()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Delete Degree</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="deleteId">
+        <div class="alert alert-danger py-2 px-3" style="font-size:13px;">
+          ⚠ This will permanently delete the degree <strong id="deleteDegreeName"></strong> and all majors under it. This cannot be undone.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" type="button" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toastMsg" style="
+  position:fixed;
+  bottom:24px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#0f172a;
+  color:#fff;
+  padding:10px 24px;
+  border-radius:8px;
+  font-size:13px;
+  font-weight:600;
+  z-index:9999;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.3s ease;
+"></div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+
+const ENTITY_ENDPOINT = 'degrees';
+let degreesMap = {};
+let renameModal = null;
+let deleteModal = null;
+let toastTimer = null;
+
+async function api(url, options = {}) {
+  return fetch(url, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// Multi-select logic
+// ─────────────────────────────────────────────────────────────
+
+function updateBulkToolbar() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  const toolbar = document.getElementById('bulkToolbar');
+  const count = document.getElementById('selectedCount');
+  if (checked.length > 0) {
+    toolbar.style.display = 'flex';
+    count.textContent = `${checked.length} selected`;
+  } else {
+    toolbar.style.display = 'none';
+  }
+  // Sync selectAll checkbox state
+  const all = document.querySelectorAll('.row-checkbox');
+  document.getElementById('selectAll').checked = 
+    all.length > 0 && checked.length === all.length;
+  document.getElementById('selectAll').indeterminate = 
+    checked.length > 0 && checked.length < all.length;
+}
+
+function clearSelection() {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+  document.getElementById('selectAll').checked = false;
+  document.getElementById('selectAll').indeterminate = false;
+  document.getElementById('bulkToolbar').style.display = 'none';
+}
+
+// Wire selectAll checkbox
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('selectAll').addEventListener('change', (e) => {
+    document.querySelectorAll('.row-checkbox')
+      .forEach(cb => cb.checked = e.target.checked);
+    updateBulkToolbar();
+  });
+
+  // Wire individual checkboxes via event delegation on tbody
+  document.getElementById('rows').addEventListener('change', (e) => {
+    if (e.target.classList.contains('row-checkbox')) {
+      updateBulkToolbar();
+    }
+  });
+});
+
+// ── Bulk delete ──
+
+async function bulkDelete() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  if (!checked.length) return;
+  
+  const ids = Array.from(checked).map(cb => cb.dataset.id);
+  
+  const confirmed = await showBulkConfirm(ids.length);
+  if (!confirmed) return;
+
+  try {
+    const res = await api(`/api/admin/${ENTITY_ENDPOINT}/bulk-delete`, {
+      method: 'POST',
+      body: JSON.stringify({ ids })
+    });
+    
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      showToast(`✓ ${data.deleted || ids.length} items deleted`);
+      clearSelection();
+      load(); // reload the table
+    } else {
+      showToast(data.message || 'Bulk delete failed', true);
+    }
+  } catch (err) {
+    showToast('Network error during bulk delete', true);
+  }
+}
+
+// Simple inline confirm (no browser confirm())
+function showBulkConfirm(count) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('bulkConfirmBar');
+    if (existing) existing.remove();
+    
+    const bar = document.createElement('div');
+    bar.id = 'bulkConfirmBar';
+    bar.style.cssText = `
+      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+      background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;
+      font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;
+      box-shadow:0 4px 20px rgba(0,0,0,0.3);
+    `;
+    bar.innerHTML = `
+      <span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span>
+      <button id="bulkConfirmYes" style="
+        padding:6px 16px;background:#dc2626;color:#fff;border:none;
+        border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
+        Delete
+      </button>
+      <button id="bulkConfirmNo" style="
+        padding:6px 12px;background:transparent;border:1px solid #aaa;
+        color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
+        Cancel
+      </button>
+    `;
+    document.body.appendChild(bar);
+    
+    document.getElementById('bulkConfirmYes').onclick = () => { 
+      bar.remove(); resolve(true); 
+    };
+    document.getElementById('bulkConfirmNo').onclick = () => { 
+      bar.remove(); resolve(false); 
+    };
+  });
+}
+
+
+
+function showToast(msg, isError = false) {
+  const el = document.getElementById('toastMsg');
+  el.textContent = msg;
+  el.style.background = isError ? '#dc2626' : '#0f172a';
+  el.style.opacity = '1';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.style.opacity = '0';
+  }, 2000);
+}
+
+function showInlineMsg(id, msg, isError = true) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = isError ? '#ef4444' : '#10b981';
+  el.style.display = msg ? '' : 'none';
+}
+
+async function load() {
+  const res = await api('/api/admin/degrees');
+  const data = await res.json();
+
+  degreesMap = {};
+  (data || []).forEach(d => { degreesMap[d._id] = d; });
+
+  const tbody = document.getElementById('rows');
+  tbody.innerHTML = (data || []).map(d => `
+    <tr>
+      <td><input type="checkbox" class="row-checkbox" data-id="${d._id}" style="width:16px;height:16px;cursor:pointer;"></td>
+      <td><strong>${d.name}</strong></td>
+      <td>
+        ${d.isActive
+          ? '<span class="status-badge status-generated">Active</span>'
+          : '<span class="status-badge status-draft">Inactive</span>'}
+      </td>
+      <td>
+        <div class="icon-actions">
+          <button class="toggle-action" onclick='openRenameModal("${d._id}")' title="Rename"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+          <button class="toggle-action" onclick='toggleDegreeActive("${d._id}", ${d.isActive})' title="${d.isActive ? 'Deactivate' : 'Activate'}"><i data-lucide="${d.isActive ? 'toggle-right' : 'toggle-left'}" style="width:16px;height:16px;"></i></button>
+          <button class="danger-action" onclick='openDeleteModal("${d._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+        </div>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#94a3b8;">No degrees found</td></tr>';
+
+  if (window.lucide) lucide.createIcons();
+  window.AdminUI?.staggerRows();
+  clearSelection();
+}
+
+async function addDegree() {
+  const input = document.getElementById('degreeName');
+  const name = input.value.trim();
+
+  showInlineMsg('addDegreeMsg', '');
+  input.classList.remove('is-invalid');
+
+  if (!name) {
+    input.classList.add('is-invalid');
+    showInlineMsg('addDegreeMsg', 'Name is required', true);
+    return;
+  }
+
+  const res = await api('/api/admin/degrees', {
+    method: 'POST',
+    body: JSON.stringify({ name })
+  });
+
+  if (res.ok) {
+    input.value = '';
+    showInlineMsg('addDegreeMsg', '✓ Degree added', false);
+    setTimeout(() => showInlineMsg('addDegreeMsg', ''), 2000);
+    load();
+  } else {
+    const data = await res.json().catch(() => ({}));
+    input.classList.add('is-invalid');
+    showInlineMsg('addDegreeMsg', data.message || 'Failed to add degree', true);
+  }
+}
+
+function openRenameModal(id) {
+  const degree = degreesMap[id];
+  if (!degree) return;
+  document.getElementById('renameId').value = id;
+  document.getElementById('renameInput').value = degree.name || '';
+  showInlineMsg('renameErrorMsg', '');
+  renameModal.show();
+  setTimeout(() => document.getElementById('renameInput').focus(), 250);
+}
+
+async function saveRename() {
+  const id = document.getElementById('renameId').value;
+  const name = document.getElementById('renameInput').value.trim();
+
+  showInlineMsg('renameErrorMsg', '');
+
+  if (!name) {
+    showInlineMsg('renameErrorMsg', 'Name is required', true);
+    return;
+  }
+
+  const res = await api(`/api/admin/degrees/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name })
+  });
+
+  if (res.ok) {
+    renameModal.hide();
+    showToast('✓ Saved');
+    load();
+  } else {
+    const data = await res.json().catch(() => ({}));
+    showInlineMsg('renameErrorMsg', data.message || 'Rename failed', true);
+  }
+}
+
+function openDeleteModal(id) {
+  const degree = degreesMap[id];
+  if (!degree) return;
+  document.getElementById('deleteId').value = id;
+  document.getElementById('deleteDegreeName').textContent = degree.name || '';
+  deleteModal.show();
+}
+
+async function confirmDelete() {
+  const id = document.getElementById('deleteId').value;
+  const res = await api(`/api/admin/degrees/${id}`, { method: 'DELETE' });
+  if (res.ok) {
+    deleteModal.hide();
+    showToast('✓ Saved');
+    load();
+  } else {
+    deleteModal.hide();
+    showToast('Delete failed', true);
+  }
+}
+
+async function toggleDegreeActive(id, currentState) {
+  const res = await api(`/api/admin/degrees/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ isActive: !currentState })
+  });
+  if (res.ok) {
+    showToast('✓ Saved');
+    load();
+  } else {
+    showToast('Update failed', true);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renameModal = new bootstrap.Modal(document.getElementById('renameModal'));
+  deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+
+  document.getElementById('degreeName').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addDegree();
+  });
+
+  document.getElementById('renameInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveRename();
+  });
+
+  // Setup selectAll checkbox
+  document.getElementById('selectAll').addEventListener('change', (e) => {
+    document.querySelectorAll('.row-checkbox')
+      .forEach(cb => cb.checked = e.target.checked);
+    updateBulkToolbar();
+  });
+
+  // Setup individual checkboxes via event delegation on tbody
+  document.getElementById('rows').addEventListener('change', (e) => {
+    if (e.target.classList.contains('row-checkbox')) {
+      updateBulkToolbar();
+    }
+  });
+
+  load();
+});
+</script>
+{% endblock %}

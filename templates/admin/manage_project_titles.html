@@ -1,0 +1,319 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'project_titles' %}
+
+{% block title %}Project Titles - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Project Titles</h1>
+    <p class="page-subtitle">View, add, and edit all project titles in one place. Titles are linked to majors and degrees.</p>
+  </div>
+
+  <div class="stats-inline">
+    <button class="btn-primary" type="button" onclick="openProjectTitleModal()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Project Title</button>
+    <button class="btn-outline-secondary" type="button" onclick="loadProjectTitles()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
+  </div>
+
+  <article class="panel-card panel-body" style="display:grid;gap:12px;">
+    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filters</h3>
+    <div class="toolbar" style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) minmax(220px,1fr) 140px;gap:12px;">
+      <input id="filterSearch" class="small-input" placeholder="Search titles...">
+      <select id="filterDegree" class="small-input">
+        <option value="">All Degrees</option>
+      </select>
+      <select id="filterMajor" class="small-input">
+        <option value="">All Majors</option>
+      </select>
+      <button class="btn-ghost" type="button" onclick="applyFilters()">Apply</button>
+    </div>
+  </article>
+
+  <article class="panel-card panel-body table-card">
+    <div class="data-table-wrap">
+      <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
+        <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
+        <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
+        <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+      </div>
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
+            <th>Title</th>
+            <th>Major</th>
+            <th>Degree</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<div class="modal fade" id="projectTitleModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="projectTitleModalTitle">Add Project Title</h5>
+          <div class="text-muted" id="projectTitleModalSubtitle" style="font-size:12px;margin-top:2px;">Create or edit a project title for a major.</div>
+        </div>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="projectTitleId">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Title <span class="text-danger">*</span></label>
+            <input id="projectTitleName" class="form-control" placeholder="Enter project title">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Degree</label>
+            <select id="projectTitleDegree" class="form-select">
+              <option value="">Select Degree</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Major <span class="text-danger">*</span></label>
+            <select id="projectTitleMajor" class="form-select">
+              <option value="">Select Major</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Active</label>
+            <select id="projectTitleActive" class="form-select">
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveProjectTitle()" id="saveProjectTitleBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+const ENTITY_ENDPOINT = 'project-titles';
+let titles = [];
+let degrees = [];
+let majors = [];
+let projectTitleModal = null;
+
+function showToast(message) {
+  if (window.AdminUI?.showToast) return window.AdminUI.showToast(message);
+  alert(message);
+}
+
+function updateBulkToolbar() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  const toolbar = document.getElementById('bulkToolbar');
+  const count = document.getElementById('selectedCount');
+  toolbar.style.display = checked.length ? 'flex' : 'none';
+  count.textContent = `${checked.length} selected`;
+  const all = document.querySelectorAll('.row-checkbox');
+  const selectAll = document.getElementById('selectAll');
+  selectAll.checked = all.length > 0 && checked.length === all.length;
+  selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+}
+
+function clearSelection() {
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+  document.getElementById('selectAll').checked = false;
+  document.getElementById('selectAll').indeterminate = false;
+  document.getElementById('bulkToolbar').style.display = 'none';
+}
+
+function applyFilters() {
+  loadProjectTitles();
+}
+
+function getSelectedDegree() {
+  return document.getElementById('projectTitleDegree').value || '';
+}
+
+function setDegreeOptions(selectId, selected = '') {
+  const select = document.getElementById(selectId);
+  select.innerHTML = '<option value="">Select Degree</option>' + degrees.map(d => {
+    const selectedAttr = String(d._id) === String(selected) ? 'selected' : '';
+    return `<option value="${d._id}" ${selectedAttr}>${d.name}</option>`;
+  }).join('');
+}
+
+function setMajorOptions(selected = '') {
+  const select = document.getElementById('projectTitleMajor');
+  select.innerHTML = '<option value="">Select Major</option>' + majors.map(m => {
+    const selectedAttr = String(m._id) === String(selected) ? 'selected' : '';
+    return `<option value="${m._id}" ${selectedAttr}>${m.name}</option>`;
+  }).join('');
+}
+
+async function loadDegrees() {
+  const res = await fetch('/api/admin/degrees', { headers });
+  degrees = await res.json();
+  setDegreeOptions('filterDegree', document.getElementById('filterDegree').value || '');
+  setDegreeOptions('projectTitleDegree', document.getElementById('projectTitleDegree').value || '');
+}
+
+async function loadMajorsByDegree(degreeId) {
+  const params = new URLSearchParams();
+  if (degreeId) params.set('degree', degreeId);
+  const res = await fetch(`/api/admin/majors${params.toString() ? `?${params.toString()}` : ''}`, { headers });
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function syncMajorOptions(degreeId, selectedMajor = '') {
+  majors = degreeId ? await loadMajorsByDegree(degreeId) : [];
+  setMajorOptions(selectedMajor);
+}
+
+async function loadProjectTitles() {
+  const q = document.getElementById('filterSearch').value.trim();
+  const degree = document.getElementById('filterDegree').value;
+  const major = document.getElementById('filterMajor').value;
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (degree) params.set('degree', degree);
+  if (major) params.set('major', major);
+
+  const res = await fetch(`/api/admin/project-titles${params.toString() ? `?${params.toString()}` : ''}`, { headers });
+  titles = await res.json();
+
+  document.getElementById('rows').innerHTML = (titles || []).map((t) => `
+    <tr>
+      <td><input type="checkbox" class="row-checkbox" data-id="${t._id}" style="width:16px;height:16px;cursor:pointer;"></td>
+      <td><strong>${t.title || '-'}</strong></td>
+      <td>${t.major?.name || '-'}</td>
+      <td>${t.degree?.name || '-'}</td>
+      <td>
+        <span class="badge ${t.isActive ? 'bg-success' : 'bg-secondary'}">
+          ${t.isActive ? 'Active' : 'Inactive'}
+        </span>
+      </td>
+      <td>
+        <div class="icon-actions">
+          <button class="toggle-action" onclick='openProjectTitleModal(${JSON.stringify(t)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+          <button class="danger-action" onclick='deleteProjectTitle("${t._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No project titles found</td></tr>';
+
+  if (window.lucide) lucide.createIcons();
+  clearSelection();
+  window.AdminUI?.staggerRows();
+}
+
+function openProjectTitleModal(title = null) {
+  document.getElementById('projectTitleId').value = title?._id || '';
+  document.getElementById('projectTitleModalTitle').textContent = title ? 'Edit Project Title' : 'Add Project Title';
+  document.getElementById('projectTitleName').value = title?.title || '';
+  document.getElementById('projectTitleActive').value = String(title?.isActive !== false);
+  document.getElementById('projectTitleDegree').value = title?.degree?._id || '';
+  projectTitleModal.show();
+  syncMajorOptions(title?.degree?._id || '', title?.major?._id || '').then(() => {
+    document.getElementById('projectTitleMajor').value = title?.major?._id || '';
+  });
+}
+
+async function saveProjectTitle() {
+  const id = document.getElementById('projectTitleId').value;
+  const title = document.getElementById('projectTitleName').value.trim();
+  const degree = document.getElementById('projectTitleDegree').value;
+  const major = document.getElementById('projectTitleMajor').value;
+  const isActive = document.getElementById('projectTitleActive').value === 'true';
+
+  if (!title || !major) {
+    showToast('Title and Major are required');
+    return;
+  }
+
+  const payload = { title, major, degree: degree || undefined, isActive };
+  const url = id ? `/api/admin/project-titles/${id}` : '/api/admin/project-titles';
+  const method = id ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    showToast(data.message || 'Save failed');
+    return;
+  }
+
+  showToast(id ? 'Project title updated' : 'Project title added');
+  projectTitleModal.hide();
+  await loadProjectTitles();
+}
+
+async function deleteProjectTitle(id) {
+  if (!confirm('Delete this project title?')) return;
+  const res = await fetch(`/api/admin/project-titles/${id}`, { method: 'DELETE', headers });
+  if (res.ok) {
+    showToast('Project title deleted');
+    await loadProjectTitles();
+  }
+}
+
+async function bulkDelete() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  if (!checked.length) return;
+  if (!confirm(`Delete ${checked.length} selected project titles?`)) return;
+
+  const ids = Array.from(checked).map(cb => cb.dataset.id);
+  const res = await fetch(`/api/admin/${ENTITY_ENDPOINT}/bulk-delete`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ ids })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.ok) {
+    showToast(`Deleted ${data.deleted || ids.length} project titles`);
+    await loadProjectTitles();
+  } else {
+    showToast(data.message || 'Bulk delete failed');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  projectTitleModal = new bootstrap.Modal(document.getElementById('projectTitleModal'));
+
+  document.getElementById('filterSearch').addEventListener('input', loadProjectTitles);
+  document.getElementById('filterDegree').addEventListener('change', async (e) => {
+    const degreeId = e.target.value || '';
+    document.getElementById('filterMajor').value = '';
+    majors = degreeId ? await loadMajorsByDegree(degreeId) : [];
+    setMajorOptions('');
+    await loadProjectTitles();
+  });
+  document.getElementById('filterMajor').addEventListener('change', loadProjectTitles);
+
+  document.getElementById('projectTitleDegree').addEventListener('change', async (e) => {
+    const degreeId = e.target.value || '';
+    await syncMajorOptions(degreeId, '');
+  });
+
+  document.getElementById('selectAll').addEventListener('change', (e) => {
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
+    updateBulkToolbar();
+  });
+
+  document.getElementById('rows').addEventListener('change', (e) => {
+    if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
+  });
+
+  await loadDegrees();
+  await loadProjectTitles();
+});
+</script>
+{% endblock %}

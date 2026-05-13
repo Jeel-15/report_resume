@@ -1,0 +1,1509 @@
+{% extends "base.html" %}
+
+{% block title %}Create Report - Student{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background:
+            radial-gradient(1100px 420px at -10% -20%, rgba(59, 130, 246, 0.16), transparent 62%),
+            radial-gradient(980px 360px at 110% -16%, rgba(147, 197, 253, 0.25), transparent 58%),
+            linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
+        color: #0f172a;
+    }
+
+    .create-shell {
+        max-width: 1320px;
+        margin: 0 auto;
+        animation: createIn .4s ease both;
+    }
+    @keyframes createIn { from {opacity:0; transform: translateY(10px);} to {opacity:1; transform: translateY(0);} }
+
+    .create-intro-card {
+        border: 1px solid #dbe7ff;
+        border-radius: 16px;
+        background:
+            radial-gradient(460px 130px at -6% -20%, rgba(59, 130, 246, 0.14), transparent 70%),
+            radial-gradient(380px 120px at 110% -20%, rgba(147, 197, 253, 0.2), transparent 72%),
+            #ffffff;
+        box-shadow: 0 12px 30px rgba(37, 99, 235, 0.08);
+        padding: 18px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .intro-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .create-layout {
+        display: grid;
+        grid-template-columns: 200px minmax(0, 1fr) 240px;
+        gap: 16px;
+        align-items: flex-start;
+    }
+
+    .create-left-col {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .create-mid-col {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .create-right-col {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .step-card,
+    .summary-card,
+    .form-main-card {
+        border: 1px solid #dbe7ff;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.07);
+    }
+
+    .side-head {
+        font-size: 12px;
+        font-weight: 700;
+        color: #64748b;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+
+    .step-card {
+        position: sticky;
+        top: 84px;
+        padding: 12px;
+        background: #f8fbff;
+        border-color: #cfe0ff;
+    }
+
+    .step-list {
+        position: relative;
+        padding-left: 0.1rem;
+    }
+
+    .step-list::before {
+        content: '';
+        position: absolute;
+        left: 1.25rem;
+        top: 1.42rem;
+        bottom: 1.42rem;
+        width: 2px;
+        background: #dbe7ff;
+    }
+
+    .step-item {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        padding: 8px 8px;
+        border-radius: 11px;
+        color: #64748b;
+        font-size: 0.85rem;
+        transition: transform .25s ease, color .25s ease, background-color .25s ease;
+        transform-origin: left center;
+        position: relative;
+        z-index: 1;
+    }
+
+    .step-item.done {
+        color: #065f46;
+        background: #ecfdf5;
+    }
+
+    .step-item.active {
+        color: #1d4ed8;
+        background: #eff6ff;
+        transform: scale(1.02);
+    }
+
+    .step-dot {
+        width: 1.55rem;
+        height: 1.55rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border: 1px solid #bfdbfe;
+        color: #64748b;
+        background: #fff;
+        transition: transform .25s ease, background-color .25s ease, border-color .25s ease, color .25s ease;
+    }
+
+    .step-item.done .step-dot {
+        border-color: #10b981;
+        color: #fff;
+        background: #10b981;
+    }
+
+    .step-item.active .step-dot {
+        border-color: #2563eb;
+        color: #fff;
+        background: #2563eb;
+        transform: scale(1.06);
+    }
+
+    .step-item.upcoming .step-dot {
+        border-color: #dbe7ff;
+        color: #94a3b8;
+        background: #fff;
+    }
+
+    .form-main-card {
+        padding: 14px;
+        border-color: #cfe0ff;
+        box-shadow: 0 16px 34px rgba(37, 99, 235, 0.11);
+    }
+
+    .main-card-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e6efff;
+    }
+
+    .main-card-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #1e3a8a;
+    }
+
+    .main-card-sub {
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .section-block {
+        border: 1px solid #d6e5ff;
+        border-radius: 14px;
+        background: #fbfdff;
+        padding: 12px;
+        margin-bottom: 14px;
+    }
+
+    .section-head {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .step-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #fff;
+        padding: 0.22rem 0.5rem;
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+    }
+
+    .section-title {
+        font-family: var(--font-disp);
+        font-weight: 600;
+        margin-bottom: 0;
+        color: #0f172a;
+    }
+
+    #majorInfo {
+        display: inline-flex;
+        margin-top: 0.45rem;
+        border-radius: 999px;
+        padding: 0.24rem 0.62rem;
+        font-size: 0.73rem;
+        color: #1d4ed8;
+        background: #dbeafe;
+    }
+
+    .textarea-meta {
+        display: flex;
+        justify-content: flex-end;
+        font-size: 0.74rem;
+        color: #64748b;
+        margin-top: 0.24rem;
+    }
+
+    .skills-wrap {
+        border: 1.5px solid #dbe7ff;
+        border-radius: 10px;
+        background: #f8fbff;
+        padding: 0.42rem;
+        min-height: 44px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.36rem;
+        align-items: center;
+    }
+
+    .skill-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.38rem;
+        padding: 0.22rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.73rem;
+        color: #1d4ed8;
+        background: #dbeafe;
+    }
+
+    .keyword-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-radius: 999px;
+        padding: 0.2rem 0.52rem;
+        font-size: 0.74rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        margin: 2px;
+    }
+
+    .keyword-chip:hover {
+        background: #dbeafe;
+        border-color: #93c5fd;
+    }
+
+    .keyword-chip.selected {
+        background: #1d4ed8;
+        color: #ffffff;
+        border-color: #1d4ed8;
+    }
+
+    .skill-chip button {
+        border: 0;
+        background: transparent;
+        color: #1d4ed8;
+        line-height: 1;
+        padding: 0;
+    }
+
+    #keySkillsInput {
+        border: 0;
+        outline: 0;
+        flex: 1;
+        min-width: 140px;
+        background: transparent;
+        font-size: 0.84rem;
+        color: #0f172a;
+    }
+
+    .generate-btn {
+        width: 100%;
+        border: 0;
+        border-radius: 14px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 16px;
+        padding: 16px;
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        box-shadow: 0 12px 25px rgba(37, 99, 235, 0.24);
+        cursor: pointer;
+        transition: transform .15s ease, box-shadow .15s ease;
+    }
+
+    .generate-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(37,99,235,0.3); }
+    .generate-btn:disabled { pointer-events: none; opacity: 0.9; }
+
+    .generate-wrap {
+        margin-top: 8px;
+        padding-top: 4px;
+    }
+
+    .generate-progress {
+        margin-top: 0.55rem;
+        height: 6px;
+        border-radius: 999px;
+        background: #dbeafe;
+        overflow: hidden;
+        display: none;
+    }
+
+    .generate-progress .bar {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        transition: width 3s ease;
+    }
+
+    .generate-progress.active {
+        display: block;
+    }
+
+    .summary-card {
+        position: sticky;
+        top: 84px;
+        padding: 12px;
+        background: #f8fbff;
+        border-color: #cfe0ff;
+    }
+
+    .summary-row {
+        font-size: 0.8rem;
+        margin-bottom: 8px;
+        padding: 6px 8px;
+        border-radius: 10px;
+        background: #ffffff;
+        border: 1px solid #e5eeff;
+    }
+
+    .summary-label { color: #64748b; text-transform: none; font-size: 0.76rem; letter-spacing: 0.02em; font-weight: 600; }
+    .summary-val { color: #0f172a; font-weight: 600; }
+
+    .summary-edit {
+        display: inline-block;
+        margin-top: 0.2rem;
+        font-size: 0.72rem;
+        text-decoration: none;
+        color: #2563eb;
+    }
+
+    .summary-empty {
+        color: #94a3b8;
+        font-style: italic;
+        font-weight: 500;
+    }
+
+    .profile-progress-wrap {
+        margin-top: 0.8rem;
+        padding-top: 0.7rem;
+        border-top: 1px dashed #dbe7ff;
+    }
+
+    .profile-progress-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.73rem;
+        color: #64748b;
+        margin-bottom: 0.32rem;
+    }
+
+    .profile-progress {
+        width: 100%;
+        height: 7px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: #dbeafe;
+    }
+
+    .profile-progress > span {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        transition: width .25s ease;
+    }
+
+    .form-label {
+        text-transform: none;
+        font-size: 13px;
+        font-weight: 500;
+        color: #64748b;
+    }
+
+    .form-control,
+    .form-select {
+        border: 1.5px solid #dbe7ff;
+        background: #f8fbff;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border: 1.5px solid #60a5fa;
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+    }
+
+    .form-select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20'%3E%3Cpath fill='%2364748b' d='M5.25 7.5L10 12.25L14.75 7.5L16 8.75L10 14.75L4 8.75z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.6rem center;
+        background-size: 14px 14px;
+        padding-right: 2rem;
+    }
+
+    input[type="date"]::placeholder {
+        color: #94a3b8;
+    }
+
+    input[type="date"]::-webkit-datetime-edit {
+        color: #64748b;
+    }
+
+    @media (max-width: 991px) {
+        .create-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+        }
+
+        .create-left-col,
+        .create-right-col {
+            width: 100%;
+            max-width: none;
+        }
+
+        .step-card, .summary-card { position: static; }
+    }
+
+    @media (max-width: 768px) {
+        .form-main-card,
+        .section-block,
+        .step-card,
+        .summary-card {
+            border-radius: 12px;
+        }
+
+        .form-main-card {
+            padding: 0.75rem;
+        }
+
+        .section-block {
+            padding: 0.72rem;
+        }
+
+        .generate-btn {
+            font-size: 14px;
+            padding: 13px;
+            border-radius: 12px;
+        }
+
+        .step-list::before {
+            left: 1.05rem;
+        }
+
+        #majorInfo {
+            border-radius: 10px;
+            font-size: 0.7rem;
+            display: inline-block;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .create-intro-card {
+            padding: 13px 14px;
+        }
+
+        .main-card-head {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+
+        .step-card {
+            padding: 0.7rem;
+        }
+
+        .step-item {
+            padding: 0.56rem 0.4rem;
+            font-size: 0.8rem;
+        }
+
+        .step-dot {
+            width: 1.4rem;
+            height: 1.4rem;
+            font-size: 0.7rem;
+        }
+
+        .summary-card {
+            padding: 0.75rem;
+        }
+
+        .summary-row {
+            font-size: 0.76rem;
+        }
+
+        #keySkillsInput {
+            min-width: 110px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="create-shell">
+    <div class="create-intro-card mb-3">
+        <div>
+            <h2 class="mb-1">Generate Internship Report</h2>
+            <p class="text-muted mb-0">Profile data is pre-filled. Add project details and generate report.</p>
+        </div>
+        <div class="intro-badge">
+            <i class="bi bi-lightning-charge"></i>
+            <span>3-step guided flow</span>
+        </div>
+    </div>
+
+    <div id="profileBlock" class="alert alert-warning d-none mb-3">
+        Complete your profile details before generating report.
+        <a href="/student/profile" class="alert-link">Go to profile</a>
+    </div>
+
+    <form id="createReportForm" class="d-none">
+        <div class="create-layout">
+            <div class="create-left-col">
+                <aside class="step-card">
+                    <div class="side-head">Progress Steps</div>
+                    <div class="step-list">
+                        <div class="step-item active" id="step1"><span class="step-dot">1</span><span>Degree & Major</span></div>
+                        <div class="step-item upcoming" id="step2"><span class="step-dot">2</span><span>Project & Internship</span></div>
+                        <div class="step-item upcoming" id="step3"><span class="step-dot">3</span><span>Work Description</span></div>
+                    </div>
+                </aside>
+            </div>
+
+            <div class="create-mid-col">
+                <div class="form-main-card">
+                    <div class="main-card-head">
+                        <div class="main-card-title">Report Builder</div>
+                        <div class="main-card-sub">Complete each section below</div>
+                    </div>
+                    <div id="formError" class="alert alert-danger d-none"></div>
+
+                    <section class="section-block" id="step1-section">
+                        <div class="section-head">
+                            <span class="step-badge">Step 1</span>
+                            <h3 class="section-title">Degree & Major</h3>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Degree *</label>
+                                <select class="form-select" id="degreeSelect" required></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Department</label>
+                                <select class="form-select" id="departmentSelect"></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Major *</label>
+                                <select class="form-select" id="majorSelect" required></select>
+                                <div class="form-text" id="majorInfo"></div>
+                            </div>
+                            <div class="col-md-6" id="languageSelectorWrap" style="display: none;">
+                                <label class="form-label">Report Language</label>
+                                <select class="form-select" id="reportLanguageSelect">
+                                    <option value="">Default (set by admin)</option>
+                                </select>
+                                <small class="text-muted" style="font-size:11px;" id="languageHint">
+                                    Leave as default to use the language configured by admin.
+                                </small>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted" id="step1Hint">Select degree and major from master data. You can choose a preset project title or type your own.</small>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="section-block" id="step2-section">
+                        <div class="section-head">
+                            <span class="step-badge">Step 2</span>
+                            <h3 class="section-title">Project & Internship</h3>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">Project Title *</label>
+                                <select class="form-select mb-2" id="projectTitleSelect" style="display:none;">
+                                    <option value="">-- Select a project title or type custom below --</option>
+                                </select>
+                                <div id="projectTitleSelectedBar" style="display:none;padding:8px 12px;background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;font-size:13px;color:#1d4ed8;margin-bottom:6px;align-items:center;justify-content:space-between;gap:8px;">
+                                    <span id="projectTitleSelectedText" style="font-weight:600;"></span>
+                                    <button type="button" id="projectTitleEditBtn" style="font-size:11px;color:#2563eb;background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;white-space:nowrap;">Edit</button>
+                                </div>
+                                <input type="text" class="form-control" id="projectTitle"
+                                    placeholder="Type your project title..." required>
+                                <small id="projectTitleHint"
+                                    class="text-muted"
+                                    style="font-size:11px;margin-top:4px;display:block;"></small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Internship Title</label>
+                                <input type="text" class="form-control" id="internshipTitle">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Academic Year</label>
+                                <input type="text" class="form-control" id="academicYear" placeholder="2025-2026">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Position / Role</label>
+                                <input type="text" class="form-control" id="positionTitle">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Duration</label>
+                                <input type="text" class="form-control" id="duration" placeholder="e.g. 6 weeks">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="startDate">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="endDate">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="section-block" id="step3-section">
+                        <div class="section-head">
+                            <span class="step-badge">Step 3</span>
+                            <h3 class="section-title">Work Description</h3>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Job Profile / Role</label>
+                            <input class="form-control" id="jobProfile" list="jobProfileSuggestions" placeholder="e.g. Sales Executive">
+                            <small class="text-muted" style="font-size:11px;">Auto-suggested from keyword library for your industry type.</small>
+                            <datalist id="jobProfileSuggestions"></datalist>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Work Activity Keywords *</label>
+                            <input class="form-control mb-2" id="keywordSearchInput" placeholder="Search keywords...">
+                            <div id="keywordLibrary" class="skills-wrap" style="min-height:54px;"></div>
+                            <small id="keywordLibraryHint" class="text-muted" style="font-size:11px;"></small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Selected Keywords</label>
+                            <div class="skills-wrap" id="selectedKeywordsWrap">
+                                <div id="selectedKeywordsChips"></div>
+                            </div>
+                            <div class="textarea-meta"><span id="briefCounter">0 keywords selected</span></div>
+                        </div>
+                        <textarea class="form-control d-none" id="briefDescription" rows="6"></textarea>
+                        <input type="hidden" id="selectedWorkKeywords">
+                        <div>
+                            <label class="form-label">Key Skills</label>
+                            <div class="skills-wrap" id="skillsWrap">
+                                <div id="skillsChips"></div>
+                                <input type="text" id="keySkillsInput" placeholder="Type a skill and press Enter or comma">
+                            </div>
+                            <input type="hidden" id="keySkills">
+                        </div>
+                    </section>
+
+                    <div class="generate-wrap">
+                        <button type="submit" class="generate-btn" id="submitBtn">
+                            <i class="bi bi-file-earmark-text me-1"></i> Generate Report
+                        </button>
+                        <div class="generate-progress" id="generateProgress">
+                            <span class="bar" id="generateProgressBar"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="create-right-col">
+                <aside class="summary-card">
+                    <div class="side-head">Pre-filled from your profile</div>
+                    <div class="summary-row">
+                        <div class="summary-label">College</div>
+                        <div class="summary-val" id="summaryCollege">-</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Industry</div>
+                        <div class="summary-val" id="summaryIndustry">-</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Semester</div>
+                        <div class="summary-val" id="summarySemester">-</div>
+                    </div>
+                    <div class="summary-row">
+                        <div class="summary-label">Enrollment</div>
+                        <div class="summary-val" id="summaryEnrollment">-</div>
+                    </div>
+                    <div class="summary-row mb-0">
+                        <div class="summary-label">Supervisor</div>
+                        <div class="summary-val" id="summarySupervisor">-</div>
+                    </div>
+
+                    <div class="profile-progress-wrap">
+                        <div class="profile-progress-top">
+                            <span>Profile Completion</span>
+                            <span id="profileCompletionText">0%</span>
+                        </div>
+                        <div class="profile-progress">
+                            <span id="profileCompletionBar"></span>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const token = localStorage.getItem('token');
+
+    let profile = null;
+    let degrees = [];
+    let departments = [];
+    let majors = [];
+    let skillTags = [];
+    let workKeywords = [];
+    let selectedWorkKeywords = [];
+    let jobProfileSuggestions = [];
+
+    const authHeaders = (extra = {}) => ({
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...extra
+    });
+
+    const syncSkillInputValue = () => {
+        document.getElementById('keySkills').value = skillTags.join(', ');
+        const chips = document.getElementById('skillsChips');
+        chips.innerHTML = skillTags.map((s, i) => `
+            <span class="skill-chip">${s}<button type="button" onclick="removeSkill(${i})">&times;</button></span>
+        `).join('');
+    };
+
+    const addSkill = (raw) => {
+        const v = String(raw || '').trim();
+        if (!v) return;
+        if (skillTags.some(s => s.toLowerCase() === v.toLowerCase())) return;
+        skillTags.push(v);
+        syncSkillInputValue();
+        updateStepStates();
+    };
+
+    window.removeSkill = (idx) => {
+        skillTags = skillTags.filter((_, i) => i !== idx);
+        syncSkillInputValue();
+        updateStepStates();
+    };
+
+    const normalizeText = (value) => String(value || '').trim().toLowerCase();
+
+    const updateJobProfileSuggestions = (profiles = []) => {
+        jobProfileSuggestions = [...new Set(
+            (profiles || [])
+                .map(item => String(item || '').trim())
+                .filter(Boolean)
+        )];
+
+        const datalist = document.getElementById('jobProfileSuggestions');
+        if (!datalist) return;
+
+        datalist.innerHTML = jobProfileSuggestions
+            .map(profileName => `<option value="${String(profileName).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}"></option>`)
+            .join('');
+    };
+
+    const resetWorkDescriptionState = () => {
+        selectedWorkKeywords = [];
+        workKeywords = [];
+
+        const jobProfileInput = document.getElementById('jobProfile');
+        const keywordSearchInput = document.getElementById('keywordSearchInput');
+        const keywordLibrary = document.getElementById('keywordLibrary');
+        const keywordLibraryHint = document.getElementById('keywordLibraryHint');
+
+        if (jobProfileInput) jobProfileInput.value = '';
+        if (keywordSearchInput) keywordSearchInput.value = '';
+        if (keywordLibrary) keywordLibrary.innerHTML = '';
+        if (keywordLibraryHint) keywordLibraryHint.textContent = 'Select a major above to load keywords.';
+
+        syncSelectedKeywords();
+        renderKeywordLibrary('');
+    };
+
+    const syncSelectedKeywords = () => {
+        const chips = document.getElementById('selectedKeywordsChips');
+        chips.innerHTML = selectedWorkKeywords.map((keyword) => `
+            <span class="skill-chip">${keyword}<button type="button" onclick='removeSelectedKeyword(${JSON.stringify(keyword)})'>&times;</button></span>
+        `).join('');
+        document.getElementById('selectedWorkKeywords').value = JSON.stringify(selectedWorkKeywords);
+        document.getElementById('briefDescription').value = selectedWorkKeywords.join(', ');
+        updateBriefCounter();
+        updateStepStates();
+    };
+
+    window.removeSelectedKeyword = (keyword) => {
+        const target = normalizeText(keyword);
+        selectedWorkKeywords = selectedWorkKeywords.filter(item => normalizeText(item) !== target);
+        syncSelectedKeywords();
+        renderKeywordLibrary(document.getElementById('keywordSearchInput').value || '');
+    };
+
+    window.toggleKeyword = (keyword) => {
+        const target = normalizeText(keyword);
+        const exists = selectedWorkKeywords.some(item => normalizeText(item) === target);
+        if (exists) {
+            selectedWorkKeywords = selectedWorkKeywords.filter(item => normalizeText(item) !== target);
+        } else {
+            selectedWorkKeywords.push(keyword);
+        }
+        syncSelectedKeywords();
+        renderKeywordLibrary(document.getElementById('keywordSearchInput').value || '');
+    };
+
+    const renderKeywordLibrary = (searchText = '') => {
+        const library = document.getElementById('keywordLibrary');
+        const hint = document.getElementById('keywordLibraryHint');
+        const q = normalizeText(searchText);
+        const selectedJobProfile = normalizeText(document.getElementById('jobProfile').value || '');
+
+        const items = (workKeywords || []).filter(item => {
+            const keyword = String(item.keyword || '');
+            const jobProfile = String(item.jobProfile || '');
+            if (q && !normalizeText(keyword).includes(q) && !normalizeText(jobProfile).includes(q)) {
+                return false;
+            }
+
+            if (selectedJobProfile) {
+                const itemJob = normalizeText(item.jobProfile || '');
+                if (itemJob && itemJob !== selectedJobProfile) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        if (!items.length) {
+            library.innerHTML = '<span class="text-muted" style="font-size:12px;">No keywords match your filters.</span>';
+            hint.textContent = selectedJobProfile
+                ? 'No keywords found for this job profile. Try a suggested role or clear the job profile.'
+                : 'Try another search or select a major with preset keywords.';
+            return;
+        }
+
+        library.innerHTML = items.map(item => {
+            const keyword = String(item.keyword || '').trim();
+            if (!keyword) return '';
+            const selected = selectedWorkKeywords.some(sel => normalizeText(sel) === normalizeText(keyword));
+            return `<button type="button" class="keyword-chip ${selected ? 'selected' : ''}" onclick='toggleKeyword(${JSON.stringify(keyword)})'>${keyword}</button>`;
+        }).join('');
+        hint.textContent = `${items.length} keyword option(s) available`;
+    };
+
+    const loadWorkKeywords = async (jobProfile = '') => {
+        // industryType is directly on the user profile, not nested
+        const industryType = profile?.industryType || '';
+        const majorId = document.getElementById('majorSelect')?.value || profile?.major?._id || '';
+        const params = new URLSearchParams();
+        if (industryType) params.set('industryType', industryType);
+        if (majorId) params.set('major', majorId);
+
+        const url = `/api/student/work-keywords?${params.toString()}`;
+        console.log('[DEBUG loadWorkKeywords]', { url, industryType, majorId, jobProfile });
+
+        try {
+            const res = await fetch(url, {
+                credentials: 'include',
+                headers: authHeaders()
+            });
+            console.log('[DEBUG loadWorkKeywords] Response status:', res.status);
+            
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error('[DEBUG loadWorkKeywords] API error:', res.status, errorText.substring(0, 200));
+                workKeywords = [];
+            } else {
+                const data = await res.json();
+                console.log('[DEBUG loadWorkKeywords] API response:', Array.isArray(data) ? `${data.length} items` : data);
+                workKeywords = Array.isArray(data) ? data : [];
+            }
+        } catch (error) {
+            console.error('[DEBUG loadWorkKeywords] Fetch error:', error.message);
+            workKeywords = [];
+        }
+
+        const profileField = document.getElementById('jobProfile');
+        const uniqueProfiles = [...new Set(
+            workKeywords
+                .map(item => String(item.jobProfile || '').trim())
+                .filter(Boolean)
+        )];
+        updateJobProfileSuggestions(uniqueProfiles);
+        if (!profileField.value && uniqueProfiles.length === 1) {
+            profileField.value = uniqueProfiles[0];
+        }
+
+        renderKeywordLibrary(document.getElementById('keywordSearchInput').value || '');
+    };
+
+    const updateSummary = () => {
+        const makeSummaryValue = (value) => {
+            if (!value || String(value).trim() === '-' || String(value).trim() === '') {
+                return '<span class="summary-empty">Not set</span><a class="summary-edit" href="/student/profile">Edit Profile &rarr;</a>';
+            }
+            return String(value);
+        };
+
+        const college = profile?.college?.name || '';
+        const industry = profile?.industry?.name || '';
+        const semester = profile?.semester || '';
+        const enrollment = profile?.enrollmentNumber || '';
+        const supervisor = profile?.supervisorName || '';
+
+        document.getElementById('summaryCollege').innerHTML = makeSummaryValue(college);
+        document.getElementById('summaryIndustry').innerHTML = makeSummaryValue(industry);
+        document.getElementById('summarySemester').innerHTML = makeSummaryValue(semester);
+        document.getElementById('summaryEnrollment').innerHTML = makeSummaryValue(enrollment);
+        document.getElementById('summarySupervisor').innerHTML = makeSummaryValue(supervisor);
+
+        const filled = [college, industry, semester, enrollment, supervisor].filter(v => String(v || '').trim()).length;
+        const percent = Math.round((filled / 5) * 100);
+        document.getElementById('profileCompletionText').textContent = `${percent}%`;
+        document.getElementById('profileCompletionBar').style.width = `${percent}%`;
+    };
+
+    const updateBriefCounter = () => {
+        const count = selectedWorkKeywords.length;
+        document.getElementById('briefCounter').textContent = `${count} keyword${count === 1 ? '' : 's'} selected`;
+    };
+
+    const setStepState = (id, state) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        el.classList.remove('done', 'active', 'upcoming');
+        el.classList.add(state);
+
+        const dot = el.querySelector('.step-dot');
+        if (dot) {
+            if (state === 'done') dot.textContent = '✓';
+            else dot.textContent = id.replace('step', '');
+        }
+    };
+
+    const updateStepStates = (activeStepNum = 1) => {
+        [1, 2, 3].forEach((n) => {
+            if (n < activeStepNum) setStepState(`step${n}`, 'done');
+            else if (n === activeStepNum) setStepState(`step${n}`, 'active');
+            else setStepState(`step${n}`, 'upcoming');
+        });
+    };
+
+    const initStepScrollSpy = () => {
+        const stepSections = [
+            { id: 'step1-section', stepNum: 1 },
+            { id: 'step2-section', stepNum: 2 },
+            { id: 'step3-section', stepNum: 3 },
+        ];
+
+        const visible = new Set();
+        const sectionToStep = new Map(stepSections.map(s => [s.id, s.stepNum]));
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) visible.add(entry.target.id);
+                else visible.delete(entry.target.id);
+            });
+
+            if (!visible.size) return;
+
+            const active = Math.min(...Array.from(visible).map(id => sectionToStep.get(id)).filter(Boolean));
+            updateStepStates(active || 1);
+        }, {
+            threshold: 0.3,
+            rootMargin: '-8% 0px -50% 0px'
+        });
+
+        stepSections.forEach(({ id }) => {
+            const el = document.getElementById(id);
+            if (el) observer.observe(el);
+        });
+    };
+
+    const setOptions = (el, items, selected = '', labelKey = 'name') => {
+        el.innerHTML = '<option value="">Select</option>' + (items || []).map(i => {
+            const selectedAttr = String(selected) === String(i._id) ? 'selected' : '';
+            return `<option value="${i._id}" ${selectedAttr}>${i[labelKey]}</option>`;
+        }).join('');
+        // Keep Select2 in sync when the select has already been enhanced.
+        if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+            const $el = window.jQuery(el);
+            if ($el.hasClass('select2-hidden-accessible')) {
+                $el.trigger('change.select2');
+            }
+        }
+    };
+
+    const loadDepartments = async (degreeId, selected = '') => {
+        const departmentSelect = document.getElementById('departmentSelect');
+        if (!degreeId) {
+            departments = [];
+            setOptions(departmentSelect, []);
+            return;
+        }
+        const res = await fetch(`/api/student/departments?degree=${encodeURIComponent(degreeId)}`, {
+            credentials: 'include',
+            headers: authHeaders()
+        });
+        departments = await res.json();
+        setOptions(departmentSelect, departments, selected);
+    };
+
+    const buildFallbackBriefDescription = () => {
+        const lines = [];
+        const internshipTitle = String(document.getElementById('internshipTitle')?.value || '').trim();
+        const positionTitle = String(document.getElementById('positionTitle')?.value || '').trim();
+        const duration = String(document.getElementById('duration')?.value || '').trim();
+        const jobProfile = String(document.getElementById('jobProfile')?.value || '').trim();
+        const keySkills = String(document.getElementById('keySkills')?.value || '').trim();
+        const projectTitle = String(document.getElementById('projectTitle')?.value || '').trim();
+
+        if (projectTitle) lines.push(`Project: ${projectTitle}`);
+        if (internshipTitle) lines.push(`Internship: ${internshipTitle}`);
+        if (positionTitle) lines.push(`Role: ${positionTitle}`);
+        if (jobProfile) lines.push(`Job profile: ${jobProfile}`);
+        if (duration) lines.push(`Duration: ${duration}`);
+        if (keySkills) lines.push(`Skills: ${keySkills}`);
+        return lines.join('. ');
+    };
+
+    const loadProjectTitles = async (majorId) => {
+        const select = document.getElementById('projectTitleSelect');
+        const input = document.getElementById('projectTitle');
+        const hint = document.getElementById('projectTitleHint');
+        const selectedBar = document.getElementById('projectTitleSelectedBar');
+        const selectedText = document.getElementById('projectTitleSelectedText');
+        const editBtn = document.getElementById('projectTitleEditBtn');
+
+        select.innerHTML = '<option value="">-- Select a project title or type custom below --</option>';
+        select.style.display = 'none';
+        input.style.display = '';
+        input.value = '';
+        input.placeholder = 'Type your project title...';
+        selectedBar.style.display = 'none';
+        hint.textContent = '';
+
+        if (!majorId) {
+            hint.textContent = 'Select a major first.';
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/student/project-titles?major=${encodeURIComponent(majorId)}`, {
+                headers: authHeaders(),
+                credentials: 'include'
+            });
+            const titles = await res.json();
+
+            if (!Array.isArray(titles) || titles.length === 0) {
+                hint.textContent = 'No preset titles for this major. Enter your own title.';
+                return;
+            }
+
+            const escapeHtml = (value) => String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+
+            select.innerHTML =
+                '<option value="">-- Select a project title or type custom below --</option>' +
+                titles.map(t => `<option value="${escapeHtml(t.title)}">${escapeHtml(t.title)}</option>`).join('') +
+                '<option value="__custom__">✏ Type my own custom title</option>';
+
+            select.style.display = 'block';
+            input.style.display = 'none';
+            hint.textContent = `${titles.length} preset title(s) available. Pick one or choose "Type my own".`;
+
+            select.onchange = () => {
+                const val = select.value;
+
+                if (!val) {
+                    input.style.display = 'none';
+                    input.value = '';
+                    selectedBar.style.display = 'none';
+                    hint.textContent = `${titles.length} preset title(s) available. Pick one or choose "Type my own".`;
+                    return;
+                }
+
+                if (val === '__custom__') {
+                    input.style.display = '';
+                    input.value = '';
+                    input.placeholder = 'Type your custom project title...';
+                    input.focus();
+                    selectedBar.style.display = 'none';
+                    hint.textContent = 'Type your own project title below.';
+                    return;
+                }
+
+                input.value = val;
+                input.style.display = 'none';
+                selectedText.textContent = val;
+                selectedBar.style.display = 'flex';
+                hint.textContent = '✓ Title selected. Edit below if needed.';
+                updateStepStates();
+            };
+
+            editBtn.onclick = () => {
+                input.style.display = '';
+                input.focus();
+                selectedBar.style.display = 'none';
+                hint.textContent = 'Edit the title below or pick another from the list above.';
+            };
+        } catch (e) {
+            hint.textContent = 'Could not load preset titles. Type your own below.';
+            input.style.display = '';
+        }
+    };
+
+    const loadMajors = async (degreeId, selected = '', departmentId = '') => {
+        const majorSelect = document.getElementById('majorSelect');
+        if (!degreeId) {
+            majors = [];
+            setOptions(majorSelect, []);
+            return;
+        }
+        const params = new URLSearchParams();
+        if (departmentId) params.set('department', departmentId);
+        const endpoint = `/api/student/majors/${encodeURIComponent(degreeId)}${params.toString() ? `?${params.toString()}` : ''}`;
+        const res = await fetch(endpoint, {
+            credentials: 'include',
+            headers: authHeaders()
+        });
+        majors = await res.json();
+        setOptions(majorSelect, majors, selected);
+        renderMajorInfo(selected || majorSelect.value);
+
+        // Load project titles for the selected major
+        const currentMajorId = selected || document.getElementById('majorSelect')?.value;
+        if (currentMajorId) {
+            await loadProjectTitles(currentMajorId);
+        }
+    };
+
+    const renderMajorInfo = async (majorId) => {
+        const languageWrap = document.getElementById('languageSelectorWrap');
+        const languageSelect = document.getElementById('reportLanguageSelect');
+
+        if (!majorId) {
+            document.getElementById('majorInfo').textContent = '';
+            languageWrap.style.display = 'none';
+            languageSelect.innerHTML = '<option value="">Default</option>';
+            return;
+        }
+
+        const res = await fetch(`/api/student/major/${majorId}`, {
+            credentials: 'include',
+            headers: authHeaders()
+        });
+        const major = await res.json();
+        console.log('[DEBUG] Major data fetched:', major);
+        console.log('[DEBUG] reportPolicy:', major.reportPolicy);
+        console.log('[DEBUG] allowedLanguages:', major.reportPolicy?.allowedLanguages);
+
+        const defaultLanguage = major.reportLanguage || 'English';
+        document.getElementById('majorInfo').textContent =
+            `Language: ${defaultLanguage} | Content: ${major.reportContentType || 'Text'}`;
+
+        // Populate language selector based on policy
+        const allowedLanguages = (major.reportPolicy && major.reportPolicy.allowedLanguages) || [];
+        const strictLanguage = (major.reportPolicy && major.reportPolicy.strictLanguageOnly) || false;
+
+        console.log('[DEBUG] strictLanguage:', strictLanguage);
+        console.log('[DEBUG] allowedLanguages array:', allowedLanguages);
+        console.log('[DEBUG] allowedLanguages.length:', allowedLanguages.length);
+
+        if (!strictLanguage && Array.isArray(allowedLanguages) && allowedLanguages.length >= 2) {
+            languageSelect.innerHTML =
+                `<option value="">Default (${defaultLanguage})</option>` +
+                allowedLanguages.map(lang => `<option value="${lang}">${lang}</option>`).join('');
+            languageWrap.style.display = 'block';
+            document.getElementById('languageHint').textContent =
+                `Default is "${defaultLanguage}". You can choose a different language for your report.`;
+            console.log('[DEBUG] Language dropdown shown with options:', allowedLanguages);
+        } else {
+            languageWrap.style.display = 'none';
+            languageSelect.innerHTML = '<option value="">Default</option>';
+            console.log('[DEBUG] Language dropdown hidden. Reason: strictLanguage=' + strictLanguage + ', count=' + allowedLanguages.length);
+        }
+    };
+
+    const bootstrapForm = async () => {
+        const [profileRes, degreeRes] = await Promise.all([
+            fetch('/api/student/profile', { credentials: 'include', headers: authHeaders() }),
+            fetch('/api/student/degrees', { credentials: 'include', headers: authHeaders() })
+        ]);
+
+        profile = await profileRes.json();
+        degrees = await degreeRes.json();
+
+        if (!profile.profileCompleted) {
+            document.getElementById('profileBlock').classList.remove('d-none');
+            return;
+        }
+
+        const form = document.getElementById('createReportForm');
+        form.classList.remove('d-none');
+
+        const degreeSelect = document.getElementById('degreeSelect');
+        setOptions(degreeSelect, degrees, profile.degree?._id || '');
+        const profileDepartmentId = profile.academicDepartment?._id || '';
+
+        if (profile.degree?._id) {
+            document.getElementById('step1Hint').textContent = 'Profile degree/major are pre-selected. You can change them before generating report.';
+        }
+
+        if (profile.degree?._id) {
+            await loadDepartments(profile.degree._id, profileDepartmentId);
+            await loadMajors(profile.degree._id, profile.major?._id || '', profileDepartmentId);
+        } else {
+            setOptions(document.getElementById('departmentSelect'), []);
+            setOptions(document.getElementById('majorSelect'), []);
+        }
+
+        let lastDegreeHandled = String(document.getElementById('degreeSelect').value || '');
+        let lastDepartmentHandled = String(document.getElementById('departmentSelect').value || '');
+        let lastMajorHandled = String(document.getElementById('majorSelect').value || '');
+
+        const resetProjectTitle = () => {
+            const projectTitleInput = document.getElementById('projectTitle');
+            const projectTitleSelect = document.getElementById('projectTitleSelect');
+            const projectTitleHint = document.getElementById('projectTitleHint');
+            const projectTitleSelectedBar = document.getElementById('projectTitleSelectedBar');
+
+            projectTitleInput.value = '';
+            projectTitleInput.style.display = '';
+            projectTitleInput.placeholder = 'Type your project title...';
+            projectTitleSelect.style.display = 'none';
+            projectTitleSelect.innerHTML = '<option value="">-- Select a project title or type custom below --</option>';
+            projectTitleHint.textContent = '';
+            if (projectTitleSelectedBar) projectTitleSelectedBar.style.display = 'none';
+        };
+
+        const handleDegreeChange = async () => {
+            const degreeId = document.getElementById('degreeSelect').value;
+            if (String(degreeId || '') === lastDegreeHandled) return;
+            lastDegreeHandled = String(degreeId || '');
+            await loadDepartments(degreeId, '');
+            await loadMajors(degreeId, '', '');
+            resetProjectTitle();
+            resetWorkDescriptionState();
+            updateStepStates();
+        };
+
+        const handleDepartmentChange = async () => {
+            const degreeId = document.getElementById('degreeSelect').value;
+            const departmentId = document.getElementById('departmentSelect').value || '';
+            if (String(departmentId) === lastDepartmentHandled && String(degreeId || '') === lastDegreeHandled) return;
+            lastDepartmentHandled = String(departmentId || '');
+            lastDegreeHandled = String(degreeId || '');
+            await loadMajors(degreeId, '', departmentId);
+            resetProjectTitle();
+            resetWorkDescriptionState();
+            updateStepStates();
+        };
+
+        const handleMajorChange = async () => {
+            const majorId = document.getElementById('majorSelect').value || '';
+            console.log('[DEBUG handleMajorChange] Called with majorId:', majorId);
+            if (String(majorId) === lastMajorHandled) {
+                console.log('[DEBUG handleMajorChange] Same majorId as before, skipping');
+                return;
+            }
+            lastMajorHandled = String(majorId || '');
+            console.log('[DEBUG handleMajorChange] Processing change...');
+            await renderMajorInfo(majorId);
+            resetProjectTitle();
+            resetWorkDescriptionState();
+            await loadProjectTitles(majorId);
+            console.log('[DEBUG handleMajorChange] Calling loadWorkKeywords...');
+            await loadWorkKeywords(document.getElementById('jobProfile').value.trim());
+            updateStepStates();
+            console.log('[DEBUG handleMajorChange] Done');
+        };
+
+        const bindSelect2Events = (selectId, handler) => {
+            const selectEl = document.getElementById(selectId);
+            if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+                window.jQuery(selectEl).on('select2:select select2:clear', handler);
+            }
+        };
+
+        document.getElementById('degreeSelect').addEventListener('change', handleDegreeChange);
+        document.getElementById('departmentSelect').addEventListener('change', handleDepartmentChange);
+        document.getElementById('majorSelect').addEventListener('change', handleMajorChange);
+
+        bindSelect2Events('degreeSelect', handleDegreeChange);
+        bindSelect2Events('departmentSelect', handleDepartmentChange);
+        bindSelect2Events('majorSelect', handleMajorChange);
+
+        const jobProfileInput = document.getElementById('jobProfile');
+        // NOTE: Do NOT pre-fill jobProfile field - it should start empty
+        // Users can optionally type a job profile to filter keywords, or leave empty to see all keywords
+        jobProfileInput.addEventListener('input', async () => {
+            renderKeywordLibrary(document.getElementById('keywordSearchInput').value || '');
+            updateStepStates();
+        });
+        // Don't load keywords on init - wait for major selection via handleMajorChange
+        // If profile.major is already set from init, load keywords
+        const currentMajor = document.getElementById('majorSelect')?.value || '';
+        if (currentMajor) {
+            await loadWorkKeywords();
+        } else {
+            // Show hint to user to select a major first
+            resetWorkDescriptionState();
+        }
+        syncSelectedKeywords();
+
+        updateSummary();
+        updateStepStates();
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const defaultBtnHtml = '<i class="bi bi-file-earmark-text me-1"></i> Generate Report';
+        try {
+            await bootstrapForm();
+            document.getElementById('keywordSearchInput').addEventListener('input', (e) => {
+                renderKeywordLibrary(e.target.value || '');
+            });
+
+            ['projectTitle','internshipTitle','academicYear','positionTitle','duration','startDate','endDate']
+                .forEach(id => document.getElementById(id).addEventListener('input', updateStepStates));
+
+            const keySkillsInput = document.getElementById('keySkillsInput');
+            keySkillsInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    addSkill(keySkillsInput.value.replace(',', ''));
+                    keySkillsInput.value = '';
+                }
+            });
+            keySkillsInput.addEventListener('blur', () => {
+                addSkill(keySkillsInput.value);
+                keySkillsInput.value = '';
+            });
+
+            syncSelectedKeywords();
+            updateStepStates(1);
+            initStepScrollSpy();
+
+            const form = document.getElementById('createReportForm');
+            form.dataset.defaultBtnHtml = defaultBtnHtml;
+        } catch(e) {
+            console.error(e);
+            document.getElementById('formError').innerText = 'Unable to load form data.';
+            document.getElementById('formError').classList.remove('d-none');
+        }
+    });
+
+    document.getElementById('createReportForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const btn = document.getElementById('submitBtn');
+        const progressWrap = document.getElementById('generateProgress');
+        const progressBar = document.getElementById('generateProgressBar');
+        const defaultBtnHtml = document.getElementById('createReportForm').dataset.defaultBtnHtml || '<i class="bi bi-file-earmark-text me-1"></i> Generate Report';
+        const errAlert = document.getElementById('formError');
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> AI is generating your report...';
+        progressWrap.classList.add('active');
+        progressBar.style.width = '0%';
+        requestAnimationFrame(() => {
+            progressBar.style.width = '70%';
+        });
+        errAlert.classList.add('d-none');
+        
+        const payload = {
+            degree: document.getElementById('degreeSelect').value,
+            academicDepartment: document.getElementById('departmentSelect').value,
+            major: document.getElementById('majorSelect').value,
+            projectTitle: document.getElementById('projectTitle').value.trim(),
+            internshipTitle: document.getElementById('internshipTitle').value,
+            academicYear: document.getElementById('academicYear').value,
+            semester: profile?.semester || '',
+            positionTitle: document.getElementById('positionTitle').value,
+            duration: document.getElementById('duration').value,
+            startDate: document.getElementById('startDate').value,
+            endDate: document.getElementById('endDate').value,
+            enrollmentNumber: profile?.enrollmentNumber || '',
+            supervisorName: profile?.supervisorName || '',
+            supervisorContact: profile?.supervisorContact || '',
+            briefDescription: document.getElementById('briefDescription').value,
+            selectedWorkKeywords,
+            jobProfile: document.getElementById('jobProfile').value.trim(),
+            industryType: profile?.industryType || '',
+            descriptionSource: 'keywords_ui',
+            keywordMeta: {
+                jobProfile: document.getElementById('jobProfile').value.trim(),
+                industryType: profile?.industryType || '',
+            },
+            keySkills: document.getElementById('keySkills').value
+        };
+
+        // Include optional student-selected report language (empty means use admin default)
+        payload.reportLanguage = document.getElementById('reportLanguageSelect')?.value || '';
+
+        if (!payload.briefDescription) {
+            payload.briefDescription = selectedWorkKeywords.length
+                ? selectedWorkKeywords.join(', ')
+                : buildFallbackBriefDescription();
+        }
+
+        if (!payload.degree || !payload.major || !payload.projectTitle) {
+            errAlert.innerText = 'Please select degree, major, and enter project title.';
+            errAlert.classList.remove('d-none');
+            btn.disabled = false;
+            btn.innerHTML = defaultBtnHtml;
+            progressWrap.classList.remove('active');
+            progressBar.style.width = '0%';
+            return;
+        }
+        
+        try {
+            const res = await fetch('/api/reports/', {
+                method: 'POST',
+                credentials: 'include',
+                headers: authHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await res.json();
+            if (res.ok) {
+                window.location.href = `/student/report/${data.reportId}`;
+            } else {
+                errAlert.innerText = data.message || 'Generation failed.';
+                errAlert.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = defaultBtnHtml;
+                progressWrap.classList.remove('active');
+                progressBar.style.width = '0%';
+            }
+        } catch (err) {
+            errAlert.innerText = 'Network Error.';
+            errAlert.classList.remove('d-none');
+            btn.disabled = false;
+            btn.innerHTML = defaultBtnHtml;
+            progressWrap.classList.remove('active');
+            progressBar.style.width = '0%';
+        }
+    });
+</script>
+{% endblock %}

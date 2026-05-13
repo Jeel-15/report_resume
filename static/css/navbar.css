@@ -1,0 +1,12 @@
+/* ---------------------------------------------------------------
+   NAVBAR.CSS — DEPRECATED
+   
+   All navbar styles are now defined inline:
+   - App navbar (#mainNavbar): styles are in templates/base.html
+   - Landing nav (#nav): styles are in templates/landing.html
+   
+   This file is kept to avoid breaking the @import in index.css
+   but contains no active styles.
+--------------------------------------------------------------- */
+
+/* intentionally empty */

@@ -1,0 +1,752 @@
+# ReportGen — Complete Database Flow & Optimization Analysis
+> **Scope:** Every MongoDB collection, every read/write pattern, every data journey, every bottleneck.
+> **Based on:** Full source read of all 18 models + routes + utils + flow diagram.
+> **Created:** 2026-04-29
+
+---
+
+## Part 1 — The 18 Collections at a Glance
+
+| # | Collection | Purpose | Who Creates | Approval? |
+|---|-----------|---------|------------|-----------|
+| 1 | `users` | All accounts (student + admin) | Registration | No |
+| 2 | `degrees` | B.Tech, BCA, MBA, etc. | Admin only | No |
+| 3 | `departments` | Sub-groups within a Degree | Admin or Student | Yes (student) |
+| 4 | `majors` | Specialization + AI config hub | Admin only | No |
+| 5 | `universities` | Institution master records | Admin or Student | Yes (student) |
+| 6 | `colleges` | College under a University | Admin or Student | Yes (student) |
+| 7 | `industries` | Internship company records | Admin or Student | Yes (student) |
+| 8 | `reports` | The core report document | Student | No |
+| 9 | `payments` | Payment transaction records | System | No |
+| 10 | `services` | Pricing + product definitions | Admin | No |
+| 11 | `internshiptypes` | **LEGACY** internship categories | Admin | No |
+| 12 | `project_titles` | Suggested titles per Major | Admin | No |
+| 13 | `work_keywords` | Tag library for brief description | Admin | No |
+| 14 | `university_report_templates` | Section config for university | Admin | No |
+| 15 | `college_report_templates` | Section config for college | Admin | No |
+| 16 | `major_report_templates` | Section config for major | Admin | No |
+| 17 | `audit_logs` | Admin action trail | System | No |
+| 18 | `report_content_types` | Content type labels | Admin | No |
+
+---
+
+## Part 2 — Full Data Flow Per User Journey
+
+### Journey 1: Student Registration → Profile Completion
+
+```
+WRITE: users (create) → email, password(bcrypt), role='student', profileCompleted=False
+
+PUT /api/student/profile/personal
+  WRITE: users.name, villageCityName, tehsil, district, state, phone, gender
+
+PUT /api/student/profile/college
+  READ:  universities (filter approvalStatus='approved' OR createdBy=me)
+  READ:  colleges (filter university=selected, approvalStatus='approved' OR createdBy=me)
+  READ:  degrees (filter isActive=True)
+  READ:  departments (filter degree=selected, approvalStatus='approved')
+  READ:  majors (filter degree=selected, isActive=True)
+  WRITE: users.university, college, degree, academicDepartment, major,
+         rollNumber, enrollmentNumber, semester
+
+PUT /api/student/profile/industry
+  READ:  industries (filter approvalStatus='approved' OR createdBy=me)
+  WRITE: users.industry, supervisorName, supervisorContact
+  WRITE: users.industryProfileCustomized=True/False
+  WRITE: users.industryVillageCityName, industryType, industrySubType,
+         industryKeyActivities, industryDetails, industryWebsite, industryGstNumber
+
+  [PROFILE COMPLETE CHECK]
+  READ:  users.university, college, degree, major, industry  ← all must be non-null
+  WRITE: users.profileCompleted = True
+```
+
+**Data Shape Note:** The `User` document is a **fat document**. It holds a full snapshot of the student's industry data (11 fields) alongside all academic references. This is intentional — student overrides must never mutate the master `Industry` record.
+
+---
+
+### Journey 2: Admin Creates Academic Hierarchy
+
+```
+POST /admin/degrees
+  WRITE: degrees {name, isActive}
+
+POST /admin/departments
+  WRITE: departments {name, degree(ref), approvalStatus='approved', createdBy}
+
+POST /admin/majors
+  WRITE: majors {
+    name, degree(ref), department(ref, optional),
+    reportLanguage, reportContentType,   ← stored as plain STRING (weakness)
+    aiPromptContext,
+    reportPolicy: {
+      strictLanguageOnly, allowedLanguages,
+      generationInstruction, uiLabels(dict),
+      sectionTitleMap(dict), contentFeatures(list),
+      imagesRequired
+    },
+    reportSections: [                     ← LEGACY embedded list
+      {key, title, description}
+    ],
+    employmentOpportunities: [{companyType, positions}]
+  }
+
+POST /admin/universities
+  WRITE: universities {name, city, district, state, website, logo, approvalStatus='approved'}
+
+POST /admin/colleges
+  READ:  universities
+  WRITE: colleges {name, university(ref), city, ..., approvalStatus='approved'}
+```
+
+---
+
+### Journey 3: Admin Configures Report Section Templates (The 3-Level Cascade)
+
+```
+POST /admin/report-sections/university
+  READ:  universities
+  WRITE: university_report_templates {
+    university(ref, UNIQUE), sections[{key, title, description, sortOrder}],
+    isActive, description, createdBy
+  }
+
+POST /admin/report-sections/college
+  READ:  universities → colleges
+  WRITE: college_report_templates {
+    college(ref, UNIQUE), university(ref),   ← university denormalized for filtering
+    sections[{...}],
+    useUniversityDefault=True/False,         ← True = ignore own sections, inherit up
+    isActive, createdBy
+  }
+
+POST /admin/report-sections/major
+  READ:  universities → colleges → majors
+  WRITE: major_report_templates {
+    major(ref, UNIQUE), college(ref), university(ref),   ← both denormalized
+    sections[{...}],
+    useLevelAboveDefault=True/False,         ← True = ignore own sections, inherit up
+    isActive, createdBy
+  }
+```
+
+**The Cascade Resolver (`utils/report_sections.py`) at runtime:**
+
+```
+resolve_effective_report_sections(major, college, university):
+  1. MajorReportTemplate.objects(major=major_id).first()
+     → if exists AND useLevelAboveDefault=False AND sections not empty
+     → RETURN source='major_custom'                          [1 DB query]
+
+  2. CollegeReportTemplate.objects(college=college_id).first()
+     → if exists AND useUniversityDefault=False AND sections not empty
+     → RETURN source='college_custom'                        [1 DB query]
+
+  3. UniversityReportTemplate.objects(university=university_id).first()
+     → if exists AND sections not empty
+     → RETURN source='university_default'                    [1 DB query]
+
+  4. major_doc.reportSections (embedded in Major)
+     → if not empty
+     → RETURN source='major_legacy'                          [0 extra DB queries]
+
+  5. RETURN source='none' → n8n uses hardcoded defaults
+```
+
+**Total DB hits for section resolution: 3 queries maximum** — already efficient. However, each query is a `.first()` with no field projection, fetching the entire template document including the sections array.
+
+---
+
+### Journey 4: Student Creates a Report
+
+```
+GET /student/create-report
+  READ: users.major → major doc (reportLanguage, reportContentType, reportPolicy)
+  READ: project_titles (filter major=user.major) → suggested titles
+  READ: work_keywords (filter industryType=user.industryType, jobProfile=user.jobProfile)
+        ← PROBLEM: text-match filter only, no FK to major
+
+POST /api/reports/
+  INPUT: {majorId, projectTitle, workKeywords[], briefDescription, ...}
+
+  READ:  users (current) — full profile with all refs
+  READ:  majors (major_id)
+  READ:  industries (user.industry)
+  READ:  colleges (user.college)
+  READ:  universities (user.university)
+  READ:  degrees (user.degree)
+
+  WRITE: reports {
+    user(ref), degree(ref), major(ref), college(ref), university(ref),
+    industry(ref),
+    projectTitle, internshipTitle, academicYear,
+    rollNumber, studentEmail,
+    supervisorName, supervisorContact,
+    duration, startDate, endDate, positionTitle,
+    briefDescription, keySkills,
+    reportLanguage,
+    status='generating',
+    generatedContent={}, editedContent={},
+    sectionImages={},
+    isPaid=False,
+    createdAt, updatedAt
+  }
+
+  CALL: resolve_effective_report_sections(major, college, university)
+        → 1–3 DB queries (template cascade)
+
+  BUILD: full n8n payload (in memory, no more DB hits)
+  POST:  n8n webhook (HTTP, synchronous, timeout=120s)
+```
+
+**Report creation DB reads:** 6 separate document fetches (user, major, industry, college, university, degree). These are all single-document lookups by `_id`.
+
+---
+
+### Journey 5: n8n Callback → Report Saved
+
+```
+PUT /api/reports/{id}/generated    ← called by n8n, not by student
+  READ:  reports (find by id)
+  WRITE: reports.generatedContent = {
+    "acknowledgement": "...",
+    "abstract": "...",
+    "workDescription": "...",
+    ... (one key per section)
+  }
+  WRITE: reports.generatedTitles = {"sectionKey": "Displayed Title", ...}
+  WRITE: reports.generatedUiLabels = {"label key": "value", ...}
+  WRITE: reports.status = 'generated'
+  WRITE: reports.updatedAt
+```
+
+**The `generatedContent` DictField** stores the entire AI-generated report as a single embedded JSON blob. Sections are keys, content is values. This is the **most read-heavy field** in the system.
+
+---
+
+### Journey 6: Student Edits & Downloads PDF
+
+```
+GET /api/reports/{id}
+  READ: reports (by id)
+  READ: users (report.user)
+  READ: major, college, university, degree, industry  ← if not already cached
+  → Returns full report JSON to browser
+
+PUT /api/reports/{id}/content
+  WRITE: reports.editedContent = {
+    "sectionKey": "student-edited text",
+    "__cover": { logos: [...], ... },
+    "__coverPage": { ... },
+    "__layout": { header, footer, ... }
+  }
+  WRITE: reports.status = 'edited'
+
+POST /api/reports/{id}/images/{section}
+  WRITE: reports.sectionImages[section] = [
+    {url, filename, position, caption, widthPercent}
+  ]
+
+GET /api/reports/{id}/pdf
+  READ: reports (by id, full document)
+  READ: users (report.user)
+  READ: major.reportPolicy (for sectionTitleMap, uiLabels)
+  BUILD: _build_pdf_sections() → merges generatedContent + editedContent
+  RENDER: pdf_template.html via Playwright → PDF bytes
+  WRITE: reports.downloadCount += 1
+  RETURN: application/pdf
+```
+
+---
+
+### Journey 7: Payment Flow (Planned, Partially Implemented)
+
+```
+GET /api/services (type='report')
+  READ: services {name, price, gstPercent, freeLimit, degreePricing[{degree(ref), price}]}
+
+POST /api/payments/
+  READ: services
+  READ: users (check report count vs freeLimit) ← NOT IMPLEMENTED YET
+  WRITE: payments {
+    user(ref), service(DynamicField!), report(ref),
+    amount, gstAmount, totalAmount,
+    status='pending', paymentMethod, transactionId
+  }
+
+[After gateway callback]
+  WRITE: payments.status = 'completed'
+  WRITE: reports.isPaid = True
+  WRITE: reports.payment = payment_ref
+```
+
+**CRITICAL BUG:** `Payment.service` is declared as `DynamicField` (not `ReferenceField('Service')`). This means no referential integrity — if a Service is renamed or deleted, old payment records have orphaned/incorrect data.
+
+---
+
+### Journey 8: Student Submits New Entity (Approval Workflow)
+
+```
+POST /api/student/universities/  (or /colleges/, /industries/, /departments/)
+  WRITE: universities {
+    name, city, ...,
+    approvalStatus='pending',
+    createdBy=user_ref
+  }
+
+  [Student sees it immediately via visibility rule:]
+  READ filter: (approvalStatus='approved') OR (createdBy=current_user.id)
+
+Admin Panel:
+  READ: universities (filter approvalStatus='pending')
+  WRITE: universities.approvalStatus = 'approved' OR 'rejected'
+  WRITE: universities.rejectionReason = '...'   ← set on rejection
+  WRITE: audit_logs {user(admin_ref), action, targetType, targetId, timestamp}
+```
+
+---
+
+## Part 3 — Data Relationship Deep Map
+
+```
+Degree (1) ──────────────────────── (N) Department
+  │                                       │
+  └── (N) Major ◄──────────────── (optional)
+               │
+               ├── EmbeddedDoc: ReportPolicy
+               ├── EmbeddedList: ReportSections (legacy)
+               └── (1) MajorReportTemplate (separate collection)
+                        └── Sections[]
+
+University (1) ──────── (N) College
+     │                        │
+     │                        └── (1) CollegeReportTemplate
+     │                                  └── Sections[]
+     └── (1) UniversityReportTemplate
+                  └── Sections[]
+
+User ───refs──► University, College, Degree, Department, Major, Industry
+     ───copy──► 11 industry snapshot fields (flat in User doc)
+     ───copy──► universityLogoOverride, collegeLogoOverride
+
+Report ─refs──► User, Degree, Major, College, University, Industry, Payment
+       ─blob──► generatedContent (dict), editedContent (dict),
+                sectionImages (dict), generatedTitles (dict)
+
+WorkKeyword ── (no FK) ── string match on industryType, jobProfile
+ProjectTitle ─refs──► Major, Degree (denormalized)
+InternshipType ── (ORPHAN) ── not referenced by anything active
+ReportContentType ── (LOOSE) ── Major.reportContentType is a free string, not a ref
+```
+
+---
+
+## Part 4 — Query Performance Analysis
+
+### Current Index Coverage
+
+| Collection | Indexed Fields | Status |
+|-----------|---------------|--------|
+| `users` | `email` (unique) | ✅ Good |
+| `majors` | `(degree, name)` unique compound | ✅ Good |
+| `university_report_templates` | `university` unique | ✅ Good |
+| `college_report_templates` | `college` unique | ✅ Good |
+| `major_report_templates` | `major` unique | ✅ Good |
+| `degrees` | `name` unique | ✅ Good |
+| `reports` | **NONE defined** | 🔴 Missing |
+| `industries` | **NONE defined** | 🔴 Missing |
+| `universities` | **NONE defined** | 🔴 Missing |
+| `colleges` | **NONE defined** | 🔴 Missing |
+| `work_keywords` | **NONE defined** | 🔴 Missing |
+| `project_titles` | **NONE defined** | 🔴 Missing |
+| `payments` | **NONE defined** | 🔴 Missing |
+| `audit_logs` | **NONE defined** | 🔴 Missing |
+
+### Most Frequent Queries (Hot Paths)
+
+```python
+# 1. Every page load for a logged-in student:
+User.objects(id=session_user_id).first()            # ← hits email index ✅
+
+# 2. Create Report page — work keyword load:
+WorkKeyword.objects(industryType=x, jobProfile=y)  # ← full collection scan 🔴
+
+# 3. Admin dashboard — pending approvals:
+University.objects(approvalStatus='pending')        # ← full collection scan 🔴
+College.objects(approvalStatus='pending')           # ← full collection scan 🔴
+Industry.objects(approvalStatus='pending')          # ← full collection scan 🔴
+
+# 4. Student report list:
+Report.objects(user=user_id).order_by('-createdAt') # ← full scan 🔴
+
+# 5. College dropdown in profile:
+College.objects(university=uni_id, approvalStatus='approved')  # ← full scan 🔴
+
+# 6. Section cascade resolver:
+MajorReportTemplate.objects(major=major_id).first() # ← hits unique index ✅
+CollegeReportTemplate.objects(college=cid).first()  # ← hits unique index ✅
+UniversityReportTemplate.objects(university=uid).first() # ← hits unique index ✅
+```
+
+---
+
+## Part 5 — Identified Problems & Optimization Roadmap
+
+### 🔴 CRITICAL — Fix These First
+
+#### P1: `Report` collection has no indexes
+
+**Problem:** Every `Report.objects(user=user_id)` is a full collection scan. As reports grow, student dashboard becomes slow.
+
+**Fix — add to `report.py`:**
+```python
+meta = {
+    'collection': 'reports',
+    'strict': False,
+    'indexes': [
+        {'fields': ['user', '-createdAt']},   # student report list
+        {'fields': ['status']},                # admin dashboard by status
+        {'fields': ['major']},                 # analytics by major
+    ]
+}
+```
+
+---
+
+#### P2: `WorkKeyword` has no indexes and no FK to Major/Degree
+
+**Problem:** The query `WorkKeyword.objects(industryType=x, jobProfile=y)` is a full collection scan AND the filtering is fragile (case-sensitive string match).
+
+**Fix — add to `work_keyword.py`:**
+```python
+meta = {
+    'collection': 'work_keywords',
+    'strict': False,
+    'indexes': [
+        {'fields': ['industryType', 'jobProfile', 'sortOrder']},
+        {'fields': ['major']},     # after adding major FK
+    ]
+}
+# Add new field:
+major = ReferenceField('Major')     # optional — scope keywords to a major
+degree = ReferenceField('Degree')   # optional — scope to a degree
+```
+
+---
+
+#### P3: `Payment.service` is `DynamicField` — no referential integrity
+
+**Problem:** `service = DynamicField(required=True)` means anything can be stored. Renaming a Service breaks historical records.
+
+**Fix — change to `payment.py`:**
+```python
+# Before:
+service = DynamicField(required=True)
+
+# After:
+service = ReferenceField('Service', required=True)
+# Add snapshot fields for historical accuracy:
+serviceNameSnapshot = StringField(default='')
+servicePriceSnapshot = FloatField(default=0.0)
+```
+
+---
+
+#### P4: `Major.reportContentType` is a loose string — not a FK
+
+**Problem:** Admin can rename a `ReportContentType` document and all Majors still have the old string. No consistency.
+
+**Fix — change to `major.py`:**
+```python
+# Before:
+reportContentType = StringField(default='Text')
+
+# After:
+reportContentType = ReferenceField('ReportContentType')
+reportContentTypeSnapshot = StringField(default='Text')  # keep for legacy
+```
+
+---
+
+#### P5: No cascade-delete protection on University → College → User
+
+**Problem:** If a University is deleted:
+- Colleges referencing it → broken reference
+- Users referencing that university → broken reference
+- CollegeReportTemplate → broken reference
+
+**Fix — add signal handlers in `university.py`:**
+```python
+from mongoengine import signals
+
+@classmethod
+def pre_delete(cls, sender, document, **kwargs):
+    from models.college import College
+    if College.objects(university=document.id).count() > 0:
+        raise Exception("Cannot delete university with active colleges")
+
+signals.pre_delete.connect(University.pre_delete, sender=University)
+```
+
+---
+
+#### P6: `College` and `University` lack approval-status indexes
+
+**Problem:** Admin pending-approval queries scan entire collections.
+
+**Fix:**
+```python
+# university.py meta:
+'indexes': [
+    {'fields': ['approvalStatus']},
+    {'fields': ['createdBy', 'approvalStatus']},
+]
+
+# college.py meta:
+'indexes': [
+    {'fields': ['university', 'approvalStatus']},  # most common query
+    {'fields': ['createdBy', 'approvalStatus']},
+]
+
+# industry.py meta:
+'indexes': [
+    {'fields': ['approvalStatus']},
+    {'fields': ['industryType', 'jobProfile']},    # for WorkKeyword alignment
+]
+```
+
+---
+
+### 🟡 DESIGN — Fix These for Better Maintainability
+
+#### D1: `InternshipType` is dead code — remove or integrate
+
+**Current state:** The `internshiptypes` collection is managed by admin UI at `/admin/types` but never read during report generation. It's a source of confusion.
+
+**Option A — Remove it:**
+```python
+# Remove internship_type.py, remove from models/__init__.py
+# Remove /admin/types route
+# Run: InternshipType.drop_collection()
+```
+
+**Option B — Integrate it (better):**
+```python
+# In Major model, add:
+internshipType = ReferenceField('InternshipType')
+
+# In report_sections.py, extend cascade:
+# If no template found at major/college/university level:
+# → check major.internshipType.reportSections as an additional fallback
+```
+
+---
+
+#### D2: `ReportSectionItem.sortOrder` is stored as `StringField` — should be `IntField`
+
+**Current code:**
+```python
+sortOrder = StringField(default='0')   # ← string!
+```
+
+**Problem:** Sorting `'10' < '9'` gives wrong order (string comparison). The resolver never even sorts by it.
+
+**Fix:**
+```python
+sortOrder = IntField(default=0)        # ← proper int
+
+# In report_sections.py _normalize_items():
+sorted_items = sorted(items, key=lambda x: getattr(x, 'sortOrder', 0))
+```
+
+---
+
+#### D3: `MajorReportTemplate` holds denormalized `college` and `university` refs — can drift
+
+**Current code:**
+```python
+class MajorReportTemplate(Document):
+    major = ReferenceField('Major', required=True, unique=True)
+    college = ReferenceField('College', required=True)     # denormalized
+    university = ReferenceField('University', required=True)  # denormalized
+```
+
+**Problem:** If a student later switches college, the MajorReportTemplate still points to the old college. The cascade resolver actually does `MajorReportTemplate.objects(major=major_id)` — it doesn't use the college/university fields for lookup, so they are never queried. They're just stored for "easy filtering" but create confusion.
+
+**Fix Option A:** Remove `college` and `university` from `MajorReportTemplate` — the cascade resolver doesn't need them.
+
+**Fix Option B:** Keep them but add a migration check to ensure they match the current report's college/university at resolution time.
+
+---
+
+#### D4: User industry snapshot is all-or-nothing
+
+**Current flag:**
+```python
+industryProfileCustomized = BooleanField(default=False)
+```
+
+When `True`, ALL 11 industry fields from User are used. When `False`, ALL fields from master Industry are used.
+
+**Better design — field-level override flags:**
+```python
+# Replace with a dict of overridden field names:
+industryOverrideFields = ListField(StringField(), default=list)
+# e.g. ['industryVillageCityName', 'industryType']
+# Report builder reads master Industry for all fields EXCEPT those in this list
+```
+
+---
+
+#### D5: `Report.reportLanguage` is duplicated from `Major.reportLanguage`
+
+**Current:** When a report is created, `report.reportLanguage` is set to `major.reportLanguage` at creation time. This snapshot is good — it preserves what language was used.
+
+**But it's never shown in the student UI or used in re-generation.** Add it to the report view API response so students know what language their report was generated in.
+
+---
+
+#### D6: `AuditLog` collection has no indexes
+
+**Fix:**
+```python
+meta = {
+    'collection': 'audit_logs',
+    'indexes': [
+        {'fields': ['-createdAt']},
+        {'fields': ['user']},
+        {'fields': ['targetType', 'targetId']},
+    ]
+}
+```
+
+---
+
+### 🟢 FUTURE — New Data Flows to Add
+
+#### F1: Free Report Limit Enforcement
+
+The `Service.freeLimit` field exists but is never checked. Add this check before report creation:
+
+```python
+# In POST /api/reports/ route:
+service = Service.objects(type='report', isActive=True).first()
+if service and service.freeLimit > 0:
+    used_count = Report.objects(
+        user=current_user.id,
+        isPaid=False,
+        status__nin=['error']
+    ).count()
+    if used_count >= service.freeLimit:
+        # block creation, redirect to payment
+```
+
+**Requires:** `Report` index on `(user, isPaid, status)`.
+
+---
+
+#### F2: WorkKeyword → Major Scoping
+
+Add `major` and `degree` refs to `WorkKeyword`. When student is on the Create Report page:
+
+```python
+# Current (fragile):
+WorkKeyword.objects(industryType=user.industryType, jobProfile=user.jobProfile)
+
+# Better (scoped):
+WorkKeyword.objects(
+    Q(major=user.major) | Q(degree=user.degree) | Q(major=None),
+    industryType=user.industryType,
+    isActive=True
+).order_by('sortOrder')
+```
+
+---
+
+#### F3: Report Versioning
+
+Currently `editedContent` overwrites `generatedContent`. There's no history. Add:
+
+```python
+# In Report model:
+contentHistory = ListField(DictField(), default=list)
+# Each entry: {timestamp, content_snapshot, edited_by}
+```
+
+---
+
+#### F4: Add `reportCount` denormalized counter to User
+
+Every time the student dashboard loads, it likely queries `Report.objects(user=id).count()`. A counter cache on User avoids this:
+
+```python
+# In User model:
+reportCount = IntField(default=0)
+# Increment on Report creation, decrement on deletion
+```
+
+---
+
+## Part 6 — Complete Optimized Data Flow (Revised)
+
+```
+[WRITE FLOWS — what gets written when]
+
+Registration:        users(new)
+Profile Personal:    users(update: personal fields)
+Profile College:     users(update: uni/college/degree/dept/major refs)
+Profile Industry:    users(update: industry ref + 11 snapshot fields)
+                     users(update: profileCompleted=True if all refs set)
+
+Create University:   universities(new, pending or approved)
+Create College:      colleges(new) ← requires universities._id
+Create Industry:     industries(new)
+Create Department:   departments(new) ← requires degrees._id
+
+Create Major:        majors(new) ← requires degrees._id
+Set Uni Template:    university_report_templates(upsert by university)
+Set College Template:college_report_templates(upsert by college)
+Set Major Template:  major_report_templates(upsert by major)
+
+Create Report:       reports(new, status='generating')
+                     [HTTP → n8n]
+n8n Callback:        reports(update: generatedContent, titles, status='generated')
+Student Edits:       reports(update: editedContent, status='edited')
+Image Upload:        reports(update: sectionImages[section])
+Download PDF:        reports(update: downloadCount++)
+
+Payment:             payments(new, status='pending')
+                     payments(update: status='completed')
+                     reports(update: isPaid=True, payment=ref)
+
+Admin Approve:       universities/colleges/industries/departments
+                     (update: approvalStatus, rejectionReason)
+                     audit_logs(new)
+```
+
+---
+
+## Part 7 — Priority-Ranked Fix Summary
+
+| Priority | Fix | Effort | Impact |
+|---------|-----|--------|--------|
+| 🔴 P1 | Add indexes to `reports` collection | Low (5 lines) | High — every student page |
+| 🔴 P2 | Add indexes to `work_keywords` + add major/degree FK | Low-Med | High — fragile filtering |
+| 🔴 P3 | Fix `Payment.service` from `DynamicField` to `ReferenceField` | Low | High — data integrity |
+| 🔴 P4 | Fix `Major.reportContentType` to `ReferenceField` | Med (migration) | High — consistency |
+| 🔴 P5 | Add cascade-delete protection on University/College | Med | Critical — data safety |
+| 🔴 P6 | Add indexes to `colleges`, `universities`, `industries` | Low | High — admin queries |
+| 🟡 D1 | Remove or integrate `InternshipType` dead code | Med | Medium — clean codebase |
+| 🟡 D2 | Fix `ReportSectionItem.sortOrder` to `IntField` + sort in resolver | Low | Medium — section order |
+| 🟡 D3 | Remove unused `college`/`university` from `MajorReportTemplate` | Low | Low — clarity |
+| 🟡 D4 | Field-level industry override instead of all-or-nothing flag | High | Medium — UX |
+| 🟡 D5 | Show `reportLanguage` in student UI | Low | Low — informational |
+| 🟡 D6 | Add indexes to `audit_logs` | Low | Medium — admin perf |
+| 🟢 F1 | Implement `freeLimit` check before report creation | Med | High — business logic |
+| 🟢 F2 | WorkKeyword scoping to major | Med | High — relevance |
+| 🟢 F3 | Report content versioning / history | High | Medium — safety net |
+| 🟢 F4 | Denormalized `reportCount` on User | Low | Medium — perf |
+
+---
+
+*Analysis by deep reading of all 18 model files, utils/report_sections.py, routes/, and the project flow diagram. Last updated: 2026-04-29.*

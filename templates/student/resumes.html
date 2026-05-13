@@ -1,0 +1,1044 @@
+{% extends "base.html" %}
+
+{% block title %}My Resumes - Student{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background:
+            radial-gradient(1100px 420px at -10% -20%, rgba(59, 130, 246, 0.16), transparent 62%),
+            radial-gradient(980px 360px at 110% -16%, rgba(20, 184, 166, 0.20), transparent 58%),
+            linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
+        color: #0f172a;
+    }
+
+    i.bi {
+        display: inline-block;
+        vertical-align: -0.125em;
+    }
+
+    .resumes-shell {
+        --dash-card: #ffffff;
+        --dash-card-soft: #f8fbff;
+        --dash-border: #d7e5ff;
+        --dash-text: #0f172a;
+        --dash-muted: #475569;
+        max-width: 1440px;
+        margin: 0 auto;
+        animation: pageIn 0.25s ease;
+    }
+
+    @keyframes pageIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .dashboard-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 18px;
+    }
+
+    .dashboard-title {
+        margin: 0;
+        font-size: clamp(1.8rem, 2.6vw, 2.2rem);
+        font-weight: 700;
+        color: var(--dash-text);
+    }
+
+    .stat-cards-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+
+    .stat-card {
+        background: var(--dash-card);
+        border: 1px solid var(--dash-border);
+        border-radius: 16px;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 10px 26px rgba(37, 99, 235, 0.08);
+    }
+
+    .stat-card-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        flex-shrink: 0;
+    }
+
+    .stat-card-body { min-width: 0; }
+    .stat-card-number {
+        font-size: 1.55rem;
+        font-weight: 700;
+        line-height: 1;
+        color: #0f172a;
+    }
+    .stat-card-label {
+        margin-top: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .stat-card-total .stat-card-icon { background: #dbeafe; color: #1d4ed8; }
+    .stat-card-downloaded .stat-card-icon { background: #dcfce7; color: #15803d; }
+
+    .resumes-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--dash-border);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.06);
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .search-wrap {
+        position: relative;
+        min-width: 280px;
+        flex: 1;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        pointer-events: none;
+    }
+
+    .search-input {
+        width: 100%;
+        height: 42px;
+        padding: 0 42px 0 38px;
+        border-radius: 12px;
+        border: 1px solid #d7e5ff;
+        background: #fff;
+        color: #0f172a;
+        font-size: 14px;
+        outline: none;
+        box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.02);
+    }
+
+    .search-input:focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
+    }
+
+    .search-clear {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 999px;
+        background: #e2e8f0;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sort-select {
+        height: 42px;
+        border-radius: 12px;
+        border: 1px solid #d7e5ff;
+        background: #fff;
+        padding: 0 14px;
+        font-size: 14px;
+        color: #0f172a;
+        outline: none;
+    }
+
+    .resumes-count {
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+        background: #eff6ff;
+        border: 1px solid #dbeafe;
+        border-radius: 999px;
+        padding: 7px 12px;
+        white-space: nowrap;
+    }
+
+    .report-feed {
+        display: grid;
+        gap: 12px;
+    }
+
+    .report-card {
+        border: 1px solid var(--dash-border);
+        border-left: 4px solid #93c5fd;
+        border-radius: 14px;
+        background: var(--dash-card);
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
+        padding: 14px 14px 14px 12px;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .report-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 16px 34px rgba(37, 99, 235, 0.16);
+    }
+
+    .report-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #1e3a8a;
+        background: #e8f1ff;
+    }
+
+    .report-card.generated { border-left-color: #22c55e; }
+    .report-card.edited { border-left-color: #f59e0b; }
+    .report-card.generating { border-left-color: #60a5fa; }
+    .report-card.error { border-left-color: #ef4444; }
+    .report-card.draft { border-left-color: #cbd5e1; }
+
+    .report-card.generated .report-icon { background: #dbeafe; color: #1e3a8a; }
+    .report-card.edited .report-icon { background: #e6f0ff; color: #1d4ed8; }
+    .report-card.generating .report-icon { background: #eef5ff; color: #2563eb; }
+    .report-card.error .report-icon { background: #e0ecff; color: #1d4ed8; }
+    .report-card.draft .report-icon { background: #f1f6ff; color: #3b82f6; }
+
+    .report-main {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .report-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+    }
+
+    .report-title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.35;
+        color: #0f172a;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .report-meta {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .report-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 2px;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 10px;
+        border: 1px solid #d7e5ff;
+        background: #f8fbff;
+        color: #0f172a;
+        padding: 7px 11px;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-1px);
+        background: #eef5ff;
+        border-color: #bfd2ff;
+    }
+
+    .action-view { color: #1d4ed8; }
+    .action-download { color: #15803d; }
+    .action-delete { color: #dc2626; background: #fff5f5; border-color: #fecaca; }
+    .action-delete:hover { background: #ffe8e8; border-color: #fca5a5; }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .status-default { background: #f1f5f9; color: #475569; }
+    .status-generating { background: #eff6ff; color: #2563eb; }
+    .status-generated { background: #dcfce7; color: #166534; }
+    .status-edited { background: #fef3c7; color: #92400e; }
+
+    .pagination-wrap {
+        display: none;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-top: 1rem;
+        padding: 10px 0;
+        border-top: 1px solid #dbe7ff;
+    }
+
+    .page-btn {
+        min-width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        border: 1px solid rgba(147, 197, 253, 0.35);
+        background: #f5f9ff;
+        color: #1d4ed8;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 0 10px;
+        transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+    }
+
+    .page-btn:hover:not(:disabled) {
+        background: #e9f1ff;
+        border-color: rgba(96, 165, 250, 0.9);
+        color: #1e3a8a;
+    }
+
+    .page-btn.active {
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+        border-color: transparent;
+        color: #fff;
+        box-shadow: 0 6px 14px rgba(37, 99, 235, 0.34);
+    }
+
+    .page-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .empty-state {
+        border: 1px dashed #c7d7f6;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.92);
+        padding: 44px 20px;
+        text-align: center;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.05);
+    }
+
+    .modal-backdrop-lite {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        z-index: 9998;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .modal-card-lite {
+        width: min(100%, 430px);
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #d7e5ff;
+        box-shadow: 0 22px 60px rgba(15, 23, 42, 0.24);
+        padding: 22px;
+    }
+
+    .modal-card-lite h5 {
+        margin: 0 0 10px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 14px;
+    }
+
+    .modal-input {
+        width: 100%;
+        height: 42px;
+        padding: 0 14px;
+        border-radius: 10px;
+        border: 1px solid #d7e5ff;
+        outline: none;
+        font-size: 14px;
+    }
+
+    .modal-input:focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.14);
+    }
+
+    .modal-note {
+        font-size: 13px;
+        color: #64748b;
+        margin-bottom: 14px;
+    }
+
+    .modal-error {
+        display: none;
+        margin-top: 8px;
+        color: #dc2626;
+        font-size: 12px;
+    }
+
+    .action-primary {
+        background: linear-gradient(135deg, #0f766e, #14b8a6);
+        border: none;
+        color: #fff;
+        box-shadow: 0 10px 20px rgba(15, 118, 110, 0.2);
+    }
+
+    .action-primary:hover {
+        background: linear-gradient(135deg, #0e6a63, #0d9488);
+        border: none;
+        color: #fff;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-head {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .stat-cards-row {
+            grid-template-columns: 1fr;
+        }
+
+        .report-card {
+            grid-template-columns: 1fr;
+            padding: 12px;
+        }
+
+        .report-top {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.4rem;
+        }
+
+        .report-actions {
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .search-wrap {
+            min-width: 100%;
+        }
+
+        .resumes-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .toolbar-right {
+            justify-content: space-between;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="resumes-shell">
+    <div class="dashboard-head">
+        <div>
+            <h2 class="dashboard-title">My Resumes</h2>
+            <p class="text-muted mb-0">Create, manage, and download your resume PDFs.</p>
+        </div>
+        <div>
+            <button id="newResumeBtn" type="button" class="action-btn action-primary">
+                <i class="bi bi-plus-circle"></i>
+                + New Resume
+            </button>
+        </div>
+    </div>
+
+    <div class="stat-cards-row">
+        <div class="stat-card stat-card-total">
+            <div class="stat-card-icon"><i class="bi bi-file-earmark-text"></i></div>
+            <div class="stat-card-body">
+                <div class="stat-card-number" id="statTotal">0</div>
+                <div class="stat-card-label">Total Resumes</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="resumes-toolbar">
+        <div class="toolbar-left" style="flex:1;min-width:0;">
+            <div class="search-wrap">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" id="resumeSearch" class="search-input" placeholder="Search resumes by title or name...">
+                <button class="search-clear" id="searchClear" type="button" style="display:none;" title="Clear search">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        </div>
+        <div class="toolbar-right">
+            <select id="resumeSort" class="sort-select" title="Sort resumes">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="az">A → Z</option>
+                <option value="za">Z → A</option>
+            </select>
+            <div class="resumes-count" id="resumeCountInfo">0 resumes</div>
+        </div>
+    </div>
+
+    <div id="resumeList" class="report-feed">
+        <div class="empty-state">
+            <div style="font-size:48px;margin-bottom:16px;">📄</div>
+            <div style="font-size:18px;font-weight:600;margin-bottom:8px;">Loading resumes...</div>
+            <div style="font-size:14px;color:#64748b;">Please wait while we fetch your saved resumes.</div>
+        </div>
+    </div>
+
+    <div id="resumePagination" class="pagination-wrap"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const token = localStorage.getItem('token');
+const authHeaders = () => token ? { 'Authorization': `Bearer ${token}` } : {};
+const jsonHeaders = () => ({
+    ...authHeaders(),
+    'Content-Type': 'application/json'
+});
+
+const apiUrl = (path, params = {}) => {
+    const url = new URL(path, window.location.origin);
+    if (token) {
+        url.searchParams.set('token', token);
+    }
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+            url.searchParams.set(key, value);
+        }
+    });
+    return url.toString();
+};
+
+const PAGE_SIZE = 6;
+let allResumes = [];
+let currentPage = 1;
+let searchQuery = '';
+let sortOrder = 'newest';
+
+function escapeHtml(v) {
+    return String(v == null ? '' : v)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function showToast(msg, type = 'info') {
+    let el = document.getElementById('resumePageToast');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'resumePageToast';
+        el.style.cssText = `
+            position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+            padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;
+            z-index:9999;opacity:0;pointer-events:none;transition:opacity 0.3s;
+            box-shadow:0 4px 12px rgba(0,0,0,0.15);
+        `;
+        document.body.appendChild(el);
+    }
+    const colors = {
+        success: ['#f0fdf4', '#16a34a'],
+        error: ['#fef2f2', '#dc2626'],
+        info: ['#eff6ff', '#1d4ed8'],
+        warning: ['#fffbeb', '#d97706']
+    };
+    const [bg, color] = colors[type] || colors.info;
+    el.style.background = bg;
+    el.style.color = color;
+    el.textContent = msg;
+    el.style.opacity = '1';
+    setTimeout(() => { el.style.opacity = '0'; }, 2800);
+}
+
+async function loadResumes() {
+    try {
+        const res = await fetch('/api/student/resumes', {
+            credentials: 'include',
+            headers: authHeaders()
+        });
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+            return;
+        }
+        if (!res.ok) throw new Error(`Failed to load resumes: ${res.status}`);
+        const data = await res.json();
+        allResumes = Array.isArray(data) ? data : [];
+        updateStats();
+        renderPage();
+    } catch (e) {
+        console.error('Failed to load resumes:', e);
+        document.getElementById('resumeList').innerHTML = `
+            <div class="empty-state">
+                <div style="font-size:48px;margin-bottom:16px;">⚠</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:8px;">Failed to load resumes</div>
+                <div style="font-size:14px;color:#64748b;">Please refresh the page and try again.</div>
+            </div>
+        `;
+    }
+}
+
+function updateStats() {
+    document.getElementById('statTotal').textContent = allResumes.length;
+}
+
+function getFilteredResumes() {
+    let data = [...allResumes];
+
+    if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        data = data.filter((r) => {
+            const title = (r.title || '').toLowerCase();
+            const name = (r.fullName || '').toLowerCase();
+            return title.includes(q) || name.includes(q);
+        });
+    }
+
+    if (sortOrder === 'oldest') {
+        data.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+    } else if (sortOrder === 'az') {
+        data.sort((a, b) => (a.title || a.fullName || '').localeCompare(b.title || b.fullName || ''));
+    } else if (sortOrder === 'za') {
+        data.sort((a, b) => (b.title || b.fullName || '').localeCompare(a.title || a.fullName || ''));
+    } else {
+        data.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+    }
+
+    return data;
+}
+
+function statusForResume(r) {
+    if (r.status === 'generated') return { className: 'status-generated', label: 'Generated' };
+    if (r.status === 'downloaded') return { className: 'status-edited', label: 'Downloaded' };
+    if (r.status === 'generating') return { className: 'status-generating', label: 'Generating...' };
+    return { className: 'status-default', label: 'Draft' };
+}
+
+function initialsForResume(r) {
+    const source = (r.fullName || r.title || 'R').trim();
+    return source
+        .split(/\s+/)
+        .map((word) => word[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
+}
+
+function formatDate(value) {
+    if (!value) return '-';
+    try {
+        return new Date(value).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+    } catch (_) {
+        return '-';
+    }
+}
+
+function renderPage() {
+    const data = getFilteredResumes();
+    const list = document.getElementById('resumeList');
+    const total = data.length;
+
+    document.getElementById('resumeCountInfo').textContent = `${total} resume${total === 1 ? '' : 's'}`;
+
+    if (total === 0) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <div style="font-size:48px;margin-bottom:16px;">📄</div>
+                <div style="font-size:18px;font-weight:600;margin-bottom:8px;">No resumes yet</div>
+                <div style="font-size:14px;color:#64748b;margin-bottom:24px;">Create your first professional resume in minutes.</div>
+                <button onclick="createNewResume()" style="background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;font-weight:600;cursor:pointer;">
+                    + Create Resume
+                </button>
+            </div>
+        `;
+        renderPagination(0);
+        return;
+    }
+
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    const rows = data.slice(startIdx, startIdx + PAGE_SIZE);
+
+    list.innerHTML = rows.map((r) => {
+        const displayName = r.title || r.fullName || 'Untitled Resume';
+        const createdAt = formatDate(r.createdAt);
+        const updatedAt = formatDate(r.updatedAt);
+        const status = statusForResume(r);
+        const initials = initialsForResume(r);
+        const pdfUrl = apiUrl(`/api/student/resumes/${r._id}/pdf`);
+        const previewUrl = apiUrl(`/api/student/resumes/${r._id}/pdf`, { preview: 1 });
+
+        return `
+            <article class="report-card ${status.className}" onclick="openResume('${r._id}')" style="cursor:pointer;">
+                <div class="report-icon">${escapeHtml(initials)}</div>
+                <div class="report-main">
+                    <div class="report-top">
+                        <h4 class="report-title" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</h4>
+                        <span class="status-pill ${status.className}">${status.label}</span>
+                    </div>
+                    <div class="report-meta">
+                        <span>Created: ${createdAt}</span>
+                        <span>·</span>
+                        <span>Edited: ${updatedAt}</span>
+                    </div>
+                    <div class="report-actions">
+                        <button class="action-btn action-view" onclick="event.stopPropagation(); openResume('${r._id}')" title="Edit resume">
+                            <i class="bi bi-pencil-square"></i>
+                            Edit
+                        </button>
+                        <a class="action-btn action-download" href="${pdfUrl}" onclick="event.stopPropagation()" title="Download PDF" download>
+                            <i class="bi bi-file-earmark-pdf"></i>
+                            PDF
+                        </a>
+                        <a class="action-btn action-preview" href="${previewUrl}" onclick="event.stopPropagation()" title="Preview PDF" target="_blank" rel="noopener">
+                            <i class="bi bi-eye"></i>
+                            Preview
+                        </a>
+                        <button class="action-btn" onclick="event.stopPropagation(); renameResume('${r._id}', '${escapeHtml(displayName)}')" title="Rename resume" style="color:#7c3aed;background:#f5f3ff;border-color:rgba(196,181,253,0.55);">
+                            <i class="bi bi-type"></i>
+                            Rename
+                        </button>
+                        <button class="action-btn action-delete" onclick="event.stopPropagation(); deleteResume('${r._id}', '${escapeHtml(displayName)}')" title="Delete resume">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </div>
+                </div>
+            </article>
+        `;
+    }).join('');
+
+    renderPagination(total);
+}
+
+function renderPagination(total) {
+    const el = document.getElementById('resumePagination');
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+    if (total <= PAGE_SIZE) {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+    }
+
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    const endIdx = Math.min(startIdx + PAGE_SIZE, total);
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, startPage + 4);
+
+    const pageButtons = [];
+    for (let p = startPage; p <= endPage; p++) {
+        pageButtons.push(`<button class="page-btn ${p === currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`);
+    }
+
+    el.innerHTML = `
+        <span style="font-size:12px;color:#94a3b8;">Showing ${startIdx + 1}–${endIdx} of ${total}</span>
+        <div style="display:flex;gap:0.45rem;flex-wrap:wrap;align-items:center;">
+            <button class="page-btn" data-page="prev" ${currentPage === 1 ? 'disabled' : ''}>← Prev</button>
+            ${pageButtons.join('')}
+            <button class="page-btn" data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>
+        </div>
+    `;
+    el.style.display = 'flex';
+
+    el.querySelectorAll('[data-page]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const val = btn.getAttribute('data-page');
+            if (val === 'prev') currentPage = Math.max(1, currentPage - 1);
+            else if (val === 'next') currentPage = Math.min(totalPages, currentPage + 1);
+            else currentPage = Number(val) || 1;
+            renderPage();
+        });
+    });
+}
+
+function openResume(id) {
+    window.location.href = `/student/resume/${id}/builder`;
+}
+
+async function createNewResume() {
+    const btn = document.getElementById('newResumeBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Creating...';
+    }
+
+    try {
+        const res = await fetch('/api/student/resumes', {
+            method: 'POST',
+            credentials: 'include',
+            headers: jsonHeaders(),
+            body: JSON.stringify({ title: 'New Resume' })
+        });
+        if (!res.ok) throw new Error('Create failed');
+        const data = await res.json();
+        window.location.href = `/student/resume/${data._id}/builder`;
+    } catch (e) {
+        console.error(e);
+        showToast('Failed to create resume. Please try again.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-plus-circle"></i> + New Resume';
+        }
+    }
+}
+
+async function downloadResumePdf(id) {
+    try {
+        showToast('Generating PDF...', 'info');
+        const res = await fetch(apiUrl(`/api/student/resumes/${id}/pdf`), {
+            method: 'GET',
+            credentials: 'include',
+            headers: authHeaders()
+        });
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+
+        const blob = await res.blob();
+        const resume = allResumes.find((r) => r._id === id);
+        const name = resume?.title || resume?.fullName || 'Resume';
+        const filename = `${name.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+        showToast('PDF downloaded!', 'success');
+        await loadResumes();
+    } catch (e) {
+        console.error(e);
+        showToast('PDF download failed. Please try again.', 'error');
+    }
+}
+
+function previewResumePdf(id) {
+    window.open(apiUrl(`/api/student/resumes/${id}/pdf`, { preview: 1 }), '_blank', 'noopener');
+}
+
+function buildModal(title, bodyHtml, actionsHtml) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop-lite';
+    backdrop.innerHTML = `
+        <div class="modal-card-lite">
+            <h5>${escapeHtml(title)}</h5>
+            ${bodyHtml}
+            <div class="modal-actions">${actionsHtml}</div>
+        </div>
+    `;
+    document.body.appendChild(backdrop);
+    return backdrop;
+}
+
+async function renameResume(id, currentTitle) {
+    const errorId = `renameError_${id}`;
+    const inputId = `renameInput_${id}`;
+    const saveId = `renameSave_${id}`;
+    const modal = buildModal(
+        'Rename Resume',
+        `
+            <div class="modal-note">Use a descriptive name like "Software Engineer Resume" or "Commerce Resume 2025".</div>
+            <input id="${inputId}" class="modal-input" type="text" value="${escapeHtml(currentTitle)}" placeholder="Enter resume name...">
+            <div id="${errorId}" class="modal-error"></div>
+        `,
+        `
+            <button type="button" class="action-btn" id="renameCancel">Cancel</button>
+            <button type="button" class="action-btn action-primary" id="${saveId}">Save</button>
+        `
+    );
+
+    const input = document.getElementById(inputId);
+    const errorEl = document.getElementById(errorId);
+    const saveBtn = document.getElementById(saveId);
+    input.focus();
+    input.select();
+
+    const close = () => modal.remove();
+
+    const doRename = async () => {
+        const newTitle = input.value.trim();
+        if (!newTitle) {
+            errorEl.textContent = 'Name cannot be empty.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+            const res = await fetch(`/api/student/resumes/${id}`, {
+                method: 'PUT',
+                credentials: 'include',
+                headers: jsonHeaders(),
+                body: JSON.stringify({ title: newTitle })
+            });
+            if (!res.ok) throw new Error('Rename failed');
+            close();
+            showToast('Resume renamed.', 'success');
+            await loadResumes();
+        } catch (e) {
+            errorEl.textContent = 'Save failed. Please try again.';
+            errorEl.style.display = 'block';
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+        }
+    };
+
+    document.getElementById('renameCancel').addEventListener('click', close);
+    saveBtn.addEventListener('click', doRename);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doRename();
+        if (e.key === 'Escape') close();
+    });
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+    });
+}
+
+async function deleteResume(id, title) {
+    const modal = buildModal(
+        'Delete Resume',
+        `
+            <div class="modal-note" style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px 14px;border-radius:10px;">
+                ⚠ This will permanently delete <strong>${escapeHtml(title)}</strong>. This cannot be undone.
+            </div>
+        `,
+        `
+            <button type="button" class="action-btn" id="deleteCancel">Cancel</button>
+            <button type="button" class="action-btn action-delete" id="deleteConfirm">Delete</button>
+        `
+    );
+
+    const close = () => modal.remove();
+    document.getElementById('deleteCancel').addEventListener('click', close);
+    document.getElementById('deleteConfirm').addEventListener('click', async (evt) => {
+        const btn = evt.currentTarget;
+        btn.disabled = true;
+        btn.textContent = 'Deleting...';
+        try {
+            const res = await fetch(`/api/student/resumes/${id}`, {
+                method: 'DELETE',
+                credentials: 'include',
+                headers: authHeaders()
+            });
+            if (!res.ok) throw new Error('Delete failed');
+            close();
+            showToast('Resume deleted.', 'success');
+            await loadResumes();
+        } catch (e) {
+            btn.disabled = false;
+            btn.textContent = 'Delete';
+            showToast('Delete failed. Please try again.', 'error');
+        }
+    });
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) close();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('newResumeBtn').addEventListener('click', createNewResume);
+
+    const searchInput = document.getElementById('resumeSearch');
+    const searchClear = document.getElementById('searchClear');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            searchQuery = searchInput.value;
+            currentPage = 1;
+            if (searchClear) searchClear.style.display = searchQuery.trim() ? 'inline-flex' : 'none';
+            renderPage();
+        });
+    }
+    if (searchClear) {
+        searchClear.addEventListener('click', () => {
+            searchQuery = '';
+            searchInput.value = '';
+            searchClear.style.display = 'none';
+            currentPage = 1;
+            renderPage();
+        });
+    }
+
+    const sortSelect = document.getElementById('resumeSort');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', () => {
+            sortOrder = sortSelect.value;
+            currentPage = 1;
+            renderPage();
+        });
+    }
+
+    loadResumes();
+});
+</script>
+{% endblock %}

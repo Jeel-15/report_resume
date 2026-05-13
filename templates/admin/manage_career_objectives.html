@@ -1,0 +1,162 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'career_objectives' %}
+
+{% block title %}Career Objectives - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Career Objectives</h1>
+    <p class="page-subtitle">Manage resume career objective options for students</p>
+  </div>
+
+  <div class="stats-inline">
+    <button class="btn-primary" type="button" onclick="openObjectiveModal()"><i data-lucide="plus" style="width:14px;height:14px;"></i>+ Add Objective</button>
+    <button class="btn-outline-secondary" type="button" onclick="loadObjectives()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
+  </div>
+
+  <article class="panel-card panel-body" style="display:grid;gap:12px;">
+    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filters</h3>
+    <div class="toolbar" style="display:grid;grid-template-columns:minmax(220px,1fr) 140px 160px;gap:12px;">
+      <input id="filterSearch" class="small-input" placeholder="Search objectives...">
+      <select id="filterMajor" class="small-input">
+        <option value="">All Majors</option>
+      </select>
+      <select id="filterStatus" class="small-input">
+        <option value="">All Statuses</option>
+        <option value="approved">Approved</option>
+        <option value="pending">Pending</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+  </article>
+
+  <article class="panel-card panel-body table-card">
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th>Text</th>
+            <th>Major</th>
+            <th>Status</th>
+            <th>Active</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="5" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<div class="modal fade" id="objectiveModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="objectiveModalTitle">Add Objective</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="objectiveId">
+        <div class="mb-3">
+          <label class="form-label">Text *</label>
+          <textarea id="objectiveText" class="form-control" placeholder="Enter objective text"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Major (Optional)</label>
+          <select id="objectiveMajor" class="form-control"><option value="">All Majors</option></select>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="objectiveActive" checked>
+          <label class="form-check-label" for="objectiveActive">Active</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveObjective()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+let objectiveModal = null;
+
+function showToast(msg){ if(window.AdminUI?.showToast) return window.AdminUI.showToast(msg); alert(msg); }
+
+async function loadMajorsForDropdown(){
+  try{
+    const res = await fetch('/api/admin/majors', { headers });
+    const data = await res.json();
+    const sel = document.getElementById('objectiveMajor');
+    const filter = document.getElementById('filterMajor');
+    sel.innerHTML = '<option value="">All Majors</option>';
+    filter.innerHTML = '<option value="">All Majors</option>';
+    (data||[]).forEach(m=>{ sel.innerHTML += `<option value="${m._id}">${m.name}</option>`; filter.innerHTML += `<option value="${m._id}">${m.name}</option>`; });
+  }catch(e){ console.error(e); }
+}
+
+async function loadObjectives(){
+  const q = document.getElementById('filterSearch').value.trim();
+  const major = document.getElementById('filterMajor').value || '';
+  const status = document.getElementById('filterStatus').value || '';
+  const params = new URLSearchParams(); if(q) params.set('q', q); if(major) params.set('major', major); if(status) params.set('status', status);
+  const res = await fetch(`/api/admin/career-objectives${params.toString()?`?${params.toString()}`:''}`, { headers });
+  const result = await res.json();
+  const data = Array.isArray(result) ? result : (result.items || []);
+  const rowsHtml = (data||[]).map(d=>`<tr>
+    <td>${d.text || '-'}</td>
+    <td>${d.major? d.major.name : '<span style="color:#94a3b8;">All Majors</span>'}</td>
+    <td>${d.approvalStatus || ''}</td>
+    <td>${d.isActive? 'Yes':'No'}</td>
+    <td>
+      <div class="icon-actions">
+        <button onclick='openObjectiveModal(${JSON.stringify(d)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+        <button onclick='deleteObjective("${d._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+      </div>
+    </td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">No objectives found</td></tr>';
+  document.getElementById('rows').innerHTML = rowsHtml;
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('#rows tr').forEach(row => row.classList.add('show'));
+  });
+  if(window.lucide) lucide.createIcons();
+}
+
+function openObjectiveModal(obj=null){
+  document.getElementById('objectiveId').value = obj?._id || '';
+  document.getElementById('objectiveModalTitle').textContent = obj? 'Edit Objective' : 'Add Objective';
+  document.getElementById('objectiveText').value = obj?.text || '';
+  document.getElementById('objectiveMajor').value = obj?.major?._id || '';
+  document.getElementById('objectiveActive').checked = obj?.isActive !== false;
+  objectiveModal.show();
+}
+
+async function saveObjective(){
+  const id = document.getElementById('objectiveId').value;
+  const payload = { text: document.getElementById('objectiveText').value.trim(), major: document.getElementById('objectiveMajor').value || '', isActive: document.getElementById('objectiveActive').checked };
+  if(!payload.text){ showToast('Text is required'); return; }
+  const url = id? `/api/admin/career-objectives/${id}` : '/api/admin/career-objectives';
+  const method = id? 'PUT':'POST';
+  const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+  if(!res.ok){ const d = await res.json().catch(()=>({})); showToast(d.message||'Save failed'); return; }
+  objectiveModal.hide(); showToast('Saved'); loadObjectives();
+}
+
+async function deleteObjective(id){ if(!confirm('Delete this objective?')) return; await fetch(`/api/admin/career-objectives/${id}`, { method: 'DELETE', headers }); loadObjectives(); }
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  objectiveModal = new bootstrap.Modal(document.getElementById('objectiveModal'));
+  document.getElementById('filterSearch').addEventListener('input', loadObjectives);
+  document.getElementById('filterMajor').addEventListener('change', loadObjectives);
+  document.getElementById('filterStatus').addEventListener('change', loadObjectives);
+  await loadMajorsForDropdown();
+  await loadObjectives();
+});
+</script>
+{% endblock %}

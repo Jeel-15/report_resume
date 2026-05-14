@@ -1,0 +1,300 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'blog' %}
+
+{% block title %}Blog Posts - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Manage Blog Posts</h1>
+    <p class="page-subtitle">Create, edit, and publish blog posts to engage your audience.</p>
+  </div>
+
+  <div class="stats-inline">
+    <button class="btn-ghost" type="button" onclick="loadPosts()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
+    <button class="btn-primary" type="button" onclick="openCreate()"><i data-lucide="plus" style="width:14px;height:14px;"></i>New Post</button>
+  </div>
+
+  <article class="panel-card panel-body table-card">
+    <div class="toolbar">
+      <input id="searchInput" class="small-input" placeholder="Search posts by title...">
+    </div>
+    <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
+      <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
+      <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
+      <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
+            <th>Title</th>
+            <th>Author</th>
+            <th>Status</th>
+            <th>Published</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<div class="modal fade" id="postModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="postModalTitle">Add Blog Post</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+        <input type="hidden" id="postId">
+        
+        <div class="mb-3">
+          <label class="form-label">Title *</label>
+          <input class="form-control" id="postTitle" placeholder="How to Write Great Internship Reports">
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Slug</label>
+          <div style="display:flex;gap:8px;">
+            <input class="form-control" id="postSlug" placeholder="how-to-write-great-internship-reports" style="flex:1;">
+            <button class="btn btn-sm btn-secondary" type="button" onclick="generateSlug()">Auto-generate</button>
+          </div>
+          <small class="form-text text-muted">Auto-generated from title if left empty. URL: /blog/<slug></small>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Author</label>
+          <input class="form-control" id="postAuthor" placeholder="ReportGen Team" value="ReportGen Team">
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Excerpt (Short description)</label>
+          <textarea class="form-control" id="postExcerpt" rows="2" placeholder="Learn the key tips for writing professional internship reports..."></textarea>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Cover Image URL</label>
+          <input class="form-control" id="postCoverImage" placeholder="https://example.com/image.jpg">
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Tags (comma-separated)</label>
+          <input class="form-control" id="postTags" placeholder="AI, Resume, Internship">
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Content (HTML allowed)</label>
+          <textarea class="form-control" id="postContent" rows="6" placeholder="<p>Your post content here...</p>" style="font-family:monospace;"></textarea>
+        </div>
+        
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="postPublished">
+          <label class="form-check-label" for="postPublished">Publish</label>
+          <small class="form-text text-muted d-block">Published posts are visible on /blog</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="savePost()">Save Post</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const apiBaseUrl = '/admin';
+const token = localStorage.getItem('token');
+let allPosts = [];
+let selectedIds = [];
+
+function api(endpoint, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(`${apiBaseUrl}${endpoint}`, opts).then(r => r.json());
+}
+
+function showToast(msg, type = 'info') {
+  const toast = document.createElement('div');
+  toast.style.cssText = `position:fixed;bottom:20px;right:20px;background:${type === 'success' ? '#22c55e' : '#ef4444'};color:#fff;padding:12px 20px;border-radius:8px;z-index:9999;`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function loadPosts(query = '') {
+  document.getElementById('rows').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr>';
+  api(`/blog?q=${encodeURIComponent(query)}`)
+    .then(posts => {
+      allPosts = posts;
+      renderTable();
+    })
+    .catch(() => showToast('Error loading posts', 'error'));
+}
+
+function renderTable() {
+  const tbody = document.getElementById('rows');
+  if (allPosts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No posts found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allPosts.map(post => `
+    <tr class="show">
+      <td><input type="checkbox" class="row-check" data-id="${post._id}" style="width:16px;height:16px;cursor:pointer;"></td>
+      <td><strong>${post.title}</strong></td>
+      <td>${post.author}</td>
+      <td><span class="status-badge" style="background:${post.isPublished ? '#f0fdf4' : '#f8f9fc'};color:${post.isPublished ? '#22c55e' : '#94a3b8'};">${post.isPublished ? 'Published' : 'Draft'}</span></td>
+      <td>${post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : '—'}</td>
+      <td>
+        <div class="icon-actions">
+          <button onclick="editPost('${post._id}')" title="Edit" style="background:none;border:none;color:#3b82f6;cursor:pointer;"><i data-lucide="edit-2" style="width:16px;height:16px;"></i></button>
+          <button onclick="togglePublish('${post._id}', ${!post.isPublished})" title="${post.isPublished ? 'Unpublish' : 'Publish'}" style="background:none;border:none;color:#f59e0b;cursor:pointer;"><i data-lucide="${post.isPublished ? 'eye-off' : 'eye'}" style="width:16px;height:16px;"></i></button>
+          <button onclick="deletePost('${post._id}')" title="Delete" style="background:none;border:none;color:#ef4444;cursor:pointer;"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+  
+  document.querySelectorAll('.row-check').forEach(cb => {
+    cb.addEventListener('change', updateSelection);
+  });
+  document.getElementById('selectAll').addEventListener('change', e => {
+    document.querySelectorAll('.row-check').forEach(cb => cb.checked = e.target.checked);
+    updateSelection();
+  });
+}
+
+function updateSelection() {
+  selectedIds = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.dataset.id);
+  const toolbar = document.getElementById('bulkToolbar');
+  if (selectedIds.length > 0) {
+    toolbar.style.display = 'flex';
+    document.getElementById('selectedCount').textContent = `${selectedIds.length} selected`;
+  } else {
+    toolbar.style.display = 'none';
+  }
+}
+
+function clearSelection() {
+  document.querySelectorAll('.row-check').forEach(cb => cb.checked = false);
+  document.getElementById('selectAll').checked = false;
+  updateSelection();
+}
+
+function openCreate() {
+  document.getElementById('postId').value = '';
+  document.getElementById('postTitle').value = '';
+  document.getElementById('postSlug').value = '';
+  document.getElementById('postAuthor').value = 'ReportGen Team';
+  document.getElementById('postExcerpt').value = '';
+  document.getElementById('postCoverImage').value = '';
+  document.getElementById('postTags').value = '';
+  document.getElementById('postContent').value = '';
+  document.getElementById('postPublished').checked = false;
+  document.getElementById('postModalTitle').textContent = 'Add Blog Post';
+  new bootstrap.Modal(document.getElementById('postModal')).show();
+}
+
+function editPost(id) {
+  const post = allPosts.find(p => p._id === id);
+  if (!post) return;
+  document.getElementById('postId').value = post._id;
+  document.getElementById('postTitle').value = post.title;
+  document.getElementById('postSlug').value = post.slug;
+  document.getElementById('postAuthor').value = post.author;
+  document.getElementById('postExcerpt').value = post.excerpt;
+  document.getElementById('postCoverImage').value = post.coverImage;
+  document.getElementById('postTags').value = (post.tags || []).join(', ');
+  document.getElementById('postContent').value = post.content;
+  document.getElementById('postPublished').checked = post.isPublished;
+  document.getElementById('postModalTitle').textContent = 'Edit Blog Post';
+  new bootstrap.Modal(document.getElementById('postModal')).show();
+}
+
+function generateSlug() {
+  const title = document.getElementById('postTitle').value || '';
+  const slug = title.toLowerCase().trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  document.getElementById('postSlug').value = slug;
+}
+
+function savePost() {
+  const id = document.getElementById('postId').value;
+  const title = document.getElementById('postTitle').value.trim();
+  const slug = document.getElementById('postSlug').value.trim();
+  const author = document.getElementById('postAuthor').value.trim() || 'ReportGen Team';
+  const excerpt = document.getElementById('postExcerpt').value.trim();
+  const coverImage = document.getElementById('postCoverImage').value.trim();
+  const tags = document.getElementById('postTags').value.split(',').map(t => t.trim()).filter(t => t);
+  const content = document.getElementById('postContent').value.trim();
+  const isPublished = document.getElementById('postPublished').checked;
+
+  if (!title || !content) {
+    showToast('Title and content are required', 'error');
+    return;
+  }
+
+  const payload = { title, slug: slug || undefined, author, excerpt, coverImage, tags, content, isPublished };
+
+  const promise = id 
+    ? api(`/blog/${id}`, 'PUT', payload)
+    : api('/blog', 'POST', payload);
+
+  promise
+    .then(() => {
+      showToast(id ? 'Post updated' : 'Post created', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('postModal')).hide();
+      loadPosts();
+    })
+    .catch(() => showToast('Error saving post', 'error'));
+}
+
+function togglePublish(id, publish) {
+  api(`/blog/${id}`, 'PUT', { isPublished: publish })
+    .then(() => {
+      showToast(publish ? 'Post published' : 'Post unpublished', 'success');
+      loadPosts();
+    })
+    .catch(() => showToast('Error updating post', 'error'));
+}
+
+function deletePost(id) {
+  if (!confirm('Delete this post?')) return;
+  api(`/blog/${id}`, 'DELETE')
+    .then(() => {
+      showToast('Post deleted', 'success');
+      loadPosts();
+    })
+    .catch(() => showToast('Error deleting post', 'error'));
+}
+
+function bulkDelete() {
+  if (!selectedIds.length) return;
+  if (!confirm(`Delete ${selectedIds.length} post(s)?`)) return;
+  api('/blog/bulk-delete', 'POST', { ids: selectedIds })
+    .then(() => {
+      showToast('Posts deleted', 'success');
+      clearSelection();
+      loadPosts();
+    })
+    .catch(() => showToast('Error deleting posts', 'error'));
+}
+
+document.getElementById('searchInput').addEventListener('keyup', e => {
+  loadPosts(e.target.value);
+});
+
+loadPosts();
+</script>
+{% endblock %}

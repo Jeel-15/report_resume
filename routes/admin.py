@@ -28,6 +28,8 @@ from models.work_keyword import WorkKeyword
 from models.resume import Resume
 from models.career_objective import CareerObjective
 from models.resume_keyword import ResumeKeyword
+from models.blog_post import BlogPost
+from models.faq_item import FaqItem
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -2466,3 +2468,227 @@ def bulk_delete_project_titles(current_user):
 # Register report sections routes
 from routes.admin_report_sections import register_routes
 register_routes(admin_bp)
+
+
+# === BLOG POST ROUTES ===
+
+def _slugify(text):
+    """Convert text to URL-safe slug."""
+    text = str(text).lower().strip()
+    text = re.sub(r'[^\w\s-]', '', text)
+    text = re.sub(r'[\s_-]+', '-', text)
+    text = re.sub(r'^-+|-+$', '', text)
+    return text
+
+
+def _serialize_blog_post(doc):
+    """Serialize a BlogPost document for API response."""
+    return {
+        '_id': _obj_id(doc),
+        'title': getattr(doc, 'title', ''),
+        'slug': getattr(doc, 'slug', ''),
+        'excerpt': getattr(doc, 'excerpt', ''),
+        'content': getattr(doc, 'content', ''),
+        'coverImage': getattr(doc, 'coverImage', ''),
+        'tags': list(getattr(doc, 'tags', []) or []),
+        'author': getattr(doc, 'author', 'ReportGen Team'),
+        'isPublished': bool(getattr(doc, 'isPublished', False)),
+        'publishedAt': doc.publishedAt.isoformat() if getattr(doc, 'publishedAt', None) else None,
+        'createdAt': doc.createdAt.isoformat() if getattr(doc, 'createdAt', None) else None,
+        'updatedAt': doc.updatedAt.isoformat() if getattr(doc, 'updatedAt', None) else None,
+    }
+
+
+@admin_bp.route('/blog', methods=['GET'])
+@admin_required
+def get_blog_posts(current_user):
+    """Get all blog posts, optionally filtered by search query."""
+    q = str(request.args.get('q', '') or '').strip().lower()
+    docs = list(BlogPost.objects().order_by('-createdAt'))
+    if q:
+        docs = [d for d in docs if q in str(d.title or '').lower()
+                or q in str(d.excerpt or '').lower()]
+    return jsonify([_serialize_blog_post(d) for d in docs])
+
+
+@admin_bp.route('/blog', methods=['POST'])
+@admin_required
+def create_blog_post(current_user):
+    """Create a new blog post."""
+    data = request.get_json() or {}
+    title = str(data.get('title') or '').strip()
+    if not title:
+        return jsonify({'message': 'title is required'}), 400
+
+    slug = str(data.get('slug') or '').strip() or _slugify(title)
+
+    # Ensure slug is unique
+    base_slug = slug
+    counter = 1
+    while BlogPost.objects(slug=slug).first():
+        slug = f'{base_slug}-{counter}'
+        counter += 1
+
+    doc = BlogPost(
+        title=title,
+        slug=slug,
+        excerpt=str(data.get('excerpt') or '').strip(),
+        content=str(data.get('content') or '').strip(),
+        coverImage=str(data.get('coverImage') or '').strip(),
+        tags=[str(t).strip() for t in (data.get('tags') or []) if str(t).strip()],
+        author=str(data.get('author') or 'ReportGen Team').strip(),
+        isPublished=bool(data.get('isPublished', False)),
+    )
+    if doc.isPublished:
+        doc.publishedAt = dt.datetime.utcnow()
+    doc.save()
+    return jsonify(_serialize_blog_post(doc)), 201
+
+
+@admin_bp.route('/blog/<post_id>', methods=['PUT'])
+@admin_required
+def update_blog_post(current_user, post_id):
+    """Update a blog post."""
+    doc = BlogPost.objects(id=post_id).first()
+    if not doc:
+        return jsonify({'message': 'Not found'}), 404
+    data = request.get_json() or {}
+
+    if 'title' in data:
+        doc.title = str(data['title']).strip()
+    if 'slug' in data and data['slug']:
+        doc.slug = str(data['slug']).strip()
+    if 'excerpt' in data:
+        doc.excerpt = str(data['excerpt']).strip()
+    if 'content' in data:
+        doc.content = str(data['content']).strip()
+    if 'coverImage' in data:
+        doc.coverImage = str(data['coverImage']).strip()
+    if 'tags' in data:
+        doc.tags = [str(t).strip() for t in (data['tags'] or []) if str(t).strip()]
+    if 'author' in data:
+        doc.author = str(data['author']).strip() or 'ReportGen Team'
+    if 'isPublished' in data:
+        was_published = bool(getattr(doc, 'isPublished', False))
+        doc.isPublished = bool(data['isPublished'])
+        if doc.isPublished and not was_published:
+            doc.publishedAt = dt.datetime.utcnow()
+
+    doc.save()
+    return jsonify(_serialize_blog_post(doc))
+
+
+@admin_bp.route('/blog/<post_id>', methods=['DELETE'])
+@admin_required
+def delete_blog_post(current_user, post_id):
+    """Delete a blog post."""
+    doc = BlogPost.objects(id=post_id).first()
+    if not doc:
+        return jsonify({'message': 'Not found'}), 404
+    doc.delete()
+    return jsonify({'message': 'Deleted'})
+
+
+@admin_bp.route('/blog/bulk-delete', methods=['POST'])
+@admin_required
+def bulk_delete_blog_posts(current_user):
+    """Delete multiple blog posts."""
+    data = request.get_json() or {}
+    ids = [str(i).strip() for i in (data.get('ids') or []) if str(i).strip()]
+    if not ids:
+        return jsonify({'message': 'No IDs provided'}), 400
+    deleted = 0
+    for i in ids:
+        doc = BlogPost.objects(id=i).first()
+        if doc:
+            doc.delete()
+            deleted += 1
+    return jsonify({'message': f'Deleted {deleted}', 'deleted': deleted})
+
+
+# === FAQ ITEM ROUTES ===
+
+def _serialize_faq(doc):
+    """Serialize a FaqItem document for API response."""
+    return {
+        '_id': _obj_id(doc),
+        'question': getattr(doc, 'question', ''),
+        'answer': getattr(doc, 'answer', ''),
+        'category': getattr(doc, 'category', 'General'),
+        'sortOrder': getattr(doc, 'sortOrder', 0),
+        'isActive': bool(getattr(doc, 'isActive', True)),
+        'createdAt': doc.createdAt.isoformat() if getattr(doc, 'createdAt', None) else None,
+    }
+
+
+@admin_bp.route('/faq', methods=['GET'])
+@admin_required
+def get_faq_items(current_user):
+    """Get all FAQ items, sorted by category and sort order."""
+    docs = list(FaqItem.objects().order_by('category', 'sortOrder', 'question'))
+    return jsonify([_serialize_faq(d) for d in docs])
+
+
+@admin_bp.route('/faq', methods=['POST'])
+@admin_required
+def create_faq_item(current_user):
+    """Create a new FAQ item."""
+    data = request.get_json() or {}
+    question = str(data.get('question') or '').strip()
+    answer = str(data.get('answer') or '').strip()
+    if not question or not answer:
+        return jsonify({'message': 'question and answer are required'}), 400
+    doc = FaqItem(
+        question=question,
+        answer=answer,
+        category=str(data.get('category') or 'General').strip(),
+        sortOrder=int(data.get('sortOrder') or 0),
+        isActive=bool(data.get('isActive', True)),
+    )
+    doc.save()
+    return jsonify(_serialize_faq(doc)), 201
+
+
+@admin_bp.route('/faq/<item_id>', methods=['PUT'])
+@admin_required
+def update_faq_item(current_user, item_id):
+    """Update a FAQ item."""
+    doc = FaqItem.objects(id=item_id).first()
+    if not doc:
+        return jsonify({'message': 'Not found'}), 404
+    data = request.get_json() or {}
+    for field in ['question', 'answer', 'category']:
+        if field in data:
+            setattr(doc, field, str(data[field]).strip())
+    if 'sortOrder' in data:
+        doc.sortOrder = int(data['sortOrder'] or 0)
+    if 'isActive' in data:
+        doc.isActive = bool(data['isActive'])
+    doc.updatedAt = dt.datetime.utcnow()
+    doc.save()
+    return jsonify(_serialize_faq(doc))
+
+
+@admin_bp.route('/faq/<item_id>', methods=['DELETE'])
+@admin_required
+def delete_faq_item(current_user, item_id):
+    """Delete a FAQ item."""
+    FaqItem.objects(id=item_id).delete()
+    return jsonify({'message': 'Deleted'})
+
+
+@admin_bp.route('/faq/bulk-delete', methods=['POST'])
+@admin_required
+def bulk_delete_faq_items(current_user):
+    """Delete multiple FAQ items."""
+    data = request.get_json() or {}
+    ids = [str(i).strip() for i in (data.get('ids') or []) if str(i).strip()]
+    if not ids:
+        return jsonify({'message': 'No IDs provided'}), 400
+    deleted = 0
+    for i in ids:
+        doc = FaqItem.objects(id=i).first()
+        if doc:
+            doc.delete()
+            deleted += 1
+    return jsonify({'message': f'Deleted {deleted}', 'deleted': deleted})

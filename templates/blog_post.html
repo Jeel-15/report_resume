@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} — Blog — ReportGen{% endblock %}
+{% block og_title %}{{ post.title }} — ReportGen{% endblock %}
+{% block meta_description %}{{ post.excerpt }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .container.main-content {
+        max-width: 100% !important;
+        padding-top: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
+    body { background:#0a0f1e;color:#f1f5f9;font-family:'DM Sans',sans-serif; }
+    body::before { content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 50% at 10% 10%,rgba(37,99,235,0.12),transparent 70%),radial-gradient(ellipse 40% 50% at 90% 90%,rgba(59,123,255,0.08),transparent 70%);pointer-events:none;z-index:0; }
+    .blog-post-page { position:relative;z-index:1;padding-top:80px;padding-bottom:80px; }
+    .blog-post-container { max-width:760px;margin:0 auto;padding:0 24px; }
+    
+    .blog-breadcrumb { display:flex;align-items:center;gap:8px;font-size:0.9rem;color:#64748b;margin-bottom:40px;text-decoration:none; }
+    .blog-breadcrumb:hover { color:#94a3b8; }
+    .blog-breadcrumb a { color:#3b7bff;text-decoration:none; }
+    .blog-breadcrumb a:hover { text-decoration:underline; }
+    
+    .blog-post-cover { width:100%;max-height:380px;object-fit:cover;border-radius:16px;margin-bottom:40px; }
+    
+    .blog-post-meta { display:flex;gap:12px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.08);flex-wrap:wrap; }
+    .blog-post-meta span { font-size:0.9rem;color:#94a3b8; }
+    .blog-post-tags { display:flex;gap:8px;flex-wrap:wrap; }
+    .blog-post-tag { background:rgba(59,123,255,0.15);color:#3b7bff;font-size:0.8rem;font-weight:600;padding:4px 10px;border-radius:6px;text-transform:capitalize; }
+    
+    .blog-post-title { font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3rem);font-weight:800;color:#fff;line-height:1.2;margin-bottom:24px; }
+    
+    .blog-post-content { font-size:1rem;line-height:1.8;color:#cbd5e1; }
+    .blog-post-content h2 { font-size:1.6rem;font-weight:700;color:#e2e8f0;margin-top:32px;margin-bottom:16px; }
+    .blog-post-content h3 { font-size:1.3rem;font-weight:600;color:#e2e8f0;margin-top:24px;margin-bottom:12px; }
+    .blog-post-content p { margin-bottom:16px; }
+    .blog-post-content ul, .blog-post-content ol { margin-bottom:16px;padding-left:24px; }
+    .blog-post-content li { margin-bottom:8px; }
+    .blog-post-content a { color:#3b7bff;text-decoration:none; }
+    .blog-post-content a:hover { text-decoration:underline; }
+    .blog-post-content blockquote { margin-left:0;padding-left:20px;border-left:3px solid rgba(59,123,255,0.3);color:#94a3b8;font-style:italic;margin-bottom:16px; }
+    .blog-post-content code { background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px;font-family:monospace;color:#cbd5e1; }
+    .blog-post-content pre { background:rgba(0,0,0,0.2);padding:16px;border-radius:8px;overflow-x:auto;margin-bottom:16px; }
+    .blog-post-content pre code { background:transparent;padding:0; }
+    .blog-post-content img { max-width:100%;height:auto;border-radius:8px;margin:24px 0; }
+    
+    .blog-post-footer { margin-top:60px;padding-top:40px;border-top:1px solid rgba(255,255,255,0.08);text-align:center; }
+    .blog-post-footer a { display:inline-flex;align-items:center;gap:6px;color:#3b7bff;text-decoration:none;font-weight:600; }
+    .blog-post-footer a:hover { text-decoration:underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="blog-post-page">
+    <div class="blog-post-container">
+        <a href="/blog" class="blog-breadcrumb">← Back to Blog</a>
+        
+        {% if post.coverImage %}
+        <img src="{{ post.coverImage }}" alt="{{ post.title }}" class="blog-post-cover">
+        {% endif %}
+        
+        <div class="blog-post-meta">
+            <div>
+                <strong>{{ post.author }}</strong>
+            </div>
+            {% if post.publishedAt %}
+            <div>{{ post.publishedAt }}</div>
+            {% endif %}
+            {% if post.tags %}
+            <div class="blog-post-tags" style="margin-left:auto;">
+                {% for tag in post.tags %}
+                <span class="blog-post-tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <h1 class="blog-post-title">{{ post.title }}</h1>
+        
+        <div class="blog-post-content">
+            {{ post.content | safe }}
+        </div>
+        
+        <div class="blog-post-footer">
+            <a href="/blog">← Back to all posts</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

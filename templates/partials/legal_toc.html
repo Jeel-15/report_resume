@@ -1,0 +1,75 @@
+<style>
+/* Local TOC styles — premium sticky sidebar */
+.legal-toc-wrap{width:100%;}
+.legal-toc{background:#ffffff;border:1px solid #e2e8f0;padding:20px;border-radius:16px;font-size:14px;color:#0f172a;max-width:300px;box-shadow:0 2px 8px rgba(15,23,42,0.04)}
+.legal-toc h4{margin:0 0 12px;font-size:11px;color:#1e40af;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
+.legal-toc ol{margin:0;padding-left:18px;list-style:decimal}
+.legal-toc li{margin-bottom:8px}
+.legal-toc a{color:#334155;text-decoration:none;font-size:13px;line-height:1.6;transition:all 0.2s ease}
+.legal-toc a:hover{color:#1e40af;font-weight:600}
+.legal-toc a.active{color:#1e40af;font-weight:700;border-left:3px solid #1e40af;padding-left:12px;margin-left:-12px}
+.legal-toc .toggle-btn{background:none;border:1px solid #e2e8f0;color:#0f172a;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;transition:all 0.2s}
+.legal-toc .toggle-btn:hover{background:#eef6ff;border-color:#1e40af}
+.legal-toc.collapsed ol{display:none}
+.legal-aside{position:relative}
+.legal-aside .legal-toc{position:sticky;top:96px;max-height:calc(100vh - 120px);overflow-y:auto}
+@media(max-width:1000px){.legal-toc{max-width:100%;width:100%}.legal-aside .legal-toc{position:static;top:auto;max-height:none}}
+</style>
+
+<div class="legal-toc-wrap" aria-hidden="false">
+    <nav class="legal-toc collapsed" id="legalToc" aria-label="On-page table of contents">
+        <h4>
+            <span>📑 Contents</span>
+            <button class="toggle-btn" id="legalTocToggle" aria-expanded="false">Show</button>
+        </h4>
+        <div id="legalTocList">Loading…</div>
+    </nav>
+</div>
+
+<script>
+(function buildLegalToc(){
+    try{
+        const container = document.querySelector('.legal-card') || document.querySelector('.container-narrow');
+        const toc = document.getElementById('legalToc');
+        const toggle = document.getElementById('legalTocToggle');
+        if(!container || !toc) return;
+        const headings = Array.from(container.querySelectorAll('h2'));
+        if(headings.length === 0){ document.getElementById('legalTocList').textContent = '—'; return; }
+        const ol = document.createElement('ol');
+        headings.forEach(h => {
+            const id = h.id || h.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-');
+            h.id = id;
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = '#'+id;
+            a.textContent = h.textContent.replace(/^\d+\.\s*/,'');
+            li.appendChild(a);
+            ol.appendChild(li);
+        });
+        const target = document.getElementById('legalTocList');
+        target.innerHTML = '';
+        target.appendChild(ol);
+
+        // Collapsible behavior on small screens
+        const shouldCollapse = window.matchMedia('(max-width:900px)').matches;
+        if(toggle){
+            toggle.addEventListener('click', () => {
+                const isOpen = toc.classList.toggle('collapsed');
+                toggle.setAttribute('aria-expanded', (!isOpen).toString());
+                toggle.textContent = isOpen ? 'Show' : 'Hide';
+            });
+            // initialize
+            if(shouldCollapse){
+                toc.classList.add('collapsed');
+                toggle.setAttribute('aria-expanded','false');
+                toggle.textContent = 'Show';
+            } else {
+                toc.classList.remove('collapsed');
+                toggle.setAttribute('aria-expanded','true');
+                toggle.textContent = 'Hide';
+            }
+        }
+
+    }catch(e){ console.error('TOC build error',e); }
+})();
+</script>

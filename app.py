@@ -1,4 +1,5 @@
 import os
+import datetime
 from flask import Flask, jsonify, render_template, send_from_directory
 from dotenv import load_dotenv
 from mongoengine import connect
@@ -50,6 +51,23 @@ app.register_blueprint(internship_types_bp, url_prefix='/api/internship-types')
 
 from routes.pages import pages_bp
 app.register_blueprint(pages_bp)
+
+
+@app.context_processor
+def utility_processor():
+    def last_updated(template_name: str) -> str:
+        try:
+            # Resolve template path relative to app root
+            tpl = template_name if template_name.endswith('.html') else f"{template_name}.html"
+            tpl_path = os.path.join(app.root_path, 'templates', tpl)
+            if not os.path.exists(tpl_path):
+                return datetime.date.today().strftime('%B %d, %Y')
+            mtime = os.path.getmtime(tpl_path)
+            return datetime.date.fromtimestamp(mtime).strftime('%B %d, %Y')
+        except Exception:
+            return datetime.date.today().strftime('%B %d, %Y')
+
+    return dict(last_updated=last_updated)
 
 
 @app.errorhandler(404)

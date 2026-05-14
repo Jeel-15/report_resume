@@ -3,6 +3,7 @@
 {% block title %}Resume Builder - Student{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
     body {
         background:
@@ -146,34 +147,48 @@
         border-radius: 16px;
         background: linear-gradient(180deg, #f7fbff 0%, #eef4ff 100%);
         box-shadow: 0 14px 34px rgba(37, 99, 235, 0.08);
-        padding: 12px;
+        padding: 14px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
         overflow: hidden;
     }
 
     .preview-panel::before {
-        content: 'Live Preview';
+        display: none;
+    }
+
+    .preview-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 0;
+        width: 100%;
+    }
+
+    .preview-toolbar-label {
         display: inline-flex;
-        align-self: flex-start;
-        margin-bottom: -2px;
+        align-items: center;
         padding: 6px 10px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.85);
+        background: rgba(255, 255, 255, 0.88);
         border: 1px solid #dbe7ff;
         color: #1e3a8a;
         font-size: 11px;
         font-weight: 700;
         letter-spacing: 0.06em;
         text-transform: uppercase;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
-    .preview-toolbar {
+    .preview-toolbar-actions {
         display: flex;
-        justify-content: space-between;
+        align-items: center;
+        justify-content: flex-end;
         gap: 8px;
-        padding-top: 2px;
+        flex-wrap: wrap;
     }
 
     .preview-toolbar button {
@@ -223,10 +238,12 @@
         z-index: 3;
         margin-bottom: 14px;
         border: 1px solid #dbe7ff;
-        border-radius: 14px;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-        box-shadow: 0 10px 22px rgba(30, 64, 175, 0.08);
-        padding: 10px 10px 11px;
+        border-radius: 18px;
+        background:
+            radial-gradient(900px 180px at 0% 0%, rgba(59, 130, 246, 0.08), transparent 60%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 251, 255, 0.98) 100%);
+        box-shadow: 0 14px 30px rgba(30, 64, 175, 0.08);
+        padding: 14px 14px 16px;
     }
 
     .step-progress-head {
@@ -234,7 +251,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
         flex-wrap: wrap;
     }
 
@@ -249,18 +266,22 @@
 
     .step-progress-live {
         margin: 0;
-        font-size: 12px;
+        font-size: 11px;
         color: #1d4ed8;
         font-weight: 700;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #eef6ff;
+        border: 1px solid #dbe7ff;
     }
 
     .step-progress {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        overflow-x: auto;
-        padding-bottom: 2px;
-        scrollbar-width: thin;
+        display: grid;
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+        gap: 8px;
+        align-items: stretch;
+        overflow: hidden;
+        padding-bottom: 0;
     }
 
     .step-circle {
@@ -286,51 +307,114 @@
     .step-circle.warn { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25); }
 
     .step-line {
-        flex: 0 0 auto;
-        width: 22px;
-        height: 2px;
-        background: #cbd5e1;
+        display: none;
     }
 
     /* Tab-style stepper */
     .step-tab {
-        display: inline-flex;
+        display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 10px;
-        padding: 8px 12px;
-        border-radius: 10px;
-        border: 1px solid transparent;
-        background: transparent;
-        color: #6b7280;
-        font-size: 13px;
+        justify-content: flex-start;
+        gap: 5px;
+        width: 100%;
+        min-height: 74px;
+        padding: 10px 8px 8px;
+        border-radius: 12px;
+        border: 1px solid #dbe7ff;
+        background:
+            radial-gradient(120px 42px at 18% 14%, rgba(59, 130, 246, 0.10), transparent 60%),
+            linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 600;
         cursor: pointer;
-        transition: all .15s ease;
-        margin-right: 8px;
+        transition: all .18s ease;
+        margin-right: 0;
+        box-shadow: 0 6px 14px rgba(30, 64, 175, 0.03);
+        overflow: hidden;
     }
 
-    .step-tab .step-num {
+    .step-tab .step-icon {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         width: 28px;
         height: 28px;
         border-radius: 50%;
-        background: #eef2ff;
+        background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
         color: #4338ca;
         font-weight: 700;
-        font-size: 13px;
+        font-size: 11px;
+        flex-shrink: 0;
+        box-shadow: inset 0 1px 2px rgba(255,255,255,0.7);
     }
 
-    .step-tab .step-label { white-space: nowrap; }
+    .step-tab .step-copy {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1px;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .step-tab .step-label {
+        white-space: normal;
+        line-height: 1.05;
+        max-width: 100%;
+        text-align: left;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #334155;
+        font-size: 10px;
+    }
+
+    .step-tab .step-story {
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        white-space: nowrap;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 
     .step-tab.active {
-        background: linear-gradient(90deg,#eef2ff,#eef6ff);
+        background:
+            radial-gradient(120px 42px at 18% 14%, rgba(59, 130, 246, 0.16), transparent 60%),
+            linear-gradient(135deg, #eef2ff 0%, #eef6ff 100%);
         border-color: #c7d2fe;
         color: #0f172a;
-        box-shadow: 0 6px 18px rgba(99,102,241,0.08);
+        box-shadow: 0 10px 22px rgba(99, 102, 241, 0.10);
     }
 
-    .step-tab.completed .step-num { background: #dcfce7; color: #16a34a; }
+    .step-tab.active .step-icon {
+        background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+        color: #fff;
+    }
+
+    .step-tab.completed .step-icon {
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        color: #16a34a;
+    }
+
+    .step-tab.completed .step-label {
+        color: #0f172a;
+    }
+
+    .step-tab.warn {
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16), 0 10px 22px rgba(30, 64, 175, 0.06);
+    }
+
+    .step-tab:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(30, 64, 175, 0.08);
+        border-color: #bfd3ff;
+    }
 
     .step-line.completed { background: #22c55e; }
 
@@ -966,6 +1050,13 @@
     }
 
     @media (max-width: 1150px) {
+        .step-progress {
+            grid-template-columns: repeat(9, minmax(92px, 1fr));
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 4px;
+        }
+
         .resume-layout {
             grid-template-columns: 1fr;
             min-height: auto;
@@ -985,6 +1076,13 @@
     }
 
     @media (max-width: 768px) {
+        .step-progress {
+            grid-template-columns: repeat(9, minmax(86px, 1fr));
+            overflow-x: auto;
+            overflow-y: hidden;
+            gap: 8px;
+        }
+
         .preview-panel {
             display: none;
         }
@@ -1034,17 +1132,22 @@
         }
 
         .step-progress-shell {
-            padding: 8px 8px 10px;
+            padding: 12px;
         }
 
-        .step-circle {
-            width: 28px;
-            height: 28px;
+        .step-tab {
+            min-height: 70px;
+            padding: 9px 8px 8px;
+        }
+
+        .step-tab .step-icon {
+            width: 24px;
+            height: 24px;
             font-size: 11px;
         }
 
-        .step-line {
-            width: 18px;
+        .step-tab .step-story {
+            font-size: 7px;
         }
     }
 
@@ -1081,16 +1184,16 @@
     <div id="formError" class="alert alert-danger d-none"></div>
 
     <form id="resumeBuilderForm" class="d-none">
+        <div class="step-progress-shell">
+            <div class="step-progress-head">
+                <p class="step-progress-label">Build Progress</p>
+                <p class="step-progress-live" id="stepProgressLive">Step 1 of 9 · Personal</p>
+            </div>
+            <div class="step-progress" id="stepProgress"></div>
+        </div>
+
         <div class="resume-layout">
             <div class="wizard-panel">
-                <div class="step-progress-shell">
-                        <div class="step-progress-head">
-                            <p class="step-progress-label">Build Progress</p>
-                            <p class="step-progress-live" id="stepProgressLive">Step 1 of 9 · Personal</p>
-                        </div>
-                        <div class="step-progress" id="stepProgress"></div>
-                </div>
-
                 <div class="step-content" id="step-1">
                     <div class="step-title">1. Personal Info</div>
                     
@@ -1336,8 +1439,11 @@
 
             <aside class="preview-panel">
                 <div class="preview-toolbar">
-                    <button type="button" class="primary" id="refreshPreviewBtn">↻ Refresh Preview</button>
-                    <button type="button" id="downloadBtn" class="primary">⬇ Download PDF</button>
+                    <span class="preview-toolbar-label">Live Preview</span>
+                    <div class="preview-toolbar-actions">
+                        <button type="button" class="primary" id="refreshPreviewBtn">↻ Refresh Preview</button>
+                        <button type="button" id="downloadBtn" class="primary">⬇ Download PDF</button>
+                    </div>
                 </div>
                 <div id="previewLoadingOverlay" style="
         position: absolute;
@@ -2644,6 +2750,30 @@ const schedulePreviewRefresh = () => {
 
 const stepTitle = (step) => ({1:'Personal',2:'Objective',3:'Education',4:'Experience',5:'Projects',6:'Certifications',7:'Skills',8:'Languages',9:'Volunteering'})[step] || `Step ${step}`;
 
+const stepStory = (step) => ({
+    1: 'Start here',
+    2: 'Set direction',
+    3: 'Build trust',
+    4: 'Show impact',
+    5: 'Prove work',
+    6: 'Add credibility',
+    7: 'Show strengths',
+    8: 'Speak clearly',
+    9: 'Finish strong'
+})[step] || 'Continue';
+
+const stepIconClass = (step) => ({
+    1: 'fa-solid fa-user',
+    2: 'fa-solid fa-bullseye',
+    3: 'fa-solid fa-graduation-cap',
+    4: 'fa-solid fa-briefcase',
+    5: 'fa-solid fa-diagram-project',
+    6: 'fa-solid fa-certificate',
+    7: 'fa-solid fa-bolt',
+    8: 'fa-solid fa-language',
+    9: 'fa-solid fa-handshake'
+})[step] || 'fa-solid fa-circle';
+
 const isStepComplete = (step) => {
     const p = buildResumePayload();
     if (step === 1) return !!(p.fullName && p.email);
@@ -2660,7 +2790,7 @@ const isStepComplete = (step) => {
 
 const updateStepWarnings = () => {
     for (let i = 1; i <= TOTAL_STEPS; i++) {
-        const dot = document.querySelector(`.step-circle[data-step="${i}"]`);
+        const dot = document.querySelector(`.step-tab[data-step="${i}"]`);
         if (!dot) continue;
         dot.classList.toggle('warn', i <= furthestStep && !isStepComplete(i));
     }
@@ -2672,23 +2802,14 @@ const renderStepProgress = () => {
     for (let i = 1; i <= TOTAL_STEPS; i++) {
         const completed = isStepComplete(i) && i < currentStep;
         const active = i === currentStep;
-        // Render as labeled tab: number + label
         html += `<button type="button" class="step-tab ${completed ? 'completed' : ''} ${active ? 'active' : ''}" data-step="${i}" title="${stepTitle(i)}">`;
-        html += `<span class="step-num">${completed ? '✓' : i}</span>`;
-        html += `<span class="step-label">${escapeHtml(stepTitle(i))}</span>`;
+        html += `<span class="step-icon"><i class="${stepIconClass(i)}"></i></span>`;
+        html += `<span class="step-copy"><span class="step-label">${escapeHtml(stepTitle(i))}</span><span class="step-story">${escapeHtml(stepStory(i))}</span></span>`;
         html += `</button>`;
         if (i < TOTAL_STEPS) html += `<span class="step-line ${completed ? 'completed' : ''}"></span>`;
     }
     wrap.innerHTML = html;
 
-    wrap.querySelectorAll('.step-circle').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const target = Number(btn.getAttribute('data-step') || 1);
-            if (target <= furthestStep) showStep(target);
-        });
-    });
-
-    // Wire tab clicks (new tab class)
     wrap.querySelectorAll('.step-tab').forEach(btn => {
         btn.addEventListener('click', () => {
             const target = Number(btn.getAttribute('data-step') || 1);

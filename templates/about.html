@@ -5,67 +5,162 @@
 
 {% block extra_css %}
 <style>
-    body { background:#0a0f1e; color:#f1f5f9; font-family:'DM Sans',sans-serif; }
-    body::before { content:''; position:fixed; inset:0; background: radial-gradient(ellipse 70% 50% at 15% 20%,rgba(37,99,235,0.15),transparent 70%), radial-gradient(ellipse 50% 60% at 85% 80%,rgba(59,123,255,0.10),transparent 70%); pointer-events:none; z-index:0; }
-    .about-page { position:relative; z-index:1; padding-top:120px; padding-bottom:80px; }
-    .about-hero { text-align:center; padding:0 24px 72px; }
-    .about-eyebrow { display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#3b7bff;margin-bottom:16px; }
-    .about-h1 { font-family:'Playfair Display',serif;font-size:clamp(2.2rem,6vw,4rem);font-weight:800;color:#fff;line-height:1.15;margin-bottom:16px; }
-    .about-sub { font-size:1.05rem;color:#64748b;max-width:580px;margin:0 auto;line-height:1.7; }
-    .about-section { max-width:900px; margin:0 auto 60px; padding:0 24px; }
-    .about-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:20px;padding:48px; backdrop-filter:blur(16px);margin-bottom:24px; }
-    .about-card h2 { font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:#fff;margin-bottom:16px; }
-    .about-card p { font-size:1rem;line-height:1.8;color:#94a3b8;margin-bottom:1rem; }
-    .stat-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:32px; }
-    .stat-item { text-align:center;padding:24px;background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.2);border-radius:14px; }
-    .stat-num { font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:800;color:#3b7bff;line-height:1; }
-    .stat-label { font-size:0.85rem;color:#64748b;margin-top:6px; }
-    .mission-card { background:linear-gradient(135deg,rgba(37,99,235,0.12),rgba(59,123,255,0.06)); border:1px solid rgba(37,99,235,0.25);border-radius:20px;padding:48px; }
-    .mission-card blockquote { font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:#fff;line-height:1.5;border-left:4px solid #3b7bff;padding-left:24px;margin:0 0 24px; }
-    .mission-card p { font-size:1rem;color:#94a3b8;line-height:1.8; }
-    @media(max-width:768px) { .stat-grid { grid-template-columns:1fr; } .about-card { padding:28px; } }
-</style>
+        :root{--bg:#f7f9fb;--surface:#ffffff;--muted:#6b7280;--accent:#0058be;--card-border:#e6eef8}
+        body{background:var(--bg);color:#0f172a;font-family:'Public Sans',sans-serif}
+        .about-hero{padding:48px 18px 36px;text-align:center}
+        .hero-gradient{background:radial-gradient(circle at 50% -20%, #eef2ff 0%, #f7f9fb 100%);}
+        .eyebrow{display:inline-flex;align-items:center;gap:8px;background:#eef6ff;border:1px solid #dbeefe;color:var(--accent);padding:6px 12px;border-radius:999px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px}
+        .about-h1{font-family:'Source Serif 4',serif;font-size:clamp(28px,5vw,48px);line-height:1.05;margin:0 0 12px}
+        .about-sub{max-width:800px;margin:0 auto;color:var(--muted);font-size:18px;line-height:1.6}
+
+        .content-wrap{max-width:1100px;margin:32px auto;padding:0 20px}
+        .two-col{display:grid;grid-template-columns:1fr 420px;gap:28px;align-items:start}
+        @media(max-width:1000px){.two-col{grid-template-columns:1fr}}
+        .image-side .card{padding:0}
+        .image-side img{border-radius:10px}
+
+        .card{background:var(--surface);border:1px solid var(--card-border);border-radius:12px;padding:28px}
+        .card h2{font-family:'Source Serif 4',serif;margin-top:0;margin-bottom:12px}
+        .muted{color:var(--muted)}
+
+        .bento{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+        .bento .stat{background:var(--surface);border:1px solid var(--card-border);padding:22px;border-radius:10px;text-align:center}
+        .stat .num{font-family:'Source Serif 4',serif;font-size:28px;color:var(--accent);font-weight:700}
+        .stat .label{font-size:13px;color:var(--muted);margin-top:6px}
+        @media(max-width:768px){.bento{grid-template-columns:1fr}}
+
+        .features{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}
+        .feature{display:flex;gap:12px;align-items:flex-start;padding:16px;border-radius:10px;border:1px solid var(--card-border);background:linear-gradient(180deg,#ffffff,#fbfdff)}
+        .feature .ico{width:44px;height:44px;border-radius:10px;background:#eef6ff;border:1px solid #dbeefe;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:20px}
+        .feature h4{margin:0 0 6px;font-weight:700}
+        .feature p{margin:0;color:var(--muted)}
+
+        .feature-grid{margin-top:8px}
+        .feature-grid-two{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+        .small-card{background:var(--surface);border:1px solid var(--card-border);padding:12px;border-radius:10px}
+        @media(max-width:768px){.feature-grid-two{grid-template-columns:1fr}}
+
+        .quote-block{position:relative;padding:20px 20px 20px 60px;border-radius:10px;border:1px solid var(--card-border);background:linear-gradient(180deg,#ffffff,#f8fbff)}
+        .quote-block .qmark{position:absolute;left:18px;top:18px;font-size:32px;color:var(--accent)}
+
+        /* Animations & Hover effects */
+        .card, .feature, .stat{transition:transform 220ms cubic-bezier(.2,.9,.2,1),box-shadow 220ms,opacity 300ms}
+        .card:hover{transform:translateY(-6px);box-shadow:0 10px 30px rgba(15,23,42,0.08)}
+        .feature:hover{transform:translateY(-6px);box-shadow:0 8px 24px rgba(15,23,42,0.06)}
+        .feature .ico{transition:transform 220ms,background 220ms}
+        .feature:hover .ico{transform:scale(1.06);background:#e8f2ff}
+        .bento .stat{transition:transform 260ms,box-shadow 260ms}
+        .bento .stat:hover{transform:translateY(-6px);box-shadow:0 8px 18px rgba(15,23,42,0.06)}
+
+        .fade-up{opacity:0;transform:translateY(12px);transition:opacity 600ms ease, transform 600ms ease}
+        .fade-up.in-view{opacity:1;transform:none}
+
+        @keyframes float-slow{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+        .stat .num{animation:float-slow 6s ease-in-out infinite}
+
+    </style>
 {% endblock %}
 
 {% block content %}
-{% include 'partials/landing_navbar.html' %}
 
-<div class="about-page">
-    <div class="about-hero">
-        <div class="about-eyebrow">✦ Our Story</div>
-        <h1 class="about-h1">Built for Indian<br>University Students</h1>
+    <section class="hero-gradient about-hero">
+        <div class="eyebrow">OUR STORY</div>
+        <h1 class="about-h1">Built for Indian University Students</h1>
         <p class="about-sub">ReportGen was born from a simple frustration — hours wasted writing internship reports from scratch when students should be focused on learning.</p>
-    </div>
-
-    <div class="about-section">
-        <div class="mission-card">
-            <blockquote>"Every student deserves a professional report, regardless of their writing skills."</blockquote>
-            <p>We built ReportGen to level the playing field. Whether you're at GTU or SPPU, whether you're in computer science or commerce, our AI writes a complete, formatted, university-ready internship report based on your inputs — in minutes, not days.</p>
+        <div style="margin-top:18px">
+            <div class="quote-block" style="max-width:900px;margin:18px auto 0">
+                <div class="qmark">“</div>
+                <blockquote style="margin:0;font-family:'Source Serif 4',serif;font-size:20px;line-height:1.4">Every student deserves a professional report, regardless of their writing skills.</blockquote>
+            </div>
         </div>
-    </div>
+    </section>
 
-    <div class="about-section">
-        <div class="about-card">
-            <h2>The Problem We Solve</h2>
-            <p>Every year, thousands of Indian university students spend 10–30 hours writing mandatory internship reports. Many struggle with formal writing, proper formatting, and meeting university guidelines. Some pay others to write for them. Most submit below-standard reports and face consequences.</p>
-            <p>ReportGen changes this completely. You fill in what you actually did — your company, your tasks, your learnings — and our AI writes a professional, well-formatted report tailored to your university's structure.</p>
+    <div class="content-wrap">
+        <div class="two-col">
+            <div>
+                <div class="card fade-up">
+                    <h2>The Problem We Solve</h2>
+                    <p class="muted">Every year, thousands of Indian university students spend 10–30 hours writing mandatory internship reports. Many struggle with formal writing, proper formatting, and meeting university guidelines. Some pay others to write for them. Most submit below-standard reports and face consequences.</p>
+                    <p class="muted">ReportGen changes this completely. You fill in what you actually did — your company, your tasks, your learnings — and our AI writes a professional, well-formatted report tailored to your university's structure.</p>
 
-            <div class="stat-grid">
-                <div class="stat-item"><div class="stat-num">10,000+</div><div class="stat-label">Reports Generated</div></div>
-                <div class="stat-item"><div class="stat-num">50+</div><div class="stat-label">Universities Supported</div></div>
-                <div class="stat-item"><div class="stat-num">2 min</div><div class="stat-label">Average Generation Time</div></div>
+                    <div class="bento" aria-hidden="false">
+                        <div class="stat"><div class="num">10,000+</div><div class="label">Reports Generated</div></div>
+                        <div class="stat"><div class="num">50+</div><div class="label">Universities Supported</div></div>
+                        <div class="stat"><div class="num">2 min</div><div class="label">Average Generation Time</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="image-side">
+                <div class="card" style="padding:12px">
+                    <img src="https://images.unsplash.com/photo-1777829999062-917dd30ad425?q=80&w=1112&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Students collaborating" style="width:100%;border-radius:10px;object-fit:cover;max-height:420px;display:block">
+                </div>
+                <div class="card fade-up" style="margin-top:18px">
+                    <h4 style="margin:0 0 8px">Quick Quote</h4>
+                    <p class="muted" style="margin:0 0 12px">"We built ReportGen to level the playing field — to let students focus on learning, not formatting."</p>
+                </div>
             </div>
         </div>
 
-        <div class="about-card">
-            <h2>What Makes Us Different</h2>
-            <p><strong style="color:#e2e8f0;">University-aware AI:</strong> Our report sections, formatting, and structure are configured per university by academic experts — not generic AI templates.</p>
-            <p><strong style="color:#e2e8f0;">Complete control:</strong> Every section is fully editable. The AI gives you a strong draft; you make it yours.</p>
-            <p><strong style="color:#e2e8f0;">PDF-ready output:</strong> Download a properly formatted PDF that looks exactly like what your professor expects — right fonts, margins, cover page, and sections.</p>
-            <p><strong style="color:#e2e8f0;">Resume builder included:</strong> Beyond internship reports, build and download a professional resume using the same platform — with AI enhancement for every section.</p>
+        <div style="margin-top:26px">
+            <div class="card fade-up">
+                <h2 style="margin-bottom:18px">What Makes Us Different</h2>
+                <div class="feature-grid feature-grid-two">
+                    <div class="small-card">
+                        <div style="display:flex;gap:12px;align-items:flex-start">
+                            <div style="width:44px;height:44px;border-radius:8px;background:#eef6ff;border:1px solid #dbeefe;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:18px">🏫</div>
+                            <div>
+                                <h5 style="margin:0 0 6px">University-aware AI</h5>
+                                <p style="margin:0;color:var(--muted)">Configured per-university by academic experts — not generic AI templates.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="small-card">
+                        <div style="display:flex;gap:12px;align-items:flex-start">
+                            <div style="width:44px;height:44px;border-radius:8px;background:#eef6ff;border:1px solid #dbeefe;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:18px">⚙️</div>
+                            <div>
+                                <h5 style="margin:0 0 6px">Complete control</h5>
+                                <p style="margin:0;color:var(--muted)">Every section is fully editable. The AI gives you a strong draft; you make it yours.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="small-card">
+                        <div style="display:flex;gap:12px;align-items:flex-start">
+                            <div style="width:44px;height:44px;border-radius:8px;background:#eef6ff;border:1px solid #dbeefe;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:18px">📄</div>
+                            <div>
+                                <h5 style="margin:0 0 6px">PDF-ready output</h5>
+                                <p style="margin:0;color:var(--muted)">Download properly formatted PDFs that meet university requirements.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="small-card">
+                        <div style="display:flex;gap:12px;align-items:flex-start">
+                            <div style="width:44px;height:44px;border-radius:8px;background:#eef6ff;border:1px solid #dbeefe;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:18px">🧾</div>
+                            <div>
+                                <h5 style="margin:0 0 6px">Resume builder</h5>
+                                <p style="margin:0;color:var(--muted)">Build a professional resume with AI-enhanced content.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-{% include 'partials/landing_footer.html' %}
+    {% endblock %}
+
+{% block extra_js %}
+<script>
+// Scroll reveal for elements with .fade-up
+(function(){
+    try{
+        const obs = new IntersectionObserver((entries)=>{
+            entries.forEach(e=>{
+                if(e.isIntersecting){ e.target.classList.add('in-view'); obs.unobserve(e.target); }
+            });
+        },{threshold:0.12});
+        document.querySelectorAll('.fade-up').forEach(el=>obs.observe(el));
+    }catch(e){console.error('reveal err',e)}
+})();
+</script>
 {% endblock %}

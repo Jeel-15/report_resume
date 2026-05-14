@@ -2,10 +2,13 @@ import os
 import re
 import datetime
 from flask import Blueprint, Response, render_template, request
+from flask import jsonify
 from models.user import User
 from models.report import Report
 from models.video_guide import VideoGuide
 from models.contact_submission import ContactSubmission
+from models.blog_post import BlogPost
+from models.faq_item import FaqItem
 
 pages_bp = Blueprint('pages', __name__)
 
@@ -58,6 +61,24 @@ def _get_public_video_guides(limit=4):
     except Exception:
         docs = []
     return [_serialize_public_video_guide(doc) for doc in docs[:limit]]
+
+
+def _get_public_faqs():
+    """Get active FAQ items grouped by category for the public FAQ page."""
+    try:
+        docs = list(FaqItem.objects(isActive=True).order_by('category', 'sortOrder'))
+    except Exception:
+        docs = []
+    result = {}
+    for doc in docs:
+        cat = str(getattr(doc, 'category', 'General') or 'General')
+        if cat not in result:
+            result[cat] = []
+        result[cat].append({
+            'question': getattr(doc, 'question', ''),
+            'answer': getattr(doc, 'answer', ''),
+        })
+    return result
 
 @pages_bp.route('/')
 def home():
@@ -235,6 +256,18 @@ def admin_video_guides():
     return render_template('admin/manage_video_guides.html', active_page='video_guides', **counts)
 
 
+@pages_bp.route('/admin/blog')
+def admin_blog():
+    counts = get_sidebar_counts()
+    return render_template('admin/manage_blog.html', active_page='blog', **counts)
+
+
+@pages_bp.route('/admin/faq')
+def admin_faq():
+    counts = get_sidebar_counts()
+    return render_template('admin/manage_faq.html', active_page='faq', **counts)
+
+
 @pages_bp.route('/logout')
 def logout_page():
     return render_template('logout.html')
@@ -324,9 +357,133 @@ def contact():
     )
 
 
+@pages_bp.route('/blog')
+def blog():
+    """Blog listing page showing published blog posts."""
+    try:
+        posts = list(BlogPost.objects(isPublished=True).order_by('-publishedAt'))
+    except Exception:
+        posts = []
+    serialized = []
+    for p in posts:
+        serialized.append({
+            'title':      getattr(p, 'title', ''),
+            'slug':       getattr(p, 'slug', ''),
+            'excerpt':    getattr(p, 'excerpt', ''),
+            'coverImage': getattr(p, 'coverImage', ''),
+            'tags':       list(getattr(p, 'tags', []) or []),
+            'author':     getattr(p, 'author', 'ReportGen Team'),
+            'publishedAt': p.publishedAt.strftime('%b %d, %Y') if getattr(p, 'publishedAt', None) else '',
+        })
+    return render_template('blog.html', posts=serialized)
+
+
+@pages_bp.route('/blog/<slug>')
+def blog_post(slug):
+    """Single blog post page."""
+    try:
+        post = BlogPost.objects(slug=slug, isPublished=True).first()
+    except Exception:
+        post = None
+    if not post:
+        from flask import abort
+        abort(404)
+    return render_template('blog_post.html', post={
+        'title':      getattr(post, 'title', ''),
+        'slug':       getattr(post, 'slug', ''),
+        'excerpt':    getattr(post, 'excerpt', ''),
+        'content':    getattr(post, 'content', ''),
+        'coverImage': getattr(post, 'coverImage', ''),
+        'tags':       list(getattr(post, 'tags', []) or []),
+        'author':     getattr(post, 'author', 'ReportGen Team'),
+        'publishedAt': post.publishedAt.strftime('%B %d, %Y') if getattr(post, 'publishedAt', None) else '',
+    })
+
+
 @pages_bp.route('/faq')
 def faq():
-    return render_template('faq.html')
+    """FAQ page with dynamic content from database."""
+    faq_data = _get_public_faqs()
+    return render_template('faq.html', faq_data=faq_data)
+
+
+@pages_bp.route('/api/contact', methods=['POST'])
+def api_contact():
+    """AJAX endpoint to accept contact submissions. Returns JSON."""
+    data = {}
+    if request.is_json:
+        data = request.get_json() or {}
+    else:
+        data = {k: request.form.get(k, '') for k in ('name', 'email', 'subject', 'message')}
+
+    name = (data.get('name') or '').strip()
+    email = (data.get('email') or '').strip()
+    subject_key = (data.get('subject') or '').strip()
+    message = (data.get('message') or '').strip()
+
+    allowed_subjects = {'report-issue', 'resume-issue', 'account', 'payment', 'university', 'other'}
+
+    # Basic validation
+    errors = []
+    if len(name) < 2:
+        errors.append('Please provide your full name.')
+    if '@' not in email or len(email) < 6:
+        errors.append('Please provide a valid email address.')
+    if subject_key not in allowed_subjects:
+        errors.append('Please choose a support topic.')
+    if len(message) < 10:
+        errors.append('Please provide more details in your message (at least 10 characters).')
+
+    if errors:
+        return jsonify({'ok': False, 'errors': errors}), 400
+
+    # Anti-spam: minimal rate limiting per IP
+    ip = str(request.headers.get('X-Forwarded-For', request.remote_addr or '') or '').split(',')[0].strip()
+    try:
+        last = ContactSubmission.objects(ipAddress=ip).order_by('-createdAt').first()
+    except Exception:
+        last = None
+
+    import datetime
+    now = datetime.datetime.utcnow()
+    if last and getattr(last, 'createdAt', None):
+        delta = now - last.createdAt
+        if delta.total_seconds() < 60:
+            return jsonify({'ok': False, 'errors': ['Please wait a minute before sending another message.']}), 429
+
+    # Store submission
+    try:
+        contact_request = ContactSubmission(
+            name=name,
+            email=email,
+            subject=subject_key if subject_key in allowed_subjects else 'other',
+            subjectKey=subject_key,
+            message=message,
+            ipAddress=ip,
+            userAgent=str(request.headers.get('User-Agent', '') or '').strip(),
+            source='api-contact'
+        )
+        contact_request.save()
+    except Exception as e:
+        import logging
+        logging.exception('Failed to save contact submission')
+        return jsonify({'ok': False, 'errors': ['We could not save your message right now. Please email support@reportgen.in.']}), 500
+
+    # TODO: enqueue email notification to support pipeline if configured
+
+    # Log the event
+    try:
+        import logging
+        logging.getLogger('contact').info('New contact submission', extra={'ip': ip, 'email': email, 'subject': subject_key})
+    except Exception:
+        pass
+
+    return jsonify({'ok': True, 'message': 'Message received. We will respond within 24 hours.'}), 201
+
+
+@pages_bp.route('/legal')
+def legal_hub():
+    return render_template('legal_hub.html')
 
 
 @pages_bp.route('/robots.txt')
@@ -351,6 +508,8 @@ Disallow: /logout
 
 Sitemap: https://reportgen.in/sitemap.xml
 """
+    # expose legal hub for crawlers
+    content = content.replace('Allow: /refund', 'Allow: /refund\nAllow: /legal')
     return Response(content.strip(), mimetype='text/plain')
 
 
@@ -367,6 +526,7 @@ def sitemap_xml():
         ('/privacy', '0.3', 'yearly'),
         ('/terms', '0.3', 'yearly'),
         ('/refund', '0.3', 'yearly'),
+        ('/legal', '0.4', 'yearly'),
         ('/blog', '0.9', 'daily'),
     ]
 

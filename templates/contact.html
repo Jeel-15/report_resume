@@ -4,83 +4,237 @@
 {% block meta_description %}Get in touch with ReportGen support. We're here to help with your internship report, resume, or account questions.{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
-    body { background:#0a0f1e; color:#f1f5f9; font-family:'DM Sans',sans-serif; }
-    body::before { content:''; position:fixed; inset:0; background:radial-gradient(ellipse 60% 50% at 10% 10%,rgba(37,99,235,0.12),transparent 70%); pointer-events:none; z-index:0; }
-    .contact-page { position:relative; z-index:1; padding-top:120px; padding-bottom:80px; }
-    .contact-hero { text-align:center; padding:0 24px 60px; }
-    .contact-eyebrow { display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#3b7bff;margin-bottom:16px; }
-    .contact-h1 { font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:800;color:#fff;line-height:1.15;margin-bottom:12px; }
-    .contact-sub { font-size:1rem;color:#64748b;max-width:480px;margin:0 auto; }
-    .contact-grid { max-width:960px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:1fr 1.6fr;gap:24px; }
-    .contact-info { display:flex;flex-direction:column;gap:16px; }
-    .info-card { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:24px;backdrop-filter:blur(12px); }
-    .info-card h3 { font-size:1rem;font-weight:600;color:#fff;margin-bottom:8px; }
-    .info-card p, .info-card a { font-size:0.9rem;color:#94a3b8;text-decoration:none;line-height:1.7; }
-    .info-card a:hover { color:#3b7bff; }
-    .info-icon { font-size:1.4rem;margin-bottom:10px; }
-    .contact-form-card { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:36px;backdrop-filter:blur(16px); }
-    .contact-form-card h2 { font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:24px; }
-    .form-group { margin-bottom:18px; }
-    .form-group label { display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#64748b;margin-bottom:7px; }
-    .form-group input, .form-group select, .form-group textarea { width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);border-radius:10px;padding:10px 14px;font-size:13.5px;color:#f1f5f9;font-family:'DM Sans',sans-serif;outline:none;transition:all 0.2s;box-sizing:border-box; }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:rgba(59,123,255,0.4);background:rgba(59,123,255,0.06);box-shadow:0 0 0 3px rgba(59,123,255,0.12); }
-    .form-group input::placeholder, .form-group textarea::placeholder { color:#475569; }
-    .form-group select option { background:#1e1b4b;color:#f1f5f9; }
-    .form-group textarea { resize:vertical;min-height:120px; }
-    .form-row { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
-    .form-status { border-radius:14px;padding:14px 16px;margin-bottom:18px;border:1px solid transparent; }
-    .form-status.success { background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2);color:#86efac; }
-    .form-status.error { background:rgba(248,113,113,0.08);border-color:rgba(248,113,113,0.22);color:#fca5a5; }
-    .submit-btn { width:100%;background:linear-gradient(135deg,#2563eb,#3b7bff);color:white;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,0.35);transition:all 0.2s;font-family:'DM Sans',sans-serif; }
-    .submit-btn:hover { transform:translateY(-1px);box-shadow:0 8px 24px rgba(37,99,235,0.45); }
-    .form-success { text-align:center;padding:24px;color:#34d399; }
-    @media(max-width:768px) { .contact-grid { grid-template-columns:1fr; } .form-row { grid-template-columns:1fr; } }
+  :root{--bg:#f7f9fb;--surface:#ffffff;--muted:#6b7280;--accent:#0058be;--accent-light:#1e40af;--card-border:#e6eef8;--blue-gradient:linear-gradient(135deg,#0058be 0%,#1e40af 100%)}
+  body{background:var(--bg);color:#0f172a;font-family:'Public Sans',sans-serif}
+
+  /* Hero Section */
+  .contact-hero{background:linear-gradient(180deg,#f0f7ff 0%,#f7f9fb 100%);padding:64px 24px 48px;text-align:center;border-bottom:1px solid #e2eef8}
+  .contact-eyebrow{display:inline-flex;align-items:center;gap:8px;background:#eef6ff;border:1px solid #dbeefe;color:var(--accent);padding:8px 14px;border-radius:999px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:12px;margin-bottom:12px}
+  .contact-h1{font-family:'Source Serif 4',serif;font-size:clamp(32px,5vw,48px);font-weight:700;color:#0f172a;line-height:1.05;margin:0 0 12px}
+  .contact-sub{max-width:680px;margin:0 auto;color:var(--muted);font-size:16px;line-height:1.6}
+
+  /* Content wrapper */
+  .contact-content{max-width:1100px;margin:0 auto;padding:40px 24px}
+
+  /* Two-column form + contact info */
+  .contact-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:32px;align-items:start}
+  @media(max-width:1000px){.contact-grid{grid-template-columns:1fr;gap:24px}}
+
+  /* Form Card */
+  .form-card{background:var(--surface);border:1px solid var(--card-border);border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(15,23,42,0.04)}
+  .form-card h2{font-family:'Source Serif 4',serif;font-size:24px;font-weight:700;color:#0f172a;margin:0 0 24px}
+
+  .form-group{margin-bottom:18px}
+  .form-group label{display:block;font-weight:600;font-size:13px;color:#334155;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+  .form-group input,.form-group select,.form-group textarea{width:100%;background:var(--surface);border:1px solid var(--card-border);border-radius:10px;padding:10px 13px;font-size:14px;color:#0f172a;font-family:'Public Sans',sans-serif;outline:none;transition:all 220ms;box-sizing:border-box}
+  .form-group input::placeholder,.form-group textarea::placeholder{color:#9ca3af}
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,88,190,.1);background:#f8fbff}
+  .form-group select option{background:var(--surface);color:#0f172a}
+  .form-group textarea{resize:vertical;min-height:120px}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:768px){.form-row{grid-template-columns:1fr}}
+
+  .submit-btn{width:100%;background:var(--blue-gradient);color:white;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,88,190,.2);transition:all 220ms;font-family:'Public Sans',sans-serif}
+  .submit-btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,88,190,.3)}
+  .submit-btn:active{transform:translateY(0)}
+
+  /* Contact Info Cards */
+  .contact-info-section h3{font-family:'Source Serif 4',serif;font-size:18px;font-weight:700;color:#0f172a;margin:0 0 16px}
+  .info-card{background:var(--surface);border:1px solid var(--card-border);border-radius:12px;padding:18px;margin-bottom:12px;display:flex;gap:14px;align-items:flex-start;transition:all 220ms}
+  .info-card:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,88,190,.08)}
+  .info-icon{font-size:28px;line-height:1;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#eef6ff 0%,#f0f9ff 100%);border-radius:10px;color:var(--accent);flex-shrink:0}
+  .info-card-body{flex:1}
+  .info-card-label{font-weight:600;font-size:12px;color:#6b7280;text-transform:uppercase;margin-bottom:4px;letter-spacing:.05em}
+  .info-card-text{color:#334155;font-size:13px;line-height:1.6}
+  .info-card-text a{color:var(--accent);text-decoration:none;font-weight:600}
+  .info-card-text a:hover{text-decoration:underline}
+
+  .cta-card{background:var(--blue-gradient);color:white;border-radius:12px;padding:24px;margin-top:18px;text-align:center}
+  .cta-card h4{margin:0 0 8px;font-weight:700;font-size:18px}
+  .cta-card p{margin:0 0 12px;font-size:14px;opacity:1;color:rgba(255,255,255,.95)}
+  .cta-link{display:inline-flex;align-items:center;gap:6px;color:white;text-decoration:none;font-weight:600;opacity:.9;transition:opacity 220ms}
+  .cta-link:hover{opacity:1}
+
+  /* Features Section */
+  .features-section{background:linear-gradient(180deg,#eef6ff 0%,#f7f9fb 100%);border-top:1px solid #dbeefe;padding:56px 24px;margin-top:48px}
+  .features-wrap{max-width:1100px;margin:0 auto}
+  .features-header{text-align:center;margin-bottom:36px}
+  .features-header h2{font-family:'Source Serif 4',serif;font-size:clamp(28px,4vw,40px);font-weight:700;color:#0f172a;margin:0 0 12px}
+  .features-header p{color:var(--muted);font-size:16px;margin:0}
+
+  .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  @media(max-width:768px){.features-grid{grid-template-columns:1fr}}
+
+  .feature-card{background:var(--surface);border:1px solid var(--card-border);border-radius:14px;padding:28px;text-align:center;transition:all 280ms cubic-bezier(.2,.9,.2,1)}
+  .feature-card:hover{transform:translateY(-8px);box-shadow:0 12px 32px rgba(0,88,190,.12)}
+  .feature-card .icon{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#eef6ff,#f0f9ff);border:1px solid #dbeefe;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;transition:all 220ms;color:var(--accent)}
+  .feature-card:hover .icon{transform:scale(1.15);background:var(--blue-gradient);color:white;box-shadow:0 8px 16px rgba(0,88,190,.2)}
+  .feature-card h4{font-family:'Source Serif 4',serif;font-size:16px;font-weight:700;color:#0f172a;margin:0 0 8px}
+  .feature-card p{color:var(--muted);font-size:13px;line-height:1.6;margin:0}
+
+  /* Form status messages */
+  .form-status{padding:12px 14px;border-radius:10px;margin-bottom:16px;border:1px solid transparent;font-size:13px}
+  .form-status.success{background:#f0fdf4;border-color:#bbf7d0;color:#15803d}
+  .form-status.error{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+
+  /* Animations */
+  .fade-up{opacity:0;transform:translateY(16px);animation:fadeUp 600ms ease forwards}
+  @keyframes fadeUp{to{opacity:1;transform:none}}
+  .form-card{animation:fadeUp 600ms ease}
+  .contact-info-section{animation:fadeUp 700ms ease}
+  .feature-card{animation:fadeUp 600ms ease}
+  .feature-card:nth-child(2){animation-delay:100ms}
+  .feature-card:nth-child(3){animation-delay:200ms}
 </style>
 {% endblock %}
 
 {% block content %}
-{% include 'partials/landing_navbar.html' %}
 
 <div class="contact-page">
-    <div class="contact-hero">
-        <div class="contact-eyebrow">✦ Get in Touch</div>
-        <h1 class="contact-h1">We're here to help</h1>
-        <p class="contact-sub">Have a question about your report, account, or anything else? Send us a message.</p>
-    </div>
+  <section class="contact-hero">
+    <div class="contact-eyebrow">SUPPORT</div>
+    <h1 class="contact-h1">We're here to help</h1>
+    <p class="contact-sub">Have questions about ReportGen or need technical assistance? Our team of compliance and technical specialists is ready to assist you.</p>
+  </section>
 
+  <div class="contact-content">
     <div class="contact-grid">
-        <div class="contact-info">
-            <div class="info-card"><div class="info-icon">📧</div><h3>Email Support</h3><p><a href="mailto:support@reportgen.in">support@reportgen.in</a></p><p style="margin-top:4px;font-size:0.82rem;color:#475569;">Response within 24 hours</p></div>
-            <div class="info-card"><div class="info-icon">🕐</div><h3>Support Hours</h3><p>Monday – Saturday<br>10:00 AM – 7:00 PM IST</p></div>
-            <div class="info-card"><div class="info-icon">📍</div><h3>Office Address</h3><p>Demo Tech Park, SG Highway<br>Ahmedabad, Gujarat 380015<br>India</p></div>
-            <div class="info-card"><div class="info-icon">❓</div><h3>Quick Answers</h3><p>Check our <a href="/faq">FAQ page</a> — most questions are answered there instantly.</p></div>
+      <!-- Form Section -->
+      <div class="form-card">
+        <h2>Send us a message</h2>
+        
+        {% if contact_success %}
+        <div style="text-align:center;padding:24px">
+          <div style="font-size:3rem;margin-bottom:12px">✓</div>
+          <div style="font-size:16px;font-weight:600;color:#15803d;margin-bottom:6px">Message sent successfully!</div>
+          <div style="color:var(--muted);font-size:13px">We'll get back to you within 24 hours.</div>
+        </div>
+        {% else %}
+        
+        {% if contact_error %}
+        <div class="form-status error">{{ contact_error }}</div>
+        {% endif %}
+
+        <form id="contactForm" method="post" action="{{ url_for('pages.contact') }}">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="ctName">Full Name</label>
+              <input type="text" id="ctName" name="name" placeholder="John Doe" value="{{ contact_values.get('name', '') }}" required>
+            </div>
+            <div class="form-group">
+              <label for="ctEmail">University Email</label>
+              <input type="email" id="ctEmail" name="email" placeholder="john@university.edu" value="{{ contact_values.get('email', '') }}" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="ctSubject">Subject</label>
+            <select id="ctSubject" name="subject" required>
+              <option value="">Select a topic</option>
+              <option value="report-issue" {% if contact_values.get('subject') == 'report-issue' %}selected{% endif %}>Report Generation Issue</option>
+              <option value="resume-issue" {% if contact_values.get('subject') == 'resume-issue' %}selected{% endif %}>Resume Builder Issue</option>
+              <option value="account" {% if contact_values.get('subject') == 'account' %}selected{% endif %}>Account / Login</option>
+              <option value="payment" {% if contact_values.get('subject') == 'payment' %}selected{% endif %}>Payment / Billing</option>
+              <option value="university" {% if contact_values.get('subject') == 'university' %}selected{% endif %}>University Not Listed</option>
+              <option value="other" {% if contact_values.get('subject') == 'other' %}selected{% endif %}>Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="ctMessage">Message</label>
+            <textarea id="ctMessage" name="message" placeholder="Please describe your inquiry in detail..." required>{{ contact_values.get('message', '') }}</textarea>
+          </div>
+
+          <button type="submit" class="submit-btn">Send Message →</button>
+        </form>
+        {% endif %}
+      </div>
+
+      <!-- Contact Info Section -->
+      <div class="contact-info-section">
+        <h3>Contact Information</h3>
+
+        <div class="info-card">
+          <div class="info-icon"><i class="fas fa-envelope"></i></div>
+          <div class="info-card-body">
+            <div class="info-card-label">Email Support</div>
+            <div class="info-card-text"><a href="mailto:support@reportgen.in">support@reportgen.in</a></div>
+          </div>
         </div>
 
-        <div class="contact-form-card">
-            <h2>Send us a message</h2>
-            {% if contact_success %}
-            <div class="form-success">
-                <div style="font-size:2.5rem;margin-bottom:12px;">✓</div>
-                <div style="font-size:1.1rem;font-weight:600;color:#34d399;margin-bottom:8px;">Message sent!</div>
-                <div style="color:#64748b;font-size:0.9rem;">We'll get back to you within 24 hours.</div>
-            </div>
-            {% endif %}
-            {% if contact_error %}
-            <div class="form-status error">{{ contact_error }}</div>
-            {% endif %}
-            <form method="post" action="{{ url_for('pages.contact') }}" {% if contact_success %}style="display:none;"{% endif %}>
-                <div class="form-row">
-                    <div class="form-group"><label for="ctName">Full Name *</label><input type="text" id="ctName" name="name" placeholder="Your name" value="{{ contact_values.get('name', '') }}" required></div>
-                    <div class="form-group"><label for="ctEmail">Email *</label><input type="email" id="ctEmail" name="email" placeholder="your@email.com" value="{{ contact_values.get('email', '') }}" required></div>
-                </div>
-                <div class="form-group"><label for="ctSubject">Subject *</label><select id="ctSubject" name="subject" required><option value="">Select a topic</option><option value="report-issue" {% if contact_values.get('subject') == 'report-issue' %}selected{% endif %}>Report Generation Issue</option><option value="resume-issue" {% if contact_values.get('subject') == 'resume-issue' %}selected{% endif %}>Resume Builder Issue</option><option value="account" {% if contact_values.get('subject') == 'account' %}selected{% endif %}>Account / Login</option><option value="payment" {% if contact_values.get('subject') == 'payment' %}selected{% endif %}>Payment / Billing</option><option value="university" {% if contact_values.get('subject') == 'university' %}selected{% endif %}>University Not Listed</option><option value="other" {% if contact_values.get('subject') == 'other' %}selected{% endif %}>Other</option></select></div>
-                <div class="form-group"><label for="ctMessage">Message *</label><textarea id="ctMessage" name="message" placeholder="Describe your issue or question in detail..." required>{{ contact_values.get('message', '') }}</textarea></div>
-                <button type="submit" class="submit-btn">Send Message →</button>
-            </form>
+        <div class="info-card">
+          <div class="info-icon"><i class="fas fa-map-marker-alt"></i></div>
+          <div class="info-card-body">
+            <div class="info-card-label">Office Address</div>
+            <div class="info-card-text">Demo Tech Park, SG Highway<br>Ahmedabad, Gujarat 380015, India</div>
+          </div>
         </div>
+
+        <div class="info-card">
+          <div class="info-icon"><i class="fas fa-clock"></i></div>
+          <div class="info-card-body">
+            <div class="info-card-label">Support Hours</div>
+            <div class="info-card-text">Monday–Saturday<br>10:00 AM–7:00 PM IST</div>
+          </div>
+        </div>
+
+        <!-- CTA Card -->
+        <div class="cta-card">
+          <h4>Looking for quick answers?</h4>
+          <p>Explore our comprehensive Help Center and documentation for instant solutions.</p>
+          <a href="/faq" class="cta-link">Visit Help Center →</a>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <!-- Features Section with Light Theme -->
+  <section class="features-section">
+    <div class="features-wrap">
+      <div class="features-header">
+        <h2>Effortless Academic Success</h2>
+        <p>Our AI handles the heavy lifting so you can focus on learning. No manual formatting or complex writing required.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="icon"><i class="fas fa-wand-magic-sparkles"></i></div>
+          <h4>Smart Extraction</h4>
+          <p>Just provide your basic details and activities. Our AI intelligently extracts and structures everything.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon"><i class="fas fa-graduation-cap"></i></div>
+          <h4>University Aligned</h4>
+          <p>Automatically formatted to your specific university guidelines. Works with 50+ universities across India.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon"><i class="fas fa-file-pdf"></i></div>
+          <h4>One-Click Export</h4>
+          <p>Professional, print-ready reports and resumes in seconds. Download as PDF with perfect formatting.</p>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 
-{% include 'partials/landing_footer.html' %}
+
+{% block extra_js %}
+<script>
+(function(){
+  const form = document.getElementById('contactForm');
+  if(!form) return;
+  
+  form.addEventListener('submit', function(ev){
+    const btn = form.querySelector('.submit-btn');
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+  });
+})();
+</script>
+
+{% endblock %}
 {% endblock %}

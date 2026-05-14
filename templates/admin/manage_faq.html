@@ -1,0 +1,296 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'faq' %}
+
+{% block title %}FAQ - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div>
+    <h1 class="page-title">Manage FAQ</h1>
+    <p class="page-subtitle">Create and manage frequently asked questions for the public FAQ page.</p>
+  </div>
+
+  <div class="stats-inline">
+    <button class="btn-ghost" type="button" onclick="loadFaqItems()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
+    <button class="btn-primary" type="button" onclick="openCreate()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add FAQ</button>
+  </div>
+
+  <article class="panel-card panel-body table-card">
+    <div class="toolbar">
+      <input id="searchInput" class="small-input" placeholder="Search questions...">
+      <select id="categoryFilter" class="small-input">
+        <option value="">All Categories</option>
+        <option value="About the Platform">About the Platform</option>
+        <option value="Using the Platform">Using the Platform</option>
+        <option value="Account & Pricing">Account & Pricing</option>
+        <option value="General">General</option>
+      </select>
+    </div>
+    <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
+      <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
+      <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
+      <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
+            <th>Question</th>
+            <th>Category</th>
+            <th>Sort</th>
+            <th>Active</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<div class="modal fade" id="faqModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="faqModalTitle">Add FAQ Item</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+        <input type="hidden" id="faqId">
+        
+        <div class="mb-3">
+          <label class="form-label">Question *</label>
+          <textarea class="form-control" id="faqQuestion" rows="2" placeholder="What is ReportGen?"></textarea>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Answer *</label>
+          <textarea class="form-control" id="faqAnswer" rows="4" placeholder="ReportGen is an AI-powered platform that helps..."></textarea>
+          <small class="form-text text-muted">You can use HTML like &lt;a href="#"&gt;links&lt;/a&gt;</small>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Category</label>
+          <select class="form-control" id="faqCategory">
+            <option value="General">General</option>
+            <option value="About the Platform">About the Platform</option>
+            <option value="Using the Platform">Using the Platform</option>
+            <option value="Account & Pricing">Account & Pricing</option>
+          </select>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Sort Order</label>
+          <input class="form-control" id="faqSortOrder" type="number" value="0" placeholder="0">
+          <small class="form-text text-muted">Higher numbers appear later. Items within same category are sorted by sort order, then question.</small>
+        </div>
+        
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="faqActive" checked>
+          <label class="form-check-label" for="faqActive">Active (show on FAQ page)</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveFaq()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const apiBaseUrl = '/admin';
+const token = localStorage.getItem('token');
+let allFaqItems = [];
+let selectedIds = [];
+let filterCategory = '';
+
+function api(endpoint, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(`${apiBaseUrl}${endpoint}`, opts).then(r => r.json());
+}
+
+function showToast(msg, type = 'info') {
+  const toast = document.createElement('div');
+  toast.style.cssText = `position:fixed;bottom:20px;right:20px;background:${type === 'success' ? '#22c55e' : '#ef4444'};color:#fff;padding:12px 20px;border-radius:8px;z-index:9999;`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function loadFaqItems(query = '') {
+  document.getElementById('rows').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr>';
+  api(`/faq?q=${encodeURIComponent(query)}`)
+    .then(items => {
+      allFaqItems = items;
+      renderTable();
+    })
+    .catch(() => showToast('Error loading FAQ items', 'error'));
+}
+
+function renderTable() {
+  let items = allFaqItems;
+  
+  // Filter by category
+  if (filterCategory) {
+    items = items.filter(item => item.category === filterCategory);
+  }
+  
+  // Filter by search
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  if (search) {
+    items = items.filter(item => 
+      item.question.toLowerCase().includes(search) ||
+      item.answer.toLowerCase().includes(search)
+    );
+  }
+
+  const tbody = document.getElementById('rows');
+  if (items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No FAQ items found</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = items.map(item => `
+    <tr class="show">
+      <td><input type="checkbox" class="row-check" data-id="${item._id}" style="width:16px;height:16px;cursor:pointer;"></td>
+      <td><strong>${item.question}</strong></td>
+      <td><span style="font-size:12px;background:#f1f5f9;padding:4px 8px;border-radius:4px;">${item.category}</span></td>
+      <td>${item.sortOrder}</td>
+      <td><span class="status-badge" style="background:${item.isActive ? '#f0fdf4' : '#fef2f2'};color:${item.isActive ? '#22c55e' : '#ef4444'};">${item.isActive ? 'Active' : 'Inactive'}</span></td>
+      <td>
+        <div class="icon-actions">
+          <button onclick="editFaq('${item._id}')" title="Edit" style="background:none;border:none;color:#3b82f6;cursor:pointer;"><i data-lucide="edit-2" style="width:16px;height:16px;"></i></button>
+          <button onclick="toggleActive('${item._id}', ${!item.isActive})" title="${item.isActive ? 'Deactivate' : 'Activate'}" style="background:none;border:none;color:#f59e0b;cursor:pointer;"><i data-lucide="${item.isActive ? 'eye-off' : 'eye'}" style="width:16px;height:16px;"></i></button>
+          <button onclick="deleteFaq('${item._id}')" title="Delete" style="background:none;border:none;color:#ef4444;cursor:pointer;"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+  
+  document.querySelectorAll('.row-check').forEach(cb => {
+    cb.addEventListener('change', updateSelection);
+  });
+  document.getElementById('selectAll').addEventListener('change', e => {
+    document.querySelectorAll('.row-check').forEach(cb => cb.checked = e.target.checked);
+    updateSelection();
+  });
+}
+
+function updateSelection() {
+  selectedIds = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.dataset.id);
+  const toolbar = document.getElementById('bulkToolbar');
+  if (selectedIds.length > 0) {
+    toolbar.style.display = 'flex';
+    document.getElementById('selectedCount').textContent = `${selectedIds.length} selected`;
+  } else {
+    toolbar.style.display = 'none';
+  }
+}
+
+function clearSelection() {
+  document.querySelectorAll('.row-check').forEach(cb => cb.checked = false);
+  document.getElementById('selectAll').checked = false;
+  updateSelection();
+}
+
+function openCreate() {
+  document.getElementById('faqId').value = '';
+  document.getElementById('faqQuestion').value = '';
+  document.getElementById('faqAnswer').value = '';
+  document.getElementById('faqCategory').value = 'General';
+  document.getElementById('faqSortOrder').value = '0';
+  document.getElementById('faqActive').checked = true;
+  document.getElementById('faqModalTitle').textContent = 'Add FAQ Item';
+  new bootstrap.Modal(document.getElementById('faqModal')).show();
+}
+
+function editFaq(id) {
+  const faq = allFaqItems.find(f => f._id === id);
+  if (!faq) return;
+  document.getElementById('faqId').value = faq._id;
+  document.getElementById('faqQuestion').value = faq.question;
+  document.getElementById('faqAnswer').value = faq.answer;
+  document.getElementById('faqCategory').value = faq.category;
+  document.getElementById('faqSortOrder').value = faq.sortOrder;
+  document.getElementById('faqActive').checked = faq.isActive;
+  document.getElementById('faqModalTitle').textContent = 'Edit FAQ Item';
+  new bootstrap.Modal(document.getElementById('faqModal')).show();
+}
+
+function saveFaq() {
+  const id = document.getElementById('faqId').value;
+  const question = document.getElementById('faqQuestion').value.trim();
+  const answer = document.getElementById('faqAnswer').value.trim();
+  const category = document.getElementById('faqCategory').value || 'General';
+  const sortOrder = parseInt(document.getElementById('faqSortOrder').value) || 0;
+  const isActive = document.getElementById('faqActive').checked;
+
+  if (!question || !answer) {
+    showToast('Question and answer are required', 'error');
+    return;
+  }
+
+  const payload = { question, answer, category, sortOrder, isActive };
+
+  const promise = id 
+    ? api(`/faq/${id}`, 'PUT', payload)
+    : api('/faq', 'POST', payload);
+
+  promise
+    .then(() => {
+      showToast(id ? 'FAQ updated' : 'FAQ created', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('faqModal')).hide();
+      loadFaqItems();
+    })
+    .catch(() => showToast('Error saving FAQ', 'error'));
+}
+
+function toggleActive(id, isActive) {
+  api(`/faq/${id}`, 'PUT', { isActive })
+    .then(() => {
+      showToast(isActive ? 'FAQ activated' : 'FAQ deactivated', 'success');
+      loadFaqItems();
+    })
+    .catch(() => showToast('Error updating FAQ', 'error'));
+}
+
+function deleteFaq(id) {
+  if (!confirm('Delete this FAQ item?')) return;
+  api(`/faq/${id}`, 'DELETE')
+    .then(() => {
+      showToast('FAQ deleted', 'success');
+      loadFaqItems();
+    })
+    .catch(() => showToast('Error deleting FAQ', 'error'));
+}
+
+function bulkDelete() {
+  if (!selectedIds.length) return;
+  if (!confirm(`Delete ${selectedIds.length} FAQ item(s)?`)) return;
+  api('/faq/bulk-delete', 'POST', { ids: selectedIds })
+    .then(() => {
+      showToast('FAQ items deleted', 'success');
+      clearSelection();
+      loadFaqItems();
+    })
+    .catch(() => showToast('Error deleting FAQ items', 'error'));
+}
+
+document.getElementById('searchInput').addEventListener('keyup', () => renderTable());
+document.getElementById('categoryFilter').addEventListener('change', e => {
+  filterCategory = e.target.value;
+  renderTable();
+});
+
+loadFaqItems();
+</script>
+{% endblock %}

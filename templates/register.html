@@ -1190,6 +1190,26 @@
     .signin-btn.loading .btn-label { display: none; }
     .signin-btn.loading .btn-loading { display: inline-flex; }
 
+    .otp-box:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.18) !important;
+        background: rgba(59,130,246,0.06) !important;
+    }
+
+    .otp-box.filled {
+        border-color: rgba(99,102,241,0.5);
+    }
+
+    .otp-box.error {
+        border-color: rgba(239,68,68,0.7) !important;
+        box-shadow: 0 0 0 3px rgba(239,68,68,0.12) !important;
+        animation: shakeX 0.26s ease;
+    }
+
+    #otpStep {
+        animation: revealUp 0.4s cubic-bezier(0.16,1,0.3,1) both;
+    }
+
     .divider {
         margin: 18px 0 14px;
         display: flex;
@@ -1439,6 +1459,143 @@
                 </div>
             </form>
 
+                        <!-- OTP Verification Step (hidden by default) -->
+                        <div id="otpStep" style="display:none;">
+                            <div id="otpSuccessIcon" style="
+                                width:56px;height:56px;border-radius:16px;
+                                background:linear-gradient(135deg,#10b981,#059669);
+                                display:flex;align-items:center;justify-content:center;
+                                margin-bottom:20px;font-size:26px;
+                                box-shadow:0 10px 24px rgba(16,185,129,0.35);
+                            ">✉️</div>
+
+                            <h2 class="auth-title" style="font-size:1.8rem;">
+                                Check your inbox
+                            </h2>
+                            <p class="auth-sub" style="margin-top:8px;">
+                                We sent a 6-digit code to
+                                <strong id="otpEmailDisplay" style="color:#60a5fa;">
+                                    your email
+                                </strong>.
+                                Enter it below to verify your account.
+                            </p>
+
+                            <div id="otpAlert" class="d-none" role="alert" style="
+                                border-radius:12px;border:1px solid rgba(239,68,68,0.45);
+                                background:rgba(239,68,68,0.12);color:#fecaca;
+                                padding:10px 12px;font-size:14px;margin-top:18px;
+                            "></div>
+
+                            <div id="otpSuccessAlert" class="d-none" role="alert" style="
+                                border-radius:12px;border:1px solid rgba(16,185,129,0.45);
+                                background:rgba(16,185,129,0.12);color:#6ee7b7;
+                                padding:10px 12px;font-size:14px;margin-top:18px;
+                            "></div>
+
+                            <!-- OTP Input boxes -->
+                            <div id="otpBoxes" style="
+                                display:flex;gap:10px;justify-content:center;margin-top:28px;
+                                flex-wrap:wrap;max-width:100%;
+                            ">
+                                <input class="otp-box" maxlength="1" inputmode="numeric"
+                                             pattern="[0-9]" autocomplete="one-time-code"
+                                             style="
+                                                 width:clamp(42px, 10vw, 52px);height:clamp(50px, 14vw, 60px);border-radius:14px;
+                                                 border:1.5px solid rgba(148,163,184,0.25);
+                                                 background:rgba(255,255,255,0.05);
+                                                 color:#f1f5f9;font-size:24px;font-weight:700;
+                                                 text-align:center;outline:none;
+                                                 transition:border-color 0.2s,box-shadow 0.2s;
+                                                 font-family:'Inter',sans-serif;
+                                             ">
+                                <input class="otp-box" maxlength="1" inputmode="numeric"
+                                             pattern="[0-9]" style="
+                                                 width:clamp(42px, 10vw, 52px);height:clamp(50px, 14vw, 60px);border-radius:14px;
+                                                 border:1.5px solid rgba(148,163,184,0.25);
+                                                 background:rgba(255,255,255,0.05);
+                                                 color:#f1f5f9;font-size:24px;font-weight:700;
+                                                 text-align:center;outline:none;
+                                                 transition:border-color 0.2s,box-shadow 0.2s;
+                                                 font-family:'Inter',sans-serif;
+                                             ">
+                                <input class="otp-box" maxlength="1" inputmode="numeric"
+                                             pattern="[0-9]" style="
+                                                 width:clamp(42px, 10vw, 52px);height:clamp(50px, 14vw, 60px);border-radius:14px;
+                                                 border:1.5px solid rgba(148,163,184,0.25);
+                                                 background:rgba(255,255,255,0.05);
+                                                 color:#f1f5f9;font-size:24px;font-weight:700;
+                                                 text-align:center;outline:none;
+                                                 transition:border-color 0.2s,box-shadow 0.2s;
+                                                 font-family:'Inter',sans-serif;
+                                             ">
+                                <input class="otp-box" maxlength="1" inputmode="numeric"
+                                             pattern="[0-9]" style="
+                                                 width:clamp(42px, 10vw, 52px);height:clamp(50px, 14vw, 60px);border-radius:14px;
+                                                 border:1.5px solid rgba(148,163,184,0.25);
+                                                 background:rgba(255,255,255,0.05);
+                                                 color:#f1f5f9;font-size:24px;font-weight:700;
+                                                 text-align:center;outline:none;
+                                                 transition:border-color 0.2s,box-shadow 0.2s;
+                                                 font-family:'Inter',sans-serif;
+                                             ">
+                                <input class="otp-box" maxlength="1" inputmode="numeric"
+                                             pattern="[0-9]" style="
+                                                 width:clamp(42px, 10vw, 52px);height:clamp(50px, 14vw, 60px);border-radius:14px;
+                                                 border:1.5px solid rgba(148,163,184,0.25);
+                                                 background:rgba(255,255,255,0.05);
+                                                 color:#f1f5f9;font-size:24px;font-weight:700;
+                                                 text-align:center;outline:none;
+                                                 transition:border-color 0.2s,box-shadow 0.2s;
+                                                 font-family:'Inter',sans-serif;
+                                             ">
+                                <input class="otp-box" maxlength="1" inputmode="numeric"
+                                             pattern="[0-9]" style="
+                                                 width:clamp(42px, 10vw, 52px);height:clamp(50px, 14vw, 60px);border-radius:14px;
+                                                 border:1.5px solid rgba(148,163,184,0.25);
+                                                 background:rgba(255,255,255,0.05);
+                                                 color:#f1f5f9;font-size:24px;font-weight:700;
+                                                 text-align:center;outline:none;
+                                                 transition:border-color 0.2s,box-shadow 0.2s;
+                                                 font-family:'Inter',sans-serif;
+                                             ">
+                            </div>
+
+                            <!-- Verify button -->
+                            <button type="button" id="verifyOtpBtn" class="signin-btn"
+                                            style="margin-top:24px;" disabled>
+                                <span class="btn-label">Verify & Create Account</span>
+                                <span class="btn-loading">
+                                    <span class="spinner-border spinner-border-sm"
+                                                role="status" aria-hidden="true"></span>
+                                    Verifying...
+                                </span>
+                            </button>
+
+                            <!-- Resend OTP -->
+                            <div style="margin-top:16px;text-align:center;">
+                                <span style="color:#64748b;font-size:13px;">
+                                    Didn't receive it?
+                                </span>
+                                <button type="button" id="resendOtpBtn" style="
+                                    background:none;border:none;color:#3b82f6;font-size:13px;
+                                    font-weight:600;cursor:pointer;padding:0 4px;
+                                    font-family:'Inter',sans-serif;
+                                ">Resend OTP</button>
+                                <span id="resendCountdown" style="
+                                    color:#64748b;font-size:12px;display:none;
+                                "></span>
+                            </div>
+
+                            <!-- Back to form -->
+                            <div style="margin-top:12px;text-align:center;">
+                                <button type="button" id="backToFormBtn" style="
+                                    background:none;border:none;color:#64748b;font-size:13px;
+                                    cursor:pointer;font-family:'Inter',sans-serif;
+                                    text-decoration:underline;
+                                ">← Back to registration</button>
+                            </div>
+                        </div>
+
             <div class="tiny-foot">© 2026 ReportGen. All rights reserved. <a href="/terms">Terms</a> <a href="/privacy">Privacy</a></div>
         </div>
     </section>
@@ -1470,6 +1627,105 @@
             localStorage.removeItem('user');
         }
     };
+
+    let pendingEmail = '';
+    let resendTimer = null;
+
+    function startResendCooldown(seconds) {
+        const resendBtn = document.getElementById('resendOtpBtn');
+        const countdown = document.getElementById('resendCountdown');
+        resendBtn.disabled = true;
+        resendBtn.style.display = 'none';
+        countdown.style.display = 'inline';
+        let remaining = seconds;
+        clearInterval(resendTimer);
+        countdown.textContent = `Resend in ${remaining}s`;
+        resendTimer = setInterval(() => {
+            remaining -= 1;
+            countdown.textContent = `Resend in ${remaining}s`;
+            if (remaining <= 0) {
+                clearInterval(resendTimer);
+                countdown.style.display = 'none';
+                resendBtn.style.display = 'inline';
+                resendBtn.disabled = false;
+            }
+        }, 1000);
+    }
+
+    function showOtpStep(email) {
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('registerAlert').classList.add('d-none');
+        document.getElementById('otpStep').style.display = 'block';
+        document.getElementById('otpEmailDisplay').textContent = email;
+        const boxes = document.querySelectorAll('.otp-box');
+        if (boxes[0]) boxes[0].focus();
+        startResendCooldown(60);
+    }
+
+    function showRegisterForm() {
+        document.getElementById('otpStep').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'block';
+        document.querySelectorAll('.otp-box').forEach((box) => {
+            box.value = '';
+            box.classList.remove('filled', 'error');
+            box.disabled = false;
+            box.style.color = '';
+            box.style.borderColor = '';
+        });
+        document.getElementById('otpAlert').classList.add('d-none');
+        document.getElementById('otpSuccessAlert').classList.add('d-none');
+        document.getElementById('verifyOtpBtn').disabled = true;
+        document.getElementById('resendCountdown').style.display = 'none';
+        document.getElementById('resendOtpBtn').style.display = 'inline';
+        document.getElementById('resendOtpBtn').disabled = false;
+        canSubmit();
+    }
+
+    function getOtpValue() {
+        return Array.from(document.querySelectorAll('.otp-box'))
+            .map((box) => box.value.trim())
+            .join('');
+    }
+
+    function updateVerifyBtn() {
+        document.getElementById('verifyOtpBtn').disabled = getOtpValue().length !== 6;
+    }
+
+    document.querySelectorAll('.otp-box').forEach((box, idx, boxes) => {
+        box.addEventListener('input', () => {
+            box.value = box.value.replace(/\D/g, '').slice(-1);
+            box.classList.toggle('filled', box.value !== '');
+            box.classList.remove('error');
+            if (box.value && idx < boxes.length - 1) {
+                boxes[idx + 1].focus();
+            }
+            updateVerifyBtn();
+        });
+
+        box.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !box.value && idx > 0) {
+                boxes[idx - 1].focus();
+                boxes[idx - 1].value = '';
+                boxes[idx - 1].classList.remove('filled');
+                updateVerifyBtn();
+            }
+        });
+
+        box.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pasted = (e.clipboardData || window.clipboardData)
+                .getData('text').replace(/\D/g, '').slice(0, 6);
+            pasted.split('').forEach((digit, i) => {
+                if (boxes[i]) {
+                    boxes[i].value = digit;
+                    boxes[i].classList.add('filled');
+                }
+            });
+            const next = boxes[Math.min(pasted.length, boxes.length - 1)];
+            if (next) next.focus();
+            updateVerifyBtn();
+        });
+    });
 
     const nameInput = document.getElementById('name');
     const emailInput = document.getElementById('email');
@@ -1605,20 +1861,28 @@
         alertBox.classList.add('d-none');
 
         try {
-            const res = await fetch('/api/auth/register', {
+            const res = await fetch('/api/auth/register/send-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, email, password })
             });
-            
+
             const data = await res.json();
 
             if (res.ok) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                const redirectEmail = encodeURIComponent(email);
-                const message = encodeURIComponent(data.message || 'Account created successfully. Please sign in.');
-                window.location.href = `/login?registered=1&message=${message}&email=${redirectEmail}`;
+                pendingEmail = email;
+                showOtpStep(email);
+
+                if (data.otp) {
+                    const boxes = document.querySelectorAll('.otp-box');
+                    data.otp.split('').forEach((digit, i) => {
+                        if (boxes[i]) {
+                            boxes[i].value = digit;
+                            boxes[i].classList.add('filled');
+                        }
+                    });
+                    updateVerifyBtn();
+                }
             } else {
                 alertBox.textContent = data.message || 'Registration failed';
                 alertBox.classList.remove('d-none');
@@ -1630,6 +1894,136 @@
             btn.classList.remove('loading');
             canSubmit();
         }
+    });
+
+    document.getElementById('verifyOtpBtn').addEventListener('click', async () => {
+        const otp = getOtpValue();
+        if (otp.length !== 6) return;
+
+        const verifyBtn = document.getElementById('verifyOtpBtn');
+        const otpAlert = document.getElementById('otpAlert');
+        const otpSuccess = document.getElementById('otpSuccessAlert');
+
+        verifyBtn.disabled = true;
+        verifyBtn.classList.add('loading');
+        otpAlert.classList.add('d-none');
+        otpSuccess.classList.add('d-none');
+
+        try {
+            const res = await fetch('/api/auth/register/verify-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: pendingEmail, otp })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                otpSuccess.textContent = '✓ ' + (data.message || 'Account created! Redirecting to login...');
+                otpSuccess.classList.remove('d-none');
+
+                document.querySelectorAll('.otp-box').forEach((box) => {
+                    box.value = '✓';
+                    box.style.color = '#10b981';
+                    box.style.borderColor = 'rgba(16,185,129,0.6)';
+                    box.disabled = true;
+                });
+
+                clearInterval(resendTimer);
+
+                setTimeout(() => {
+                    const msg = encodeURIComponent('Account created and verified! Please sign in.');
+                    const emailParam = encodeURIComponent(pendingEmail);
+                    window.location.href = `/login?registered=1&message=${msg}&email=${emailParam}`;
+                }, 2000);
+            } else {
+                document.querySelectorAll('.otp-box').forEach((box) => {
+                    box.classList.add('error');
+                    setTimeout(() => box.classList.remove('error'), 600);
+                });
+                otpAlert.textContent = data.message || 'Invalid OTP. Please try again.';
+                otpAlert.classList.remove('d-none');
+                verifyBtn.disabled = false;
+                verifyBtn.classList.remove('loading');
+
+                if (res.status === 429) {
+                    document.querySelectorAll('.otp-box').forEach((box) => {
+                        box.value = '';
+                        box.classList.remove('filled');
+                    });
+                    updateVerifyBtn();
+                }
+            }
+        } catch (err) {
+            otpAlert.textContent = 'Network error. Please try again.';
+            otpAlert.classList.remove('d-none');
+            verifyBtn.disabled = false;
+            verifyBtn.classList.remove('loading');
+        }
+    });
+
+    document.getElementById('resendOtpBtn').addEventListener('click', async () => {
+        const resendBtn = document.getElementById('resendOtpBtn');
+        resendBtn.disabled = true;
+
+        try {
+            const res = await fetch('/api/auth/register/resend-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: pendingEmail })
+            });
+            const data = await res.json();
+            const otpAlert = document.getElementById('otpAlert');
+
+            if (res.ok) {
+                document.querySelectorAll('.otp-box').forEach((box) => {
+                    box.value = '';
+                    box.classList.remove('filled', 'error');
+                    box.disabled = false;
+                    box.style.color = '';
+                    box.style.borderColor = '';
+                });
+                updateVerifyBtn();
+
+                otpAlert.style.borderColor = 'rgba(16,185,129,0.45)';
+                otpAlert.style.background = 'rgba(16,185,129,0.12)';
+                otpAlert.style.color = '#6ee7b7';
+                otpAlert.textContent = '✓ New OTP sent. Check your inbox.';
+                otpAlert.classList.remove('d-none');
+                setTimeout(() => {
+                    otpAlert.classList.add('d-none');
+                    otpAlert.style.borderColor = '';
+                    otpAlert.style.background = '';
+                    otpAlert.style.color = '';
+                }, 4000);
+
+                startResendCooldown(60);
+
+                if (data.otp) {
+                    data.otp.split('').forEach((digit, i) => {
+                        const boxes = document.querySelectorAll('.otp-box');
+                        if (boxes[i]) {
+                            boxes[i].value = digit;
+                            boxes[i].classList.add('filled');
+                        }
+                    });
+                    updateVerifyBtn();
+                }
+            } else {
+                document.getElementById('otpAlert').textContent = data.message || 'Could not resend OTP.';
+                document.getElementById('otpAlert').classList.remove('d-none');
+                resendBtn.disabled = false;
+            }
+        } catch (err) {
+            document.getElementById('otpAlert').textContent = 'Network error. Please try again.';
+            document.getElementById('otpAlert').classList.remove('d-none');
+            resendBtn.disabled = false;
+        }
+    });
+
+    document.getElementById('backToFormBtn').addEventListener('click', () => {
+        showRegisterForm();
+        clearInterval(resendTimer);
     });
 
     document.addEventListener('mousemove', (e) => {

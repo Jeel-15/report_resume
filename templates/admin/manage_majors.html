@@ -53,6 +53,13 @@
         <tbody id="rows"><tr><td colspan="8" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
     </div>
+    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
+      <div id="majorsFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 majors</div>
+      <div class="pager">
+        <button id="majorsPrev">&lt;</button>
+        <button id="majorsNext">&gt;</button>
+      </div>
+    </div>
   </article>
 </section>
 
@@ -220,6 +227,8 @@ let filterDepartments = [];
 let formDepartments = [];
 let currentMajorIdForTitles = '';
 let currentProjectTitleId = '';
+let addMajorSelectedDegreeId = '';
+let addMajorDegreeWatcher = null;
 
 // ─────────────────────────────────────────────────────────────
 // Multi-select logic
@@ -374,9 +383,25 @@ function applyPolicyContentTypeValue(value) {
 
 function openAddMajorModal() {
   document.getElementById('am_name').value = '';
-  setDegreeOptions('am_degree', '');
+  const inheritedDegreeId = document.getElementById('filterDegree')?.value || addMajorSelectedDegreeId || '';
+  addMajorSelectedDegreeId = inheritedDegreeId;
+  setDegreeOptions('am_degree', addMajorSelectedDegreeId);
   document.getElementById('am_department').innerHTML = '<option value="">No department</option>';
   addMajorModal.show();
+  // Ensure departments are populated immediately when modal opens
+  refreshAddMajorDepartments(document.getElementById('am_degree').value || addMajorSelectedDegreeId || '');
+  window.setTimeout(() => {
+    refreshAddMajorDepartments(document.getElementById('am_degree').value || addMajorSelectedDegreeId || '');
+  }, 0);
+}
+
+async function refreshAddMajorDepartments(degreeId = '') {
+  const resolvedDegreeId = degreeId || addMajorSelectedDegreeId || document.getElementById('am_degree').value || '';
+  addMajorSelectedDegreeId = resolvedDegreeId;
+  const depts = resolvedDegreeId ? await loadDepartmentsByDegree(resolvedDegreeId) : [];
+  const select = document.getElementById('am_department');
+  select.innerHTML = '<option value="">No department</option>' + (depts || []).map(d => `<option value="${d._id}">${d.name}</option>`).join('');
+  select.disabled = false;
 }
 
 async function saveNewMajor() {
@@ -492,36 +517,52 @@ function setDegreeOptions(id, selected = '') {
 
 function setDepartmentOptions(id, items = [], selected = '') {
   const select = document.getElementById(id);
-  select.innerHTML = '<option value="">All Departments</option>';
-  if (id === 'department') {
-    select.innerHTML = '<option value="">No department (legacy)</option>';
+  // Use explicit ids for different UI controls so placeholders are correct
+  if (id === 'filterDepartment') {
+    select.innerHTML = '<option value="">All Departments</option>';
+  } else if (id === 'am_department') {
+    select.innerHTML = '<option value="">No department</option>';
+  } else {
+    select.innerHTML = '<option value="">All Departments</option>';
   }
   select.innerHTML += (items || []).map(d => {
     const selectedAttr = String(d._id) === String(selected) ? 'selected' : '';
     return `<option value="${d._id}" ${selectedAttr}>${d.name}</option>`;
   }).join('');
+  // Ensure the select is enabled for user interaction after options are set
+  try { select.disabled = false; } catch(e) {}
 }
 
 async function loadDepartmentsByDegree(degreeId) {
   if (!degreeId) return [];
-  const res = await fetch(`/api/admin/departments?degree=${encodeURIComponent(degreeId)}`, { headers });
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
+  try {
+    const res = await fetch(`/api/admin/departments?degree=${encodeURIComponent(degreeId)}`, { headers });
+    const data = await res.json().catch(() => null);
+    const items = Array.isArray(data) ? data : (data?.items || []);
+
+    if (res.ok && items.length) {
+      return items;
+    }
+
+    // Fallback: fetch all and filter client-side when backend adapter returns mixed ref formats.
+    const allRes = await fetch('/api/admin/departments', { headers });
+    const allData = await allRes.json().catch(() => null);
+    const allItems = Array.isArray(allData) ? allData : (allData?.items || []);
+    return allItems.filter((d) => {
+      const refId = d?.degree?._id || d?.degree?.id || d?.degree;
+      return String(refId || '') === String(degreeId);
+    });
+  } catch (err) {
+    console.error('loadDepartmentsByDegree error:', err);
+    return [];
+  }
 }
 
 async function loadDegrees() {
-  try {
-    console.log('Loading degrees...');
+    try {
     const res = await fetch('/api/admin/degrees', { headers });
-    console.log('Degrees response status:', res.status);
-    
-    if (!res.ok) {
-      console.error('Failed to load degrees:', res.status);
-      return;
-    }
-    
+    if (!res.ok) return;
     degrees = await res.json();
-    console.log('Degrees loaded:', degrees?.length || 0);
     
     setDegreeOptions('filterDegree', document.getElementById('filterDegree').value || '');
     setDegreeOptions('am_degree', document.getElementById('am_degree')?.value || '');
@@ -534,19 +575,23 @@ async function loadDegrees() {
   }
 }
 
-async function loadMajors() {
+const MAJORS_PAGE_SIZE = 50;
+let majorsCurrentPage = 1;
+let totalMajors = 0;
+
+async function loadMajors(page) {
   try {
+    majorsCurrentPage = page || majorsCurrentPage || 1;
     const degree = document.getElementById('filterDegree').value;
     const department = document.getElementById('filterDepartment').value;
     const params = new URLSearchParams();
     if (degree) params.set('degree', degree);
     if (department) params.set('department', department);
+    params.set('limit', MAJORS_PAGE_SIZE);
+    params.set('offset', (majorsCurrentPage - 1) * MAJORS_PAGE_SIZE);
     const qs = params.toString() ? `?${params.toString()}` : '';
     const url = '/api/admin/majors' + qs;
-    console.log('Loading majors from:', url);
-    
     const res = await fetch(url, { headers });
-    console.log('Response status:', res.status);
     
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
@@ -556,9 +601,17 @@ async function loadMajors() {
     }
     
     const data = await res.json();
-    console.log('Majors loaded:', data?.length || 0, 'items');
-    
-    document.getElementById('rows').innerHTML = (data || []).map(m => {
+    const items = Array.isArray(data) ? data : (data.items || []);
+    totalMajors = data.total || (Array.isArray(data) ? data.length : items.length);
+
+    // If backend returned a full array (ignoring limit/offset), slice client-side
+    const offset = (majorsCurrentPage - 1) * MAJORS_PAGE_SIZE;
+    const pageItems = Array.isArray(data) ? (items.slice(offset, offset + MAJORS_PAGE_SIZE)) : items;
+
+    // index returned items for lookup (index full array when provided, otherwise page items)
+    window.allItems = window.allItems || {};
+    (items || []).forEach(m => { if (m && m._id) window.allItems[m._id] = m; });
+    document.getElementById('rows').innerHTML = (pageItems || []).map(m => {
       const policyBadge = hasConfiguredPolicy(m)
         ? '<span class="status-badge" style="background:rgba(16,185,129,0.15);color:#10b981;">Configured</span>'
         : '<span class="status-badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Default</span>';
@@ -574,8 +627,8 @@ async function loadMajors() {
         <td>${policyBadge}</td>
         <td>
           <div class="icon-actions">
-            <button class="toggle-action" onclick='openMajorPolicy(${JSON.stringify(m)})' title="Configure Policy"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
-            <button class="toggle-action" onclick='manageProjectTitles("${m._id}", ${JSON.stringify(m.name)})' title="Project Titles"><i data-lucide="list" style="width:16px;height:16px;"></i></button>
+            <button class="toggle-action major-policy-btn" data-major-id="${m._id}" title="Configure Policy"><i data-lucide="settings" style="width:16px;height:16px;"></i></button>
+            <button class="toggle-action titles-btn" data-major-id="${m._id}" title="Project Titles"><i data-lucide="list" style="width:16px;height:16px;"></i></button>
             <button class="danger-action" onclick='deleteMajor("${m._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
           </div>
         </td>
@@ -585,6 +638,11 @@ async function loadMajors() {
     if (window.lucide) lucide.createIcons();
     window.AdminUI?.staggerRows();
     clearSelection();
+    const start = (majorsCurrentPage - 1) * MAJORS_PAGE_SIZE + 1;
+    const end = Math.min(majorsCurrentPage * MAJORS_PAGE_SIZE, totalMajors);
+    document.getElementById('majorsFoot').textContent = `Showing ${start}-${end} of ${totalMajors}`;
+    document.getElementById('majorsPrev').disabled = majorsCurrentPage <= 1;
+    document.getElementById('majorsNext').disabled = end >= totalMajors;
   } catch (err) {
     console.error('loadMajors error:', err);
     document.getElementById('rows').innerHTML = `<tr><td colspan="8" style="text-align:center;color:#dc2626;">Error: ${err.message}</td></tr>`;
@@ -615,16 +673,21 @@ async function loadProjectTitles() {
         return;
     }
 
-    listEl.innerHTML = data.map(t => `
+    // index project titles for quick lookup by id on this modal
+    window.projectTitles = window.projectTitles || {};
+    listEl.innerHTML = data.map(t => {
+      if (t && t._id) window.projectTitles[t._id] = t;
+      return `
         <div class="d-flex align-items-center justify-content-between p-2 border rounded mb-2">
             <span style="font-size:14px;">${t.title}</span>
             <div>
                 <span class="badge ${t.isActive ? 'bg-success' : 'bg-secondary'} me-2">
                     ${t.isActive ? 'Active' : 'Inactive'}
                 </span>
-          <button class="btn btn-sm btn-outline-primary me-1"
-            onclick='editProjectTitle("${t._id}", ${JSON.stringify(t.title)})'
-            title="Edit title">
+        <button class="btn btn-sm btn-outline-primary me-1 edit-project-btn"
+        data-project-id="${t._id}"
+        data-project-title="${String(t.title).replace(/\"/g, '&quot;') }"
+        title="Edit title">
             <i data-lucide="pencil" style="width:14px;height:14px;"></i>
           </button>
                 <button class="btn btn-sm btn-outline-warning me-1"
@@ -635,7 +698,7 @@ async function loadProjectTitles() {
                     onclick='deleteProjectTitle("${t._id}")'>Delete</button>
             </div>
         </div>
-    `).join('');
+    `; }).join('');
 }
 
   function setProjectTitleEditorState(isEditing, title = '') {
@@ -779,11 +842,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  document.getElementById('am_degree').addEventListener('change', async (e) => {
-    const degreeId = e.target.value || '';
-    const depts = degreeId ? await loadDepartmentsByDegree(degreeId) : [];
-    const select = document.getElementById('am_department');
-    select.innerHTML = '<option value="">No department</option>' + depts.map(d => `<option value="${d._id}">${d.name}</option>`).join('');
+  const amDegreeSelect = document.getElementById('am_degree');
+  const refreshOnDegreeChange = (e) => {
+    addMajorSelectedDegreeId = e.target.value || '';
+    refreshAddMajorDepartments(addMajorSelectedDegreeId);
+  };
+  amDegreeSelect.addEventListener('change', refreshOnDegreeChange);
+  amDegreeSelect.addEventListener('input', refreshOnDegreeChange);
+  addMajorModal._element.addEventListener('shown.bs.modal', () => {
+    refreshAddMajorDepartments(document.getElementById('am_degree').value || addMajorSelectedDegreeId || '');
+    if (addMajorDegreeWatcher) {
+      window.clearInterval(addMajorDegreeWatcher);
+    }
+    let lastSeenDegreeId = document.getElementById('am_degree').value || '';
+    addMajorDegreeWatcher = window.setInterval(() => {
+      const currentDegreeId = document.getElementById('am_degree').value || '';
+      if (currentDegreeId !== lastSeenDegreeId) {
+        lastSeenDegreeId = currentDegreeId;
+        addMajorSelectedDegreeId = currentDegreeId;
+        refreshAddMajorDepartments(currentDegreeId);
+      }
+    }, 150);
+  });
+  addMajorModal._element.addEventListener('hidden.bs.modal', () => {
+    if (addMajorDegreeWatcher) {
+      window.clearInterval(addMajorDegreeWatcher);
+      addMajorDegreeWatcher = null;
+    }
   });
 
   document.getElementById('policy_reportContentType').addEventListener('input', renderPolicyDerivedFeatures);
@@ -814,8 +899,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
   });
 
+  // delegated click handlers for major actions (policy, titles)
+  document.getElementById('rows').addEventListener('click', (e) => {
+    const policyBtn = e.target.closest && e.target.closest('.major-policy-btn');
+    if (policyBtn) {
+      const id = policyBtn.dataset.majorId;
+      const major = (window.allItems && window.allItems[id]) || null;
+      if (major) openMajorPolicy(major);
+      return;
+    }
+    const titlesBtn = e.target.closest && e.target.closest('.titles-btn');
+    if (titlesBtn) {
+      const id = titlesBtn.dataset.majorId;
+      const major = (window.allItems && window.allItems[id]) || null;
+      manageProjectTitles(id, major?.name || '');
+      return;
+    }
+  });
+
+  // delegated handler for editing project titles inside the titles modal
+  const titlesList = document.getElementById('titlesList');
+  titlesList && titlesList.addEventListener('click', (e) => {
+    const editBtn = e.target.closest && e.target.closest('.edit-project-btn');
+    if (!editBtn) return;
+    const id = editBtn.dataset.projectId;
+    const title = editBtn.dataset.projectTitle || '';
+    editProjectTitle(id, title);
+  });
+
   await loadDegrees();
   await loadMajors();
+
+  // Pager controls
+  document.getElementById('majorsPrev').addEventListener('click', () => {
+    if (majorsCurrentPage > 1) { majorsCurrentPage -= 1; loadMajors(); }
+  });
+  document.getElementById('majorsNext').addEventListener('click', () => { majorsCurrentPage += 1; loadMajors(); });
 });
 </script>
 {% endblock %}

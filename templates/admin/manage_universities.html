@@ -75,6 +75,13 @@
         <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading universities...</td></tr></tbody>
       </table>
     </div>
+    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
+      <div id="universitiesFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 universities</div>
+      <div class="pager">
+        <button id="unisPrev">&lt;</button>
+        <button id="unisNext">&gt;</button>
+      </div>
+    </div>
   </article>
 </section>
 
@@ -163,6 +170,9 @@
   const targetInput = document.getElementById('targetId');
   const ENTITY_ENDPOINT = 'universities';
   let currentTab = 'all';
+  const UNIS_PAGE_SIZE = 25;
+  let unisCurrentPage = 1;
+  let totalUnis = 0;
 
   // ─────────────────────────────────────────────────────────────
   // Multi-select logic
@@ -257,6 +267,9 @@
       return;
     }
 
+    // Populate lightweight index and render rows without embedding JSON in onclick
+    window.allItems = window.allItems || {};
+    items.forEach(u => { window.allItems[u._id] = u; });
     rowsEl.innerHTML = items.map((u) => `
       <tr>
         <td><input type="checkbox" class="row-checkbox" data-id="${u._id}" style="width:16px;height:16px;cursor:pointer;"></td>
@@ -267,7 +280,7 @@
         <td>
           <div class="icon-actions">
             ${u.approvalStatus === 'pending' ? `<button class="toggle-action" onclick='approveUniversity("${u._id}")' title="Approve"><i data-lucide="check" style="width:16px;height:16px;"></i></button><button class="danger-action" onclick='openRejectUniModal("${u._id}")' title="Reject"><i data-lucide="x" style="width:16px;height:16px;"></i></button>` : ''}
-            <button class="toggle-action edit-btn" onclick='openEditModal(${JSON.stringify(u)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+            <button class="toggle-action edit-btn" data-item-id="${u._id}" title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
             <button class="danger-action del-btn" data-id="${u._id}" title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
           </div>
         </td>
@@ -287,15 +300,25 @@
       const params = new URLSearchParams();
       if (q) params.set('q', q);
       if (currentTab !== 'all') params.set('status', currentTab);
+      params.set('limit', UNIS_PAGE_SIZE);
+      params.set('offset', (unisCurrentPage - 1) * UNIS_PAGE_SIZE);
 
       const data = await window.AdminUI.adminApiGet(`/api/admin/universities?${params}`) || [];
+      const items = Array.isArray(data) ? data : (data.items || []);
+      totalUnis = Array.isArray(data) ? data.length : (data.total || items.length || 0);
 
       const pendingRes = await window.AdminUI.adminApiGet('/api/admin/universities?status=pending');
-      const pendingData = pendingRes || [];
+      const pendingData = Array.isArray(pendingRes) ? pendingRes : (pendingRes?.items || []);
       const countEl = document.getElementById('pendingCount');
       if (countEl) countEl.textContent = (pendingData || []).length;
 
-      renderRows(data);
+      renderRows(items);
+
+      const start = (unisCurrentPage - 1) * UNIS_PAGE_SIZE + 1;
+      const end = Math.min(unisCurrentPage * UNIS_PAGE_SIZE, totalUnis);
+      document.getElementById('universitiesFoot').textContent = `Showing ${start}-${end} of ${totalUnis}`;
+      document.getElementById('unisPrev').disabled = unisCurrentPage <= 1;
+      document.getElementById('unisNext').disabled = end >= totalUnis;
     } catch (err) {
       console.error(err);
       rowsEl.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ef4444;">Failed to load universities.</td></tr>';
@@ -375,6 +398,11 @@
     }
   };
 
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('unisPrev')?.addEventListener('click', () => { if (unisCurrentPage > 1) { unisCurrentPage -= 1; loadUniversities(); } });
+    document.getElementById('unisNext')?.addEventListener('click', () => { unisCurrentPage += 1; loadUniversities(); });
+  });
+
   const deleteUniversity = async (id) => {
     if (!confirm('Delete university?')) return;
     const headers = authHeaders();
@@ -446,6 +474,14 @@
         } catch (err) {
           console.error(err);
         }
+      });
+    });
+    // Edit buttons: delegated to lookup in window.allItems
+    rowsEl.querySelectorAll('.edit-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.dataset.itemId;
+        const item = (window.allItems && window.allItems[id]) || null;
+        if (item) openEditModal(item);
       });
     });
   };

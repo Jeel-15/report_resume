@@ -1,0 +1,66 @@
+/* Responsive helper utilities - mobile-first
+   Use these minimal helpers to make pages fluid and touch-friendly.
+*/
+
+:root {
+  --responsive-max-width: 1220px;
+  --responsive-gap: 1rem;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+
+/* Fluid headings utilities */
+.fluid-h1 { font-size: clamp(1.35rem, 5vw, 2.25rem); line-height: 1.06; }
+.fluid-h2 { font-size: clamp(1.15rem, 4vw, 1.75rem); line-height: 1.08; }
+
+/* Responsive container that mirrors .container.main-content but is safe to use in templates */
+.responsive-container {
+  width: 100%;
+  max-width: var(--responsive-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+/* Make media fluid without collapsing iframe heights (PDF previews need fixed heights) */
+img, picture, video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+iframe {
+  max-width: 100%;
+  display: block;
+}
+
+/* Touch-friendly CTA and button helpers */
+.touch-target { min-height: 44px; min-width: 44px; padding: 10px 14px; }
+
+/* Horizontal containers that can scroll on small screens */
+.h-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Stepper helpers: default is horizontal scroll, stack on narrow viewports */
+.stepper-responsive { display: flex; gap: 12px; align-items: flex-start; }
+.stepper-responsive .step-tab { flex: 0 0 auto; }
+
+@media (max-width: 767px) {
+  .stepper-responsive { flex-direction: column; gap: 10px; }
+  .responsive-container { padding-left: 10px; padding-right: 10px; }
+}
+
+/* Generic stack helper: columns on wide, stacked on mobile */
+.stack-on-mobile { display: grid; gap: 16px; }
+@media (min-width: 768px) {
+  .stack-on-mobile { display: flex; gap: 20px; align-items: stretch; }
+}
+
+/* Small-screen utilities for card sizing */
+.card-flush { border-radius: 10px; }
+
+/* Ensure tables remain scrollable on small devices */
+.table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Hide the student onboarding card (Setup Guide) when user requests removal */
+#onboardingCard { display: none !important; }

@@ -916,26 +916,23 @@
         if (majorId) params.set('major', majorId);
 
         const url = `/api/student/work-keywords?${params.toString()}`;
-        console.log('[DEBUG loadWorkKeywords]', { url, industryType, majorId, jobProfile });
 
         try {
             const res = await fetch(url, {
                 credentials: 'include',
                 headers: authHeaders()
             });
-            console.log('[DEBUG loadWorkKeywords] Response status:', res.status);
-            
+
             if (!res.ok) {
                 const errorText = await res.text();
-                console.error('[DEBUG loadWorkKeywords] API error:', res.status, errorText.substring(0, 200));
+                console.error('[loadWorkKeywords] API error:', res.status, errorText.substring(0, 200));
                 workKeywords = [];
             } else {
                 const data = await res.json();
-                console.log('[DEBUG loadWorkKeywords] API response:', Array.isArray(data) ? `${data.length} items` : data);
                 workKeywords = Array.isArray(data) ? data : [];
             }
         } catch (error) {
-            console.error('[DEBUG loadWorkKeywords] Fetch error:', error.message);
+            console.error('[loadWorkKeywords] Fetch error:', error.message);
             workKeywords = [];
         }
 

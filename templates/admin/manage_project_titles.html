@@ -50,6 +50,13 @@
         <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
     </div>
+    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
+      <div id="projectTitlesFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 project titles</div>
+      <div class="pager">
+        <button id="projectTitlesPrev">&lt;</button>
+        <button id="projectTitlesNext">&gt;</button>
+      </div>
+    </div>
   </article>
 </section>
 
@@ -110,6 +117,12 @@ let titles = [];
 let degrees = [];
 let majors = [];
 let projectTitleModal = null;
+const PAGE_SIZE = 25;
+let currentPage = 1;
+let totalItems = 0;
+let allTitles = [];
+let projectTitleSelectedDegreeId = '';
+let projectTitleDegreeWatcher = null;
 
 function showToast(message) {
   if (window.AdminUI?.showToast) return window.AdminUI.showToast(message);
@@ -157,6 +170,9 @@ function setMajorOptions(selected = '') {
     const selectedAttr = String(m._id) === String(selected) ? 'selected' : '';
     return `<option value="${m._id}" ${selectedAttr}>${m.name}</option>`;
   }).join('');
+  // Ensure the major select is enabled after populating options
+  try { select.disabled = false; } catch (e) {}
+  
 }
 
 async function loadDegrees() {
@@ -175,7 +191,9 @@ async function loadMajorsByDegree(degreeId) {
 }
 
 async function syncMajorOptions(degreeId, selectedMajor = '') {
-  majors = degreeId ? await loadMajorsByDegree(degreeId) : [];
+  const resolvedDegreeId = degreeId || projectTitleSelectedDegreeId || '';
+  projectTitleSelectedDegreeId = resolvedDegreeId;
+  majors = resolvedDegreeId ? await loadMajorsByDegree(resolvedDegreeId) : [];
   setMajorOptions(selectedMajor);
 }
 
@@ -190,8 +208,17 @@ async function loadProjectTitles() {
 
   const res = await fetch(`/api/admin/project-titles${params.toString() ? `?${params.toString()}` : ''}`, { headers });
   titles = await res.json();
+  allTitles = Array.isArray(titles) ? titles : (titles.items || []);
+  totalItems = allTitles.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  currentPage = Math.min(currentPage, totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = allTitles.slice(start, start + PAGE_SIZE);
+  // populate a lightweight page-level index and render rows without embedding JSON
+  window.allItems = window.allItems || {};
+  pageItems.forEach(t => { if (t && t._id) window.allItems[t._id] = t; });
 
-  document.getElementById('rows').innerHTML = (titles || []).map((t) => `
+  document.getElementById('rows').innerHTML = pageItems.map((t) => `
     <tr>
       <td><input type="checkbox" class="row-checkbox" data-id="${t._id}" style="width:16px;height:16px;cursor:pointer;"></td>
       <td><strong>${t.title || '-'}</strong></td>
@@ -204,7 +231,7 @@ async function loadProjectTitles() {
       </td>
       <td>
         <div class="icon-actions">
-          <button class="toggle-action" onclick='openProjectTitleModal(${JSON.stringify(t)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+          <button class="toggle-action" data-item-id="${t._id}" title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
           <button class="danger-action" onclick='deleteProjectTitle("${t._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
         </div>
       </td>
@@ -214,6 +241,15 @@ async function loadProjectTitles() {
   if (window.lucide) lucide.createIcons();
   clearSelection();
   window.AdminUI?.staggerRows();
+  document.getElementById('projectTitlesFoot').textContent = totalItems ? `Showing ${start + 1}-${Math.min(start + pageItems.length, totalItems)} of ${totalItems} project titles` : 'Showing 0-0 of 0 project titles';
+  document.getElementById('projectTitlesPrev').disabled = currentPage <= 1;
+  document.getElementById('projectTitlesNext').disabled = currentPage >= totalPages;
+}
+
+function jumpToProjectTitlesPage(nextPage) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  currentPage = Math.max(1, Math.min(totalPages, nextPage));
+  loadProjectTitles();
 }
 
 function openProjectTitleModal(title = null) {
@@ -221,11 +257,15 @@ function openProjectTitleModal(title = null) {
   document.getElementById('projectTitleModalTitle').textContent = title ? 'Edit Project Title' : 'Add Project Title';
   document.getElementById('projectTitleName').value = title?.title || '';
   document.getElementById('projectTitleActive').value = String(title?.isActive !== false);
-  document.getElementById('projectTitleDegree').value = title?.degree?._id || '';
+  const inheritedDegreeId = title?.degree?._id || document.getElementById('filterDegree')?.value || projectTitleSelectedDegreeId || '';
+  projectTitleSelectedDegreeId = inheritedDegreeId;
+  document.getElementById('projectTitleDegree').value = inheritedDegreeId;
   projectTitleModal.show();
-  syncMajorOptions(title?.degree?._id || '', title?.major?._id || '').then(() => {
-    document.getElementById('projectTitleMajor').value = title?.major?._id || '';
-  });
+  window.setTimeout(() => {
+    syncMajorOptions(document.getElementById('projectTitleDegree').value || projectTitleSelectedDegreeId || '', title?.major?._id || '').then(() => {
+      document.getElementById('projectTitleMajor').value = title?.major?._id || '';
+    });
+  }, 0);
 }
 
 async function saveProjectTitle() {
@@ -253,6 +293,8 @@ async function saveProjectTitle() {
 
   showToast(id ? 'Project title updated' : 'Project title added');
   projectTitleModal.hide();
+  currentPage = 1;
+  projectTitleSelectedDegreeId = '';
   await loadProjectTitles();
 }
 
@@ -261,6 +303,7 @@ async function deleteProjectTitle(id) {
   const res = await fetch(`/api/admin/project-titles/${id}`, { method: 'DELETE', headers });
   if (res.ok) {
     showToast('Project title deleted');
+    currentPage = 1;
     await loadProjectTitles();
   }
 }
@@ -288,19 +331,41 @@ async function bulkDelete() {
 document.addEventListener('DOMContentLoaded', async () => {
   projectTitleModal = new bootstrap.Modal(document.getElementById('projectTitleModal'));
 
-  document.getElementById('filterSearch').addEventListener('input', loadProjectTitles);
   document.getElementById('filterDegree').addEventListener('change', async (e) => {
     const degreeId = e.target.value || '';
+    currentPage = 1;
     document.getElementById('filterMajor').value = '';
     majors = degreeId ? await loadMajorsByDegree(degreeId) : [];
     setMajorOptions('');
     await loadProjectTitles();
   });
-  document.getElementById('filterMajor').addEventListener('change', loadProjectTitles);
+  document.getElementById('filterMajor').addEventListener('change', () => { currentPage = 1; loadProjectTitles(); });
+  document.getElementById('filterSearch').addEventListener('input', () => { currentPage = 1; loadProjectTitles(); });
 
   document.getElementById('projectTitleDegree').addEventListener('change', async (e) => {
     const degreeId = e.target.value || '';
+    projectTitleSelectedDegreeId = degreeId;
     await syncMajorOptions(degreeId, '');
+  });
+  document.getElementById('projectTitleModal').addEventListener('shown.bs.modal', () => {
+    if (projectTitleDegreeWatcher) {
+      window.clearInterval(projectTitleDegreeWatcher);
+    }
+    let lastSeenDegreeId = document.getElementById('projectTitleDegree').value || '';
+    projectTitleDegreeWatcher = window.setInterval(() => {
+      const currentDegreeId = document.getElementById('projectTitleDegree').value || '';
+      if (currentDegreeId !== lastSeenDegreeId) {
+        lastSeenDegreeId = currentDegreeId;
+        projectTitleSelectedDegreeId = currentDegreeId;
+        syncMajorOptions(currentDegreeId, '');
+      }
+    }, 150);
+  });
+  document.getElementById('projectTitleModal').addEventListener('hidden.bs.modal', () => {
+    if (projectTitleDegreeWatcher) {
+      window.clearInterval(projectTitleDegreeWatcher);
+      projectTitleDegreeWatcher = null;
+    }
   });
 
   document.getElementById('selectAll').addEventListener('change', (e) => {
@@ -311,6 +376,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('rows').addEventListener('change', (e) => {
     if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
   });
+  // delegated click handler for edit buttons that reference items by id
+  document.getElementById('rows').addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.toggle-action');
+    if (!btn) return;
+    const id = btn.dataset.itemId;
+    const item = (window.allItems && window.allItems[id]) || null;
+    if (item) openProjectTitleModal(item);
+    else openProjectTitleModal();
+  });
+  document.getElementById('projectTitlesPrev').addEventListener('click', () => jumpToProjectTitlesPage(currentPage - 1));
+  document.getElementById('projectTitlesNext').addEventListener('click', () => jumpToProjectTitlesPage(currentPage + 1));
 
   await loadDegrees();
   await loadProjectTitles();

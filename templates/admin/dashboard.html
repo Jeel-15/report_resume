@@ -201,7 +201,10 @@
     let recentActivityCache = [];
     let dashboardAutoRefreshTimer = null;
     let activityTimeTickTimer = null;
+    let dashboardReportTotal = 0;
+    let dashboardSearchQuery = '';
     const DASHBOARD_PAGE_SIZE = 8;
+    const DASHBOARD_SAMPLE_SIZE = 200;
 
     const dashboardTableSearch = document.getElementById('dashboardTableSearch');
     const dashboardPrevPage = document.getElementById('dashboardPrevPage');
@@ -544,14 +547,13 @@
         });
     };
 
-    const renderRecentReports = (reports) => {
-        dashboardFilteredReports = reports;
-        const totalRows = reports.length;
-        const totalPages = Math.max(1, Math.ceil(totalRows / DASHBOARD_PAGE_SIZE));
+    const renderRecentReports = (rows, totalRows) => {
+        dashboardFilteredReports = rows;
+        dashboardReportTotal = totalRows || rows.length || 0;
+        const totalPages = Math.max(1, Math.ceil(dashboardReportTotal / DASHBOARD_PAGE_SIZE));
         dashboardCurrentPage = Math.min(dashboardCurrentPage, totalPages);
 
-        const start = (dashboardCurrentPage - 1) * DASHBOARD_PAGE_SIZE;
-        const rows = reports.slice(start, start + DASHBOARD_PAGE_SIZE);
+        const start = dashboardReportTotal ? (dashboardCurrentPage - 1) * DASHBOARD_PAGE_SIZE : 0;
         const tbody = document.getElementById('dashboardReportsBody');
 
         const firstNumber = Math.max(1, Math.min(dashboardCurrentPage - 1, totalPages - 2));
@@ -591,29 +593,32 @@
             `;
         }).join('');
 
-        document.getElementById('dashboardReportsFoot').textContent = `Showing ${start + 1}-${Math.min(start + rows.length, totalRows)} of ${totalRows.toLocaleString('en-IN')} reports`;
+        document.getElementById('dashboardReportsFoot').textContent = `Showing ${start + 1}-${Math.min(start + rows.length, dashboardReportTotal)} of ${dashboardReportTotal.toLocaleString('en-IN')} reports`;
         if (window.lucide) lucide.createIcons();
         window.AdminUI?.staggerRows();
     };
 
     const jumpToDashboardPage = (nextPage) => {
-        const totalPages = Math.max(1, Math.ceil(dashboardFilteredReports.length / DASHBOARD_PAGE_SIZE));
+        const totalPages = Math.max(1, Math.ceil(dashboardReportTotal / DASHBOARD_PAGE_SIZE));
         dashboardCurrentPage = Math.max(1, Math.min(totalPages, nextPage));
-        renderRecentReports(dashboardFilteredReports);
+        loadDashboardReports();
     };
 
     const applyDashboardTableSearch = () => {
-        const q = String(dashboardTableSearch?.value || '').trim().toLowerCase();
-        const rows = dashboardAllReports.filter((r) => {
-            if (!q) return true;
-            const userName = String(r.user?.name || '').toLowerCase();
-            const title = String(r.projectTitle || '').toLowerCase();
-            const uni = String(r.university?.name || r.user?.university?.name || '').toLowerCase();
-            const status = String(r.status || '').toLowerCase();
-            return userName.includes(q) || title.includes(q) || uni.includes(q) || status.includes(q);
-        });
+        dashboardSearchQuery = String(dashboardTableSearch?.value || '').trim();
         dashboardCurrentPage = 1;
-        renderRecentReports(rows);
+        loadDashboardReports();
+    };
+
+    const loadDashboardReports = async () => {
+        const params = new URLSearchParams();
+        if (dashboardSearchQuery) params.set('q', dashboardSearchQuery);
+        params.set('limit', DASHBOARD_PAGE_SIZE);
+        params.set('offset', (dashboardCurrentPage - 1) * DASHBOARD_PAGE_SIZE);
+        const data = await window.AdminUI.adminApiGet('/api/admin/reports?' + params.toString()) || { items: [], total: 0 };
+        const items = Array.isArray(data) ? data : (data.items || []);
+        const total = Array.isArray(data) ? items.length : (data.total || items.length);
+        renderRecentReports(items, total);
     };
 
     const updateMetrics = (stats, users, reports, payments) => {
@@ -694,15 +699,15 @@
         try {
             const [stats, users, reports, payments] = await Promise.all([
                 window.AdminUI.adminApiGet('/api/admin/stats'),
-                window.AdminUI.adminApiGet('/api/admin/users'),
-                window.AdminUI.adminApiGet('/api/admin/reports'),
-                window.AdminUI.adminApiGet('/api/admin/payments'),
+                window.AdminUI.adminApiGet(`/api/admin/users?limit=${DASHBOARD_SAMPLE_SIZE}&offset=0`),
+                window.AdminUI.adminApiGet(`/api/admin/reports?limit=${DASHBOARD_SAMPLE_SIZE}&offset=0`),
+                window.AdminUI.adminApiGet(`/api/admin/payments?limit=${DASHBOARD_SAMPLE_SIZE}&offset=0`),
             ]);
 
             const safeStats = stats || {};
-            const safeUsers = Array.isArray(users) ? users : [];
-            const safeReports = Array.isArray(reports) ? reports : [];
-            const safePayments = Array.isArray(payments) ? payments : [];
+            const safeUsers = Array.isArray(users) ? users : (users?.items || []);
+            const safeReports = Array.isArray(reports) ? reports : (reports?.items || []);
+            const safePayments = Array.isArray(payments) ? payments : (payments?.items || []);
             dashboardAllReports = safeReports;
 
             const renderByRange = (range) => {
@@ -723,7 +728,9 @@
             renderByRange('monthly');
             renderDistribution(safeUsers);
             renderActivity(safeUsers, safeReports);
-            applyDashboardTableSearch();
+            dashboardSearchQuery = String(dashboardTableSearch?.value || '').trim();
+            dashboardCurrentPage = 1;
+            await loadDashboardReports();
             if (window.lucide) lucide.createIcons();
 
             // Keep recent activity fresh without requiring a full page refresh.
@@ -731,10 +738,13 @@
                 dashboardAutoRefreshTimer = setInterval(async () => {
                     try {
                         const [latestUsers, latestReports] = await Promise.all([
-                            window.AdminUI.adminApiGet('/api/admin/users'),
-                            window.AdminUI.adminApiGet('/api/admin/reports'),
+                            window.AdminUI.adminApiGet(`/api/admin/users?limit=${DASHBOARD_SAMPLE_SIZE}&offset=0`),
+                            window.AdminUI.adminApiGet(`/api/admin/reports?limit=${DASHBOARD_SAMPLE_SIZE}&offset=0`),
                         ]);
-                        renderActivity(Array.isArray(latestUsers) ? latestUsers : [], Array.isArray(latestReports) ? latestReports : []);
+                        renderActivity(
+                            Array.isArray(latestUsers) ? latestUsers : (latestUsers?.items || []),
+                            Array.isArray(latestReports) ? latestReports : (latestReports?.items || [])
+                        );
                     } catch (e) {
                         console.error('activity refresh failed', e);
                     }

@@ -91,6 +91,7 @@
     let allReports = [];
     let filteredReports = [];
     let reportsCurrentPage = 1;
+    let totalReports = 0;
     const REPORTS_PAGE_SIZE = 10;
     const ENTITY_ENDPOINT = 'reports';
 
@@ -168,13 +169,13 @@
         return 'status-draft';
     };
 
-    const renderReports = (rows) => {
+    const renderReports = (rows, total) => {
         filteredReports = rows;
-        const totalRows = rows.length;
-        const totalPages = Math.max(1, Math.ceil(totalRows / REPORTS_PAGE_SIZE));
+        totalReports = total || 0;
+        const totalPages = Math.max(1, Math.ceil(totalReports / REPORTS_PAGE_SIZE));
         reportsCurrentPage = Math.min(reportsCurrentPage, totalPages);
 
-        if (!totalRows) {
+        if (!rows.length) {
             reportBody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#94a3b8;">No reports found.</td></tr>';
             reportsFoot.textContent = 'Showing 0-0 of 0 reports';
             reportsLastPage.textContent = '1';
@@ -187,9 +188,9 @@
         }
 
         const start = (reportsCurrentPage - 1) * REPORTS_PAGE_SIZE;
-        const pageRows = rows.slice(start, start + REPORTS_PAGE_SIZE);
+        const pageRows = rows;
         const visibleStart = start + 1;
-        const visibleEnd = Math.min(start + pageRows.length, totalRows);
+        const visibleEnd = Math.min(start + pageRows.length, totalReports);
 
         const firstNumber = Math.max(1, Math.min(reportsCurrentPage - 1, totalPages - 2));
         const pageNumbers = [0, 1, 2].map((i) => Math.min(totalPages, firstNumber + i));
@@ -229,7 +230,7 @@
             `;
         }).join('');
 
-        reportsFoot.textContent = `Showing ${visibleStart}-${visibleEnd} of ${totalRows.toLocaleString('en-IN')} reports`;
+        reportsFoot.textContent = `Showing ${visibleStart}-${visibleEnd} of ${totalReports.toLocaleString('en-IN')} reports`;
         if (window.lucide) lucide.createIcons();
         bindDeleteActions();
         window.AdminUI?.staggerRows();
@@ -237,9 +238,9 @@
     };
 
     const jumpToReportsPage = (nextPage) => {
-        const totalPages = Math.max(1, Math.ceil(filteredReports.length / REPORTS_PAGE_SIZE));
+        const totalPages = Math.max(1, Math.ceil(totalReports / REPORTS_PAGE_SIZE));
         reportsCurrentPage = Math.max(1, Math.min(totalPages, nextPage));
-        renderReports(filteredReports);
+        loadReports();
     };
 
     const bindDeleteActions = () => {
@@ -264,39 +265,39 @@
     };
 
     const applyFilters = () => {
-        const q = reportSearch.value.trim().toLowerCase();
-        const uni = reportUniversityFilter.value;
-        const tpl = reportTemplateFilter.value;
-        const status = reportStatusFilter.value;
-        const from = reportFromDate.value ? new Date(reportFromDate.value) : null;
-        const to = reportToDate.value ? new Date(reportToDate.value + 'T23:59:59') : null;
-
-        const rows = allReports.filter((r) => {
-            const created = r.createdAt ? new Date(r.createdAt) : null;
-            const templateUsed = r.major?.name || r.degree?.name || '';
-            const matchesQ = !q || String(r.projectTitle || '').toLowerCase().includes(q) || String(r.user?.name || '').toLowerCase().includes(q);
-            const matchesUni = !uni || (r.university?.name || '') === uni;
-            const matchesTpl = !tpl || templateUsed === tpl;
-            const matchesStatus = !status || String(r.status || '').toLowerCase() === status;
-            const matchesFrom = !from || (created && created >= from);
-            const matchesTo = !to || (created && created <= to);
-            return matchesQ && matchesUni && matchesTpl && matchesStatus && matchesFrom && matchesTo;
-        });
-
+        // Filters are applied server-side; simply reload current page.
         reportsCurrentPage = 1;
-        renderReports(rows);
+        loadReports();
     };
 
     const loadReports = async () => {
-        allReports = await window.AdminUI.adminApiGet('/api/admin/reports') || [];
-        fillReportFilters(allReports);
-        applyFilters();
+        const params = new URLSearchParams();
+        params.set('limit', REPORTS_PAGE_SIZE);
+        params.set('offset', (reportsCurrentPage - 1) * REPORTS_PAGE_SIZE);
+        const from = reportFromDate.value;
+        const to = reportToDate.value;
+        const q = reportSearch.value.trim();
+        const uni = reportUniversityFilter.value;
+        const tpl = reportTemplateFilter.value;
+        const status = reportStatusFilter.value;
+        if (from) params.set('from', from);
+        if (to) params.set('to', to);
+        if (q) params.set('q', q);
+        if (uni) params.set('university', uni);
+        if (tpl) params.set('template', tpl);
+        if (status) params.set('status', status);
+
+        const data = await window.AdminUI.adminApiGet('/api/admin/reports?' + params.toString()) || { items: [] };
+        const items = data.items || [];
+        totalReports = data.total || 0;
+        fillReportFilters(items);
+        renderReports(items, totalReports);
     };
 
     [reportFromDate, reportToDate, reportUniversityFilter, reportTemplateFilter, reportStatusFilter].forEach((el) => {
         el.addEventListener('change', applyFilters);
     });
-    reportSearch.addEventListener('input', applyFilters);
+    reportSearch.addEventListener('input', () => { reportsCurrentPage = 1; loadReports(); });
 
     reportsPrevPage.addEventListener('click', () => jumpToReportsPage(reportsCurrentPage - 1));
     reportsNextPage.addEventListener('click', () => jumpToReportsPage(reportsCurrentPage + 1));

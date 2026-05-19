@@ -108,6 +108,13 @@
         <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
     </div>
+    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
+      <div id="departmentsFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 departments</div>
+      <div class="pager">
+        <button id="deptsPrev">&lt;</button>
+        <button id="deptsNext">&gt;</button>
+      </div>
+    </div>
   </article>
 </section>
 
@@ -308,7 +315,12 @@ async function loadDegrees() {
   setDegreeOptions('departmentDegree', currentDeptVal || '');
 }
 
-async function loadDepartments() {
+const DEPTS_PAGE_SIZE = 50;
+let deptsCurrentPage = 1;
+let totalDepts = 0;
+
+async function loadDepartments(page) {
+  deptsCurrentPage = page || deptsCurrentPage || 1;
   const params = new URLSearchParams();
   const degree = document.getElementById('filterDegree').value;
   const q = document.getElementById('filterSearch').value.trim();
@@ -316,6 +328,8 @@ async function loadDepartments() {
   if (degree) params.set('degree', degree);
   if (q) params.set('q', q);
   if (status) params.set('status', status);
+  params.set('limit', DEPTS_PAGE_SIZE);
+  params.set('offset', (deptsCurrentPage - 1) * DEPTS_PAGE_SIZE);
 
   const res = await fetch(`/api/admin/departments?${params.toString()}`, { headers });
   const data = await res.json();
@@ -324,7 +338,13 @@ async function loadDepartments() {
   const pendingData = await pendingRes.json();
   document.getElementById('pendingCount').textContent = String((pendingData || []).length);
 
-  document.getElementById('rows').innerHTML = (data || []).map(dep => `
+  const items = Array.isArray(data) ? data : (data.items || []);
+  totalDepts = data.total || (Array.isArray(data) ? data.length : items.length);
+
+  // Build a lightweight client-side index of items to avoid embedding raw JSON into onclick attributes
+  window.allItems = window.allItems || {};
+  (items || []).forEach(dep => { window.allItems[dep._id] = dep; });
+  document.getElementById('rows').innerHTML = (items || []).map(dep => `
     <tr>
       <td><input type="checkbox" class="row-checkbox" data-id="${dep._id}" style="width:16px;height:16px;cursor:pointer;"></td>
       <td><strong>${dep.name || '-'}</strong>${dep.rejectionReason ? `<br><small class="text-danger">Reason: ${dep.rejectionReason}</small>` : ''}</td>
@@ -334,16 +354,21 @@ async function loadDepartments() {
       <td>
         <div class="icon-actions">
           ${dep.approvalStatus === 'pending' ? `<button class="toggle-action" onclick="approveDepartment('${dep._id}')" title="Approve"><i data-lucide="check" style="width:16px;height:16px;"></i></button><button class="danger-action" onclick="openRejectModal('${dep._id}')" title="Reject"><i data-lucide="x" style="width:16px;height:16px;"></i></button>` : ''}
-          <button class="toggle-action" onclick='openEdit(${JSON.stringify(dep)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+          <button class="toggle-action edit-btn" data-item-id="${dep._id}" title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
           <button class="danger-action" onclick="deleteDepartment('${dep._id}')" title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
         </div>
       </td>
     </tr>
   `).join('') || '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No departments found</td></tr>';
-
   if (window.lucide) lucide.createIcons();
   window.AdminUI?.staggerRows();
   clearSelection();
+
+  const start = (deptsCurrentPage - 1) * DEPTS_PAGE_SIZE + 1;
+  const end = Math.min(deptsCurrentPage * DEPTS_PAGE_SIZE, totalDepts);
+  document.getElementById('departmentsFoot').textContent = `Showing ${start}-${end} of ${totalDepts}`;
+  document.getElementById('deptsPrev').disabled = deptsCurrentPage <= 1;
+  document.getElementById('deptsNext').disabled = end >= totalDepts;
 }
 
 function openCreate() {
@@ -505,8 +530,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Delegated listener for edit buttons: uses window.allItems to lookup the item safely
+  document.getElementById('rows').addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.edit-btn');
+    if (!btn) return;
+    const id = btn.dataset.itemId;
+    const item = (window.allItems && window.allItems[id]) || null;
+    if (item) openEdit(item);
+  });
+
   await loadDegrees();
   await loadDepartments();
+
+  // Pager controls
+  document.getElementById('deptsPrev').addEventListener('click', () => {
+    if (deptsCurrentPage > 1) { deptsCurrentPage -= 1; loadDepartments(); }
+  });
+  document.getElementById('deptsNext').addEventListener('click', () => { deptsCurrentPage += 1; loadDepartments(); });
 });
 </script>
 {% endblock %}

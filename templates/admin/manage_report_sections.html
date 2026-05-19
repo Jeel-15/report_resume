@@ -889,10 +889,7 @@ function setCollegeOptions(selected, universityId = '') {
 
   const isSelect2Active = !!(window.jQuery && window.jQuery.fn && window.jQuery.fn.select2 && window.jQuery(collegeSelect).hasClass('select2-hidden-accessible'));
 
-  console.log('[SET_COLLEGE_OPTIONS] universityId:', universityId);
-  console.log('[SET_COLLEGE_OPTIONS] select2 active:', isSelect2Active);
-  console.log('[SET_COLLEGE_OPTIONS] matched colleges:', normalized.length);
-  console.log('[SET_COLLEGE_OPTIONS] options html:', options);
+  
 
   if (isSelect2Active) {
     const $collegeSelect = window.jQuery(collegeSelect);
@@ -947,23 +944,14 @@ async function populateCollegeSelect(universityId = '') {
     if (hint) { hint.style.display = 'none'; hint.textContent = ''; }
   }
 
-  console.log('[POPULATE_COLLEGE] targetId:', targetId);
-  if (colleges.length) {
-    colleges.forEach((college, index) => {
-      console.log('[POPULATE_COLLEGE] college[' + index + ']:', {
-        _id: college?._id,
-        name: college?.name,
-        universityId: collegeUniversityId(college),
-      });
-    });
-  }
+  
 
   // Step 1: try in-memory filter first (fast path)
   const selected = targetId
     ? colleges.filter((c) => collegeUniversityId(c) === targetId)
     : colleges;
 
-  console.log('[POPULATE_COLLEGE] matched colleges:', selected.length);
+  
 
   if (selected.length > 0 || !targetId) {
     if (requestSeq !== collegeSelectRequestSeq) return;
@@ -977,7 +965,7 @@ async function populateCollegeSelect(universityId = '') {
   // the initial bulk load missed this university's colleges, or data was added later)
   const serverMatched = await fetchCollegesForUniversity(targetId);
   if (requestSeq !== collegeSelectRequestSeq) return;
-  console.log('[POPULATE_COLLEGE] server matched colleges:', serverMatched.length);
+  
   if (serverMatched.length) {
     // Merge any new colleges into the in-memory list so future filters work
     const knownIds = new Set(colleges.map((c) => String(c._id || '')));

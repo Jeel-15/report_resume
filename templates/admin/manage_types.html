@@ -120,6 +120,9 @@ function readSections() {
 async function load() {
   const res = await fetch('/api/internship-types/all', { headers: { 'Authorization': `Bearer ${token}` } });
   const data = await res.json();
+  // Build a lightweight index and render rows without embedding JSON
+  window.allItems = window.allItems || {};
+  (data || []).forEach(t => { if (t && t._id) window.allItems[t._id] = t; });
   document.getElementById('rows').innerHTML = (data || []).map(t => `
     <tr>
       <td>${t.icon || ''} ${t.name}</td>
@@ -127,7 +130,7 @@ async function load() {
       <td>${t.reportSections?.length || 0}</td>
       <td>${t.isActive ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
       <td>
-        <button class="btn btn-sm btn-outline-warning" onclick='openEdit(${JSON.stringify(t)})'>Edit</button>
+        <button class="btn btn-sm btn-outline-warning edit-btn" data-item-id="${t._id}">Edit</button>
         <button class="btn btn-sm btn-outline-danger" onclick='deleteType("${t._id}")'>Delete</button>
       </td>
     </tr>
@@ -204,6 +207,14 @@ async function deleteType(id) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   modal = new bootstrap.Modal(document.getElementById('typeModal'));
+  // delegated edit handler
+  document.getElementById('rows').addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.edit-btn');
+    if (!btn) return;
+    const id = btn.dataset.itemId;
+    const item = (window.allItems && window.allItems[id]) || null;
+    if (item) openEdit(item);
+  });
   await load();
 });
 </script>

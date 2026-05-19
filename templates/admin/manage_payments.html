@@ -23,6 +23,13 @@
         <tbody id="rows"><tr><td colspan="5" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
     </div>
+    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
+      <div id="paymentsFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 payments</div>
+      <div class="pager">
+        <button id="paymentsPrev">&lt;</button>
+        <button id="paymentsNext">&gt;</button>
+      </div>
+    </div>
   </article>
 </section>
 {% endblock %}
@@ -31,18 +38,26 @@
 <script>
 const token = localStorage.getItem('token');
 if (!token) location.href = '/login';
+const PAYMENTS_PAGE_SIZE = 20;
+let paymentsCurrentPage = 1;
+let totalPayments = 0;
 
-async function load() {
+async function load(page) {
   const from = document.getElementById('from').value;
   const to = document.getElementById('to').value;
+  paymentsCurrentPage = page || paymentsCurrentPage || 1;
   const qs = new URLSearchParams();
   if (from) qs.set('from', from);
   if (to) qs.set('to', to);
+  qs.set('limit', PAYMENTS_PAGE_SIZE);
+  qs.set('offset', (paymentsCurrentPage - 1) * PAYMENTS_PAGE_SIZE);
   const res = await fetch('/api/admin/payments' + (qs.toString() ? `?${qs.toString()}` : ''), {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   const data = await res.json();
-  document.getElementById('rows').innerHTML = (data || []).map(p => `
+  const items = data.items || [];
+  totalPayments = data.total || 0;
+  document.getElementById('rows').innerHTML = (items || []).map(p => `
     <tr>
       <td>${p.user?.name || '-'}<br><small>${p.user?.email || ''}</small></td>
       <td>${p.service?.name || p.service || '-'}</td>
@@ -51,10 +66,26 @@ async function load() {
       <td>${p.createdAt ? new Date(p.createdAt).toLocaleString() : '-'}</td>
     </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">No payments</td></tr>';
 
+  const start = (paymentsCurrentPage - 1) * PAYMENTS_PAGE_SIZE + 1;
+  const end = Math.min(paymentsCurrentPage * PAYMENTS_PAGE_SIZE, totalPayments);
+  document.getElementById('paymentsFoot').textContent = `Showing ${start}-${end} of ${totalPayments}`;
+
+  document.getElementById('paymentsPrev').disabled = paymentsCurrentPage <= 1;
+  document.getElementById('paymentsNext').disabled = end >= totalPayments;
+
   if (window.AdminUI) {
     window.AdminUI.staggerRows();
   }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('paymentsPrev').addEventListener('click', () => {
+    if (paymentsCurrentPage > 1) { paymentsCurrentPage -= 1; load(); }
+  });
+  document.getElementById('paymentsNext').addEventListener('click', () => {
+    paymentsCurrentPage += 1; load();
+  });
+});
 
 document.addEventListener('DOMContentLoaded', load);
 </script>

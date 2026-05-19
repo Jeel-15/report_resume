@@ -285,6 +285,9 @@ async function load() {
     return `<span class="status-badge ${map[s] || 'badge-approved'}">${s || 'approved'}</span>`;
   };
 
+  // Build a lightweight client-side index of items to avoid embedding raw JSON into onclick attributes
+  window.allItems = {};
+  (data || []).forEach(i => { window.allItems[i._id] = i; });
   document.getElementById('rows').innerHTML = (data || []).map(i => `
     <tr>
       <td><input type="checkbox" class="row-checkbox" data-id="${i._id}" style="width:16px;height:16px;cursor:pointer;"></td>
@@ -295,7 +298,7 @@ async function load() {
       <td>
         <div class="icon-actions">
           ${i.approvalStatus === 'pending' ? `<button class="toggle-action" onclick='approveIndustry("${i._id}")' title="Approve"><i data-lucide="check" style="width:16px;height:16px;"></i></button><button class="danger-action" onclick='openRejectModal("${i._id}")' title="Reject"><i data-lucide="x" style="width:16px;height:16px;"></i></button>` : ''}
-          <button class="toggle-action" onclick='openEditModal(${JSON.stringify(i)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+          <button class="toggle-action edit-btn" data-item-id="${i._id}" title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
           <button class="danger-action" onclick='del("${i._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
         </div>
       </td>
@@ -414,6 +417,15 @@ document.getElementById('selectAll').addEventListener('change', (e) => {
 
 document.getElementById('rows').addEventListener('change', (e) => {
   if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
+});
+
+// Delegated listener for edit buttons: uses window.allItems to lookup the item safely
+document.getElementById('rows').addEventListener('click', (e) => {
+  const btn = e.target.closest && e.target.closest('.edit-btn');
+  if (!btn) return;
+  const id = btn.dataset.itemId;
+  const item = (window.allItems && window.allItems[id]) || null;
+  if (item) openEditModal(item);
 });
 
 document.addEventListener('DOMContentLoaded', load);

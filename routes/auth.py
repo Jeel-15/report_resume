@@ -98,6 +98,92 @@ ReportGen Team
                 server.login(smtp_user, smtp_pass)
             server.send_message(msg)
 
+
+def _send_register_otp_email(recipient_email, otp, recipient_name='User'):
+    smtp_host = os.getenv('SMTP_HOST', '').strip()
+    smtp_port = int(str(os.getenv('SMTP_PORT', '587')).strip() or '587')
+    smtp_user = os.getenv('SMTP_USER', '').strip()
+    smtp_pass = os.getenv('SMTP_PASS', '').strip()
+    sender_email = os.getenv('SMTP_FROM_EMAIL', smtp_user).strip()
+    sender_name = (os.getenv('SMTP_FROM_NAME', 'ReportGen').strip() or 'ReportGen')
+    use_ssl = _env_bool('SMTP_USE_SSL', False)
+
+    if not smtp_host or not sender_email:
+        raise RuntimeError('SMTP is not configured. Missing SMTP_HOST or SMTP_FROM_EMAIL.')
+
+    msg = EmailMessage()
+    msg['Subject'] = f'Your ReportGen verification code: {otp}'
+    msg['From'] = f'{sender_name} <{sender_email}>'
+    msg['To'] = recipient_email
+    msg.set_content(
+        f"""
+Hi {recipient_name or 'User'},
+
+Your ReportGen email verification code is:
+
+  {otp}
+
+Enter this code on the registration page to activate your account.
+This code expires in 10 minutes.
+
+If you did not create a ReportGen account, please ignore this email.
+
+Thanks,
+ReportGen Team
+""".strip()
+    )
+
+    msg.add_alternative(f"""
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#0a0f1e;font-family:Inter,sans-serif;">
+  <div style="max-width:480px;margin:40px auto;padding:40px 32px;
+              background:#111827;border:1px solid rgba(255,255,255,0.1);
+              border-radius:16px;">
+    <div style="font-size:24px;font-weight:800;color:#f1f5f9;margin-bottom:8px;">
+      Verify your email
+    </div>
+    <div style="color:#94a3b8;font-size:15px;margin-bottom:28px;">
+      Hi {recipient_name or 'there'}, enter this code to activate your
+      ReportGen account.
+    </div>
+    <div style="background:#0f172a;border:1px solid rgba(99,102,241,0.35);
+                border-radius:14px;padding:24px;text-align:center;
+                margin-bottom:24px;">
+      <div style="font-size:40px;font-weight:800;letter-spacing:12px;
+                  color:#60a5fa;font-variant-numeric:tabular-nums;">
+        {otp}
+      </div>
+      <div style="color:#64748b;font-size:12px;margin-top:10px;">
+        Expires in 10 minutes
+      </div>
+    </div>
+    <div style="color:#64748b;font-size:13px;line-height:1.6;">
+      If you did not create a ReportGen account, you can safely
+      ignore this email.
+    </div>
+  </div>
+</body>
+</html>
+""", subtype='html')
+
+    if use_ssl:
+        with smtplib.SMTP_SSL(
+            smtp_host, smtp_port,
+            context=ssl.create_default_context(), timeout=20
+        ) as server:
+            if smtp_user and smtp_pass:
+                server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+    else:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+            server.ehlo()
+            server.starttls(context=ssl.create_default_context())
+            server.ehlo()
+            if smtp_user and smtp_pass:
+                server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+
 def generate_token(user_id, role):
     payload = {
         'userId': str(user_id),
@@ -191,15 +277,13 @@ def login():
         'user': user_dict
     }), 200
 
-@auth_bp.route('/register', methods=['POST'])
-def register():
-    data = request.get_json()
-    if not data:
-        return jsonify({'message': 'Request body is required'}), 400
-
-    name = str(data.get('name', '')).strip()
-    email = str(data.get('email', '')).strip().lower()
-    password = str(data.get('password', ''))
+@auth_bp.route('/register/send-otp', methods=['POST'])
+@limiter.limit("5 per 15 minutes")
+def register_send_otp():
+    data = request.get_json() or {}
+    name = str(data.get('name', '') or '').strip()
+    email = str(data.get('email', '') or '').strip().lower()
+    password = str(data.get('password', '') or '')
 
     if not name or not email or not password:
         return jsonify({'message': 'Name, email and password are required'}), 400
@@ -211,29 +295,156 @@ def register():
     if password_error:
         return jsonify({'message': password_error}), 400
 
-    if User.objects(email=email).first():
-        return jsonify({'message': 'Email already registered'}), 400
+    existing = User.objects(email=email).first()
+    if existing and getattr(existing, 'isActive', False):
+        return jsonify({'message': 'Email already registered. Please sign in.'}), 400
 
-    user = User(
-        name=name,
-        email=email,
-        role='student',
-        profileCompleted=False
-    )
-    user.set_password(password)
+    if existing and not getattr(existing, 'emailVerified', False):
+        user = existing
+        user.name = name
+        user.set_password(password)
+    else:
+        user = User(
+            name=name,
+            email=email,
+            role='student',
+            profileCompleted=False,
+            isActive=False,
+            emailVerified=False,
+        )
+        user.set_password(password)
+
+    otp = _generate_otp(6)
+    otp_hash = bcrypt.hashpw(otp.encode('utf-8'), bcrypt.gensalt(12)).decode('utf-8')
+    user.emailVerifyOtpHash = otp_hash
+    user.emailVerifyOtpExp = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+    user.emailVerifyAttempts = 0
+    user.updatedAt = datetime.datetime.utcnow()
+    user.save()
+
+    debug_otp = _env_bool('REGISTER_OTP_DEBUG', False)
+    if debug_otp:
+        return jsonify({'message': f'OTP sent to {email}', 'otp': otp}), 200
+
+    try:
+        _send_register_otp_email(email, otp, name)
+    except Exception as exc:
+        current_app.logger.exception('Failed to send registration OTP: %s', exc)
+        user.delete()
+        return jsonify({
+            'message': 'Could not send OTP email. Please check your email address and try again.'
+        }), 503
+
+    return jsonify({'message': f'OTP sent to {email}. Check your inbox.'}), 200
+
+
+@auth_bp.route('/register/verify-otp', methods=['POST'])
+@limiter.limit("10 per 15 minutes")
+def register_verify_otp():
+    data = request.get_json() or {}
+    email = str(data.get('email', '') or '').strip().lower()
+    otp = str(data.get('otp', '') or '').strip()
+
+    if not email or not _validate_email(email):
+        return jsonify({'message': 'Valid email is required'}), 400
+    if not re.fullmatch(r'\d{6}', otp):
+        return jsonify({'message': 'OTP must be a 6-digit number'}), 400
+
+    user = User.objects(email=email).first()
+    if not user:
+        return jsonify({'message': 'No pending registration found for this email'}), 400
+
+    if getattr(user, 'isActive', False) or getattr(user, 'emailVerified', False):
+        return jsonify({'message': 'Email already verified. Please sign in.'}), 400
+
+    otp_hash = getattr(user, 'emailVerifyOtpHash', None)
+    otp_exp = getattr(user, 'emailVerifyOtpExp', None)
+    attempts = int(getattr(user, 'emailVerifyAttempts', 0) or 0)
+
+    if not otp_hash or not otp_exp:
+        return jsonify({'message': 'No OTP found. Please restart registration.'}), 400
+
+    now = datetime.datetime.utcnow()
+    if now > otp_exp:
+        user.emailVerifyOtpHash = None
+        user.emailVerifyOtpExp = None
+        user.emailVerifyAttempts = 0
+        user.updatedAt = now
+        user.save()
+        return jsonify({'message': 'OTP expired. Please go back and request a new one.'}), 400
+
+    if attempts >= 5:
+        user.emailVerifyOtpHash = None
+        user.emailVerifyOtpExp = None
+        user.emailVerifyAttempts = 0
+        user.updatedAt = now
+        user.save()
+        return jsonify({'message': 'Too many incorrect attempts. Please restart registration.'}), 429
+
+    if not bcrypt.checkpw(otp.encode('utf-8'), otp_hash.encode('utf-8')):
+        user.emailVerifyAttempts = attempts + 1
+        user.updatedAt = now
+        user.save()
+        remaining = 4 - attempts
+        return jsonify({'message': f'Incorrect OTP. {remaining} attempt(s) remaining.'}), 400
+
+    user.emailVerified = True
+    user.isActive = True
+    user.emailVerifyOtpHash = None
+    user.emailVerifyOtpExp = None
+    user.emailVerifyAttempts = 0
+    user.updatedAt = now
     user.save()
 
     return jsonify({
-        'message': 'Account created successfully. Please sign in to continue.',
+        'message': 'Email verified! Your account is ready. Signing you in...',
         'user': {
             '_id': str(user.id),
             'email': user.email,
             'name': user.name,
             'role': user.role,
             'profileCompleted': user.profileCompleted,
-            'isActive': user.isActive,
         }
-    }), 201
+    }), 200
+
+
+@auth_bp.route('/register/resend-otp', methods=['POST'])
+@limiter.limit("3 per 15 minutes")
+def register_resend_otp():
+    data = request.get_json() or {}
+    email = str(data.get('email', '') or '').strip().lower()
+
+    if not email or not _validate_email(email):
+        return jsonify({'message': 'Valid email is required'}), 400
+
+    user = User.objects(email=email).first()
+    if not user or getattr(user, 'isActive', False) or getattr(user, 'emailVerified', False):
+        return jsonify({'message': 'No pending registration found.'}), 400
+
+    otp = _generate_otp(6)
+    otp_hash = bcrypt.hashpw(otp.encode('utf-8'), bcrypt.gensalt(12)).decode('utf-8')
+    user.emailVerifyOtpHash = otp_hash
+    user.emailVerifyOtpExp = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+    user.emailVerifyAttempts = 0
+    user.updatedAt = datetime.datetime.utcnow()
+    user.save()
+
+    debug_otp = _env_bool('REGISTER_OTP_DEBUG', False)
+    if debug_otp:
+        return jsonify({'message': 'New OTP sent.', 'otp': otp}), 200
+
+    try:
+        _send_register_otp_email(email, otp, user.name)
+    except Exception as exc:
+        current_app.logger.exception('Failed to resend registration OTP: %s', exc)
+        return jsonify({'message': 'Could not send OTP. Please try again.'}), 503
+
+    return jsonify({'message': 'New OTP sent. Check your inbox.'}), 200
+
+
+@auth_bp.route('/register', methods=['POST'])
+def register():
+    return register_send_otp()
 
 
 @auth_bp.route('/google-login', methods=['POST'])

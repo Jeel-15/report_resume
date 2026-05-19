@@ -48,12 +48,15 @@ let modal;
 async function load() {
   const res = await fetch('/api/admin/services', { headers });
   const data = await res.json();
+  // Build lightweight index and render rows without embedding raw JSON
+  window.allItems = window.allItems || {};
+  (data || []).forEach(s => { if (s && s._id) window.allItems[s._id] = s; });
   document.getElementById('rows').innerHTML = (data || []).map(s => `
     <tr>
       <td>${s.name}</td><td>${s.type}</td><td>${s.price}</td>
       <td>${s.isActive ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
       <td>
-        <button class="btn btn-sm btn-outline-warning" onclick='openEdit(${JSON.stringify(s)})'>Edit</button>
+        <button class="btn btn-sm btn-outline-warning edit-btn" data-item-id="${s._id}">Edit</button>
         <button class="btn btn-sm btn-outline-danger" onclick='del("${s._id}")'>Delete</button>
       </td>
     </tr>`).join('') || '<tr><td colspan="5" class="text-center">No data</td></tr>';
@@ -100,6 +103,14 @@ async function del(id) {
 
 document.addEventListener('DOMContentLoaded', () => {
   modal = new bootstrap.Modal(document.getElementById('serviceModal'));
+  // delegated edit handler
+  document.getElementById('rows').addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.edit-btn');
+    if (!btn) return;
+    const id = btn.dataset.itemId;
+    const item = (window.allItems && window.allItems[id]) || null;
+    if (item) openEdit(item);
+  });
   load();
 });
 </script>

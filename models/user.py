@@ -50,6 +50,12 @@ class User(Document):
     
     profileCompleted = BooleanField(default=False)
 
+    # Registration email verification OTP
+    emailVerified = BooleanField(default=False)
+    emailVerifyOtpHash = StringField(default=None, null=True)
+    emailVerifyOtpExp = DateTimeField(default=None, null=True)
+    emailVerifyAttempts = IntField(default=0)
+
     # Forgot-password OTP state
     resetOtpHash = StringField(default=None, null=True)
     resetOtpExpiresAt = DateTimeField(default=None, null=True)

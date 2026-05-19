@@ -481,10 +481,12 @@ def _ids_match(id_a, id_b):
 
 
 def _is_creator(doc, current_user):
-    return _ids_match(
-        _doc_id(getattr(doc, 'user', None)),
-        _doc_id(current_user)
+    creator = (
+        getattr(doc, 'user', None)
+        or getattr(doc, 'createdBy', None)
+        or getattr(doc, 'creator', None)
     )
+    return _ids_match(_doc_id(creator), _doc_id(current_user))
 
 
 def _normalized_approval_status(doc):

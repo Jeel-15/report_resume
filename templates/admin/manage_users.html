@@ -281,8 +281,12 @@
             </table>
         </div>
 
-        <div class="table-foot">
+        <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
             <span style="font-size:13px;color:#64748b;" id="usersFoot">Showing 0 students</span>
+            <div class="pager">
+                <button type="button" id="usersPrev">&lt;</button>
+                <button type="button" id="usersNext">&gt;</button>
+            </div>
         </div>
     </article>
 </section>
@@ -399,6 +403,9 @@ if (!token) location.href = '/login';
 const authH = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 const ENTITY_ENDPOINT = 'users';
 
+const USERS_PAGE_SIZE = 50;
+let usersCurrentPage = 1;
+let totalUsers = 0;
 let allUsers = [];
 let allMajors = [];
 let allDegrees = [];
@@ -718,13 +725,27 @@ async function loadUsers() {
     if (university) params.set('university', university);
     if (degree) params.set('degree', degree);
     if (report_status) params.set('report_status', report_status);
+    params.set('limit', USERS_PAGE_SIZE);
+    params.set('offset', (usersCurrentPage - 1) * USERS_PAGE_SIZE);
 
     try {
-        const users = await window.AdminUI.adminApiGet(`/api/admin/users?${params}`) || [];
+        const data = await window.AdminUI.adminApiGet(`/api/admin/users?${params}`) || { items: [] };
+        const users = data.items || [];
+        totalUsers = data.total || 0;
         allUsers = users;
 
-        // Update stats
-        document.getElementById('statTotal').textContent = users.length;
+        // Update stats via stats endpoint for accurate totals
+        try {
+            const stats = await window.AdminUI.adminApiGet('/api/admin/stats');
+            if (stats) {
+                document.getElementById('statTotal').textContent = stats.totalUsers || 0;
+                document.getElementById('statActive').textContent = stats.totalUsers || 0; // fallback
+            }
+        } catch (e) {
+            // ignore stats failure
+        }
+
+        document.getElementById('statTotal').textContent = totalUsers;
         document.getElementById('statActive').textContent = users.filter((u) => u.isActive).length;
         document.getElementById('statInactive').textContent = users.filter((u) => !u.isActive).length;
         document.getElementById('statGenerated').textContent = users.filter((u) => ['generated', 'edited', 'final'].includes(u.lastReportStatus)).length;
@@ -1177,6 +1198,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
     });
     
+    document.getElementById('usersPrev').addEventListener('click', () => {
+        if (usersCurrentPage > 1) { usersCurrentPage -= 1; loadUsers(); }
+    });
+    document.getElementById('usersNext').addEventListener('click', () => {
+        usersCurrentPage += 1; loadUsers();
+    });
+
     await loadUsers();
 });
 </script>

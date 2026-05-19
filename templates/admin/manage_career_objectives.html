@@ -46,6 +46,13 @@
         <tbody id="rows"><tr><td colspan="5" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
     </div>
+    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
+      <div id="objectivesFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 objectives</div>
+      <div class="pager">
+        <button id="objectivesPrev">&lt;</button>
+        <button id="objectivesNext">&gt;</button>
+      </div>
+    </div>
   </article>
 </section>
 
@@ -86,6 +93,10 @@ const token = localStorage.getItem('token');
 if (!token) location.href = '/login';
 const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 let objectiveModal = null;
+const PAGE_SIZE = 25;
+let currentPage = 1;
+let totalItems = 0;
+let allObjectives = [];
 
 function showToast(msg){ if(window.AdminUI?.showToast) return window.AdminUI.showToast(msg); alert(msg); }
 
@@ -109,14 +120,23 @@ async function loadObjectives(){
   const res = await fetch(`/api/admin/career-objectives${params.toString()?`?${params.toString()}`:''}`, { headers });
   const result = await res.json();
   const data = Array.isArray(result) ? result : (result.items || []);
-  const rowsHtml = (data||[]).map(d=>`<tr>
+  allObjectives = data || [];
+  totalItems = allObjectives.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  currentPage = Math.min(currentPage, totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = allObjectives.slice(start, start + PAGE_SIZE);
+  // index page items and render rows without embedding JSON
+  window.allObjectives = window.allObjectives || {};
+  pageItems.forEach(d => { if (d && d._id) window.allObjectives[d._id] = d; });
+  const rowsHtml = pageItems.map(d=>`<tr>
     <td>${d.text || '-'}</td>
     <td>${d.major? d.major.name : '<span style="color:#94a3b8;">All Majors</span>'}</td>
     <td>${d.approvalStatus || ''}</td>
     <td>${d.isActive? 'Yes':'No'}</td>
     <td>
       <div class="icon-actions">
-        <button onclick='openObjectiveModal(${JSON.stringify(d)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+        <button class="edit-objective-btn" data-id="${d._id}" title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
         <button onclick='deleteObjective("${d._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
       </div>
     </td>
@@ -126,6 +146,15 @@ async function loadObjectives(){
     document.querySelectorAll('#rows tr').forEach(row => row.classList.add('show'));
   });
   if(window.lucide) lucide.createIcons();
+  document.getElementById('objectivesFoot').textContent = totalItems ? `Showing ${start + 1}-${Math.min(start + pageItems.length, totalItems)} of ${totalItems} objectives` : 'Showing 0-0 of 0 objectives';
+  document.getElementById('objectivesPrev').disabled = currentPage <= 1;
+  document.getElementById('objectivesNext').disabled = currentPage >= totalPages;
+}
+
+function jumpToObjectivesPage(nextPage) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  currentPage = Math.max(1, Math.min(totalPages, nextPage));
+  loadObjectives();
 }
 
 function openObjectiveModal(obj=null){
@@ -145,18 +174,28 @@ async function saveObjective(){
   const method = id? 'PUT':'POST';
   const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
   if(!res.ok){ const d = await res.json().catch(()=>({})); showToast(d.message||'Save failed'); return; }
-  objectiveModal.hide(); showToast('Saved'); loadObjectives();
+  objectiveModal.hide(); showToast('Saved'); currentPage = 1; loadObjectives();
 }
 
-async function deleteObjective(id){ if(!confirm('Delete this objective?')) return; await fetch(`/api/admin/career-objectives/${id}`, { method: 'DELETE', headers }); loadObjectives(); }
+async function deleteObjective(id){ if(!confirm('Delete this objective?')) return; await fetch(`/api/admin/career-objectives/${id}`, { method: 'DELETE', headers }); currentPage = 1; loadObjectives(); }
 
 document.addEventListener('DOMContentLoaded', async ()=>{
   objectiveModal = new bootstrap.Modal(document.getElementById('objectiveModal'));
-  document.getElementById('filterSearch').addEventListener('input', loadObjectives);
-  document.getElementById('filterMajor').addEventListener('change', loadObjectives);
-  document.getElementById('filterStatus').addEventListener('change', loadObjectives);
+  document.getElementById('filterSearch').addEventListener('input', () => { currentPage = 1; loadObjectives(); });
+  document.getElementById('filterMajor').addEventListener('change', () => { currentPage = 1; loadObjectives(); });
+  document.getElementById('filterStatus').addEventListener('change', () => { currentPage = 1; loadObjectives(); });
+  document.getElementById('objectivesPrev').addEventListener('click', () => jumpToObjectivesPage(currentPage - 1));
+  document.getElementById('objectivesNext').addEventListener('click', () => jumpToObjectivesPage(currentPage + 1));
   await loadMajorsForDropdown();
   await loadObjectives();
+  // delegated edit handler
+  document.getElementById('rows').addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.edit-objective-btn');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const obj = (window.allObjectives && window.allObjectives[id]) || null;
+    openObjectiveModal(obj);
+  });
 });
 </script>
 {% endblock %}

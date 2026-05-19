@@ -1,4 +1,4 @@
-import os
+﻿import os
 import io
 import re
 import jwt
@@ -45,8 +45,13 @@ def admin_required(f):
 
 
 def _obj_id(doc):
-    if not doc:
+    if doc is None:
         return None
+    if isinstance(doc, dict):
+        dict_id = doc.get('_id') or doc.get('id')
+        return str(dict_id) if dict_id is not None else None
+    if isinstance(doc, (str, int)):
+        return str(doc)
     # Custom ORM documents may expose ID via `id` or raw `_data['id']`
     direct_id = getattr(doc, 'id', None)
     if direct_id is not None:
@@ -69,12 +74,40 @@ def _safe_ref(doc):
         return None
 
 
+def _field(doc, name, default=None):
+    if doc is None:
+        return default
+    if isinstance(doc, dict):
+        return doc.get(name, default)
+
+    try:
+        value = getattr(doc, name)
+    except Exception:
+        value = None
+    if value is not None:
+        return value
+
+    raw_data = getattr(doc, '_data', None) or {}
+    return raw_data.get(name, default)
+
+
+def _json_list_response(items, total=None, limit=None, offset=None):
+    if limit is None and offset is None:
+        return jsonify(items)
+    return jsonify({
+        'items': items,
+        'total': len(items) if total is None else total,
+        'limit': limit,
+        'offset': offset,
+    })
+
+
 def _serialize_degree(doc):
     policy = getattr(doc, 'policy', None)
     return {
         '_id': _obj_id(doc),
-        'name': doc.name,
-        'isActive': doc.isActive,
+        'name': _field(doc, 'name', ''),
+        'isActive': _field(doc, 'isActive', True),
         'policy': {
             'reportLanguage': policy.reportLanguage if policy else 'English',
             'reportContentType': policy.reportContentType if policy else 'Text',
@@ -84,26 +117,26 @@ def _serialize_degree(doc):
             'strictLanguageOnly': bool(policy.strictLanguageOnly) if policy else False,
             'imagesRequired': bool(policy.imagesRequired) if policy else False,
         },
-        'createdAt': doc.createdAt.isoformat() if doc.createdAt else None,
+        'createdAt': _field(doc, 'createdAt', None).isoformat() if _field(doc, 'createdAt', None) else None,
     }
 
 
 def _serialize_major(doc):
     return {
         '_id': _obj_id(doc),
-        'name': doc.name,
+        'name': _field(doc, 'name', ''),
         'degree': {
             '_id': _obj_id(doc.degree),
-            'name': doc.degree.name,
-        } if doc.degree else None,
+            'name': _field(doc.degree, 'name', None),
+        } if getattr(doc, 'degree', None) else None,
         'department': {
             '_id': _obj_id(doc.department),
-            'name': doc.department.name,
+            'name': _field(doc.department, 'name', None),
         } if getattr(doc, 'department', None) else None,
-        'reportLanguage': doc.reportLanguage,
-        'reportContentType': doc.reportContentType,
-        'aiPromptContext': doc.aiPromptContext,
-        'reportPolicy': doc.reportPolicy.to_mongo().to_dict() if doc.reportPolicy else {},
+        'reportLanguage': _field(doc, 'reportLanguage', 'English'),
+        'reportContentType': _field(doc, 'reportContentType', 'Text'),
+        'aiPromptContext': _field(doc, 'aiPromptContext', ''),
+        'reportPolicy': doc.reportPolicy.to_mongo().to_dict() if getattr(doc, 'reportPolicy', None) else {},
         'reportSections': [
             {
                 'key': s.key,
@@ -111,15 +144,15 @@ def _serialize_major(doc):
                 'description': s.description,
             } for s in (doc.reportSections or [])
         ],
-        'isActive': doc.isActive,
-        'createdAt': doc.createdAt.isoformat() if doc.createdAt else None,
+        'isActive': _field(doc, 'isActive', True),
+        'createdAt': _field(doc, 'createdAt', None).isoformat() if _field(doc, 'createdAt', None) else None,
     }
 
 
 def _serialize_project_title(doc):
     return {
         '_id': _obj_id(doc),
-        'title': doc.title,
+        'title': _field(doc, 'title', ''),
         'major': {
             '_id': _obj_id(doc.major),
             'name': getattr(doc.major, 'name', None),
@@ -128,13 +161,13 @@ def _serialize_project_title(doc):
             '_id': _obj_id(doc.degree),
             'name': getattr(doc.degree, 'name', None),
         } if getattr(doc, 'degree', None) else None,
-        'isActive': doc.isActive,
+        'isActive': _field(doc, 'isActive', True),
         'createdBy': {
             '_id': _obj_id(doc.createdBy),
             'name': getattr(doc.createdBy, 'name', None),
         } if getattr(doc, 'createdBy', None) else None,
-        'createdAt': doc.createdAt.isoformat() if doc.createdAt else None,
-        'updatedAt': doc.updatedAt.isoformat() if getattr(doc, 'updatedAt', None) else None,
+        'createdAt': _field(doc, 'createdAt', None).isoformat() if _field(doc, 'createdAt', None) else None,
+        'updatedAt': _field(doc, 'updatedAt', None).isoformat() if _field(doc, 'updatedAt', None) else None,
     }
 
 
@@ -312,73 +345,73 @@ def _normalize_major_payload(data):
 def _serialize_university(doc):
     return {
         '_id': _obj_id(doc),
-        'name': doc.name,
-        'villageCityName': doc.villageCityName,
-        'tehsil': doc.tehsil,
-        'district': doc.district,
-        'state': doc.state,
-        'website': doc.website,
-        'logo': getattr(doc, 'logo', ''),
+        'name': _field(doc, 'name', ''),
+        'villageCityName': _field(doc, 'villageCityName', ''),
+        'tehsil': _field(doc, 'tehsil', ''),
+        'district': _field(doc, 'district', ''),
+        'state': _field(doc, 'state', ''),
+        'website': _field(doc, 'website', ''),
+        'logo': _field(doc, 'logo', ''),
         'approvalStatus': getattr(doc, 'approvalStatus', 'approved'),
         'rejectionReason': getattr(doc, 'rejectionReason', ''),
         'createdBy': {
             '_id': _obj_id(doc.createdBy),
-            'name': doc.createdBy.name,
+            'name': _field(doc.createdBy, 'name', None),
         } if getattr(doc, 'createdBy', None) else None,
-        'isActive': doc.isActive,
-        'createdAt': doc.createdAt.isoformat() if doc.createdAt else None,
+        'isActive': _field(doc, 'isActive', True),
+        'createdAt': _field(doc, 'createdAt', None).isoformat() if _field(doc, 'createdAt', None) else None,
     }
 
 
 def _serialize_college(doc):
     return {
         '_id': _obj_id(doc),
-        'name': doc.name,
+        'name': _field(doc, 'name', ''),
         'university': {
             '_id': _obj_id(doc.university),
-            'name': doc.university.name,
+            'name': _field(doc.university, 'name', None),
         } if doc.university else None,
-        'villageCityName': doc.villageCityName,
-        'tehsil': doc.tehsil,
-        'district': doc.district,
-        'state': doc.state,
-        'logo': doc.logo,
-        'website': doc.website,
+        'villageCityName': _field(doc, 'villageCityName', ''),
+        'tehsil': _field(doc, 'tehsil', ''),
+        'district': _field(doc, 'district', ''),
+        'state': _field(doc, 'state', ''),
+        'logo': _field(doc, 'logo', ''),
+        'website': _field(doc, 'website', ''),
         'approvalStatus': getattr(doc, 'approvalStatus', 'approved'),
         'rejectionReason': getattr(doc, 'rejectionReason', ''),
         'createdBy': {
             '_id': _obj_id(doc.createdBy),
-            'name': doc.createdBy.name,
+            'name': _field(doc.createdBy, 'name', None),
         } if getattr(doc, 'createdBy', None) else None,
-        'isActive': doc.isActive,
-        'createdAt': doc.createdAt.isoformat() if doc.createdAt else None,
+        'isActive': _field(doc, 'isActive', True),
+        'createdAt': _field(doc, 'createdAt', None).isoformat() if _field(doc, 'createdAt', None) else None,
     }
 
 
 def _serialize_industry(doc):
     return {
         '_id': _obj_id(doc),
-        'name': doc.name,
-        'villageCityName': doc.villageCityName,
-        'tehsil': doc.tehsil,
-        'district': doc.district,
-        'state': doc.state,
-        'logo': doc.logo,
-        'website': doc.website,
-        'gstNumber': getattr(doc, 'gstNumber', ''),
-        'industryDetails': getattr(doc, 'industryDetails', ''),
-        'industryType': getattr(doc, 'industryType', ''),
-        'industrySubType': getattr(doc, 'industrySubType', ''),
-        'keyActivities': getattr(doc, 'keyActivities', []) or [],
+        'name': _field(doc, 'name', ''),
+        'villageCityName': _field(doc, 'villageCityName', ''),
+        'tehsil': _field(doc, 'tehsil', ''),
+        'district': _field(doc, 'district', ''),
+        'state': _field(doc, 'state', ''),
+        'logo': _field(doc, 'logo', ''),
+        'website': _field(doc, 'website', ''),
+        'gstNumber': _field(doc, 'gstNumber', ''),
+        'industryDetails': _field(doc, 'industryDetails', ''),
+        'industryType': _field(doc, 'industryType', ''),
+        'industrySubType': _field(doc, 'industrySubType', ''),
+        'keyActivities': _field(doc, 'keyActivities', []) or [],
         'approvalStatus': getattr(doc, 'approvalStatus', 'approved'),
         'rejectionReason': getattr(doc, 'rejectionReason', ''),
         'createdBy': {
             '_id': _obj_id(doc.createdBy),
-            'name': doc.createdBy.name,
+            'name': _field(doc.createdBy, 'name', None),
         } if getattr(doc, 'createdBy', None) else None,
-        'isVerified': doc.isVerified,
-        'isActive': doc.isActive,
-        'createdAt': doc.createdAt.isoformat() if doc.createdAt else None,
+        'isVerified': _field(doc, 'isVerified', False),
+        'isActive': _field(doc, 'isActive', True),
+        'createdAt': _field(doc, 'createdAt', None).isoformat() if _field(doc, 'createdAt', None) else None,
     }
 
 
@@ -386,24 +419,24 @@ def _serialize_user(doc, last_report=None):
     """Serialize a User document. Optionally include last report status."""
     return {
         '_id': _obj_id(doc),
-        'name': doc.name,
-        'email': doc.email,
-        'role': doc.role,
-        'isActive': doc.isActive,
-        'villageCityName': doc.villageCityName,
-        'state': doc.state,
-        'phone': doc.phone,
-        'whatsapp': getattr(doc, 'whatsapp', ''),
-        'tehsil': doc.tehsil,
-        'district': doc.district,
-        'gender': getattr(doc, 'gender', ''),
-        'semester': getattr(doc, 'semester', ''),
-        'department': getattr(doc, 'department', ''),
-        'rollNumber': getattr(doc, 'rollNumber', ''),
-        'enrollmentNumber': getattr(doc, 'enrollmentNumber', ''),
-        'supervisorName': doc.supervisorName,
-        'supervisorContact': doc.supervisorContact,
-        'profileCompleted': doc.profileCompleted,
+        'name': _field(doc, 'name', ''),
+        'email': _field(doc, 'email', ''),
+        'role': _field(doc, 'role', ''),
+        'isActive': _field(doc, 'isActive', True),
+        'villageCityName': _field(doc, 'villageCityName', ''),
+        'state': _field(doc, 'state', ''),
+        'phone': _field(doc, 'phone', ''),
+        'whatsapp': _field(doc, 'whatsapp', ''),
+        'tehsil': _field(doc, 'tehsil', ''),
+        'district': _field(doc, 'district', ''),
+        'gender': _field(doc, 'gender', ''),
+        'semester': _field(doc, 'semester', ''),
+        'department': _field(doc, 'department', ''),
+        'rollNumber': _field(doc, 'rollNumber', ''),
+        'enrollmentNumber': _field(doc, 'enrollmentNumber', ''),
+        'supervisorName': _field(doc, 'supervisorName', ''),
+        'supervisorContact': _field(doc, 'supervisorContact', ''),
+        'profileCompleted': _field(doc, 'profileCompleted', False),
         'college': _safe_ref(doc.college),
         'university': _safe_ref(doc.university),
         'industry': _safe_ref(doc.industry),
@@ -411,19 +444,19 @@ def _serialize_user(doc, last_report=None):
         'major': _safe_ref(doc.major),
         'lastReportStatus': last_report.status if last_report else 'none',
         'lastReportId': _obj_id(last_report) if last_report else None,
-        'createdAt': doc.createdAt.isoformat() if doc.createdAt else None,
+        'createdAt': _field(doc, 'createdAt', None).isoformat() if _field(doc, 'createdAt', None) else None,
     }
 
 
 def _serialize_service(doc):
     return {
         '_id': _obj_id(doc),
-        'name': doc.name,
-        'type': doc.type,
-        'price': doc.price,
-        'gstIncluded': doc.gstIncluded,
-        'gstPercent': doc.gstPercent,
-        'freeLimit': doc.freeLimit,
+        'name': _field(doc, 'name', ''),
+        'type': _field(doc, 'type', ''),
+        'price': _field(doc, 'price', 0),
+        'gstIncluded': _field(doc, 'gstIncluded', False),
+        'gstPercent': _field(doc, 'gstPercent', 0),
+        'freeLimit': _field(doc, 'freeLimit', 0),
         'degreePricing': [
             {
                 'degree': {
@@ -433,14 +466,14 @@ def _serialize_service(doc):
                 'price': item.price,
             } for item in (doc.degreePricing or [])
         ],
-        'description': doc.description,
-        'isActive': doc.isActive,
-        'createdAt': doc.createdAt.isoformat() if doc.createdAt else None,
+        'description': _field(doc, 'description', ''),
+        'isActive': _field(doc, 'isActive', True),
+        'createdAt': _field(doc, 'createdAt', None).isoformat() if _field(doc, 'createdAt', None) else None,
     }
 
 
 def _serialize_payment(doc):
-    service_val = doc.service
+    service_val = _field(doc, 'service', None)
     if hasattr(service_val, 'id'):
         service_data = {
             '_id': str(service_val.id),
@@ -454,20 +487,20 @@ def _serialize_payment(doc):
         '_id': _obj_id(doc),
         'user': {
             '_id': _obj_id(doc.user),
-            'name': getattr(doc.user, 'name', None),
-            'email': getattr(doc.user, 'email', None),
-            'villageCityName': getattr(doc.user, 'villageCityName', None),
-            'state': getattr(doc.user, 'state', None),
+            'name': _field(doc.user, 'name', None),
+            'email': _field(doc.user, 'email', None),
+            'villageCityName': _field(doc.user, 'villageCityName', None),
+            'state': _field(doc.user, 'state', None),
             'college': _safe_ref(getattr(doc.user, 'college', None)),
         } if doc.user else None,
         'service': service_data,
-        'amount': doc.amount,
-        'gstAmount': doc.gstAmount,
-        'totalAmount': doc.totalAmount,
-        'status': doc.status,
-        'paymentMethod': doc.paymentMethod,
-        'transactionId': doc.transactionId,
-        'createdAt': doc.createdAt.isoformat() if doc.createdAt else None,
+        'amount': _field(doc, 'amount', 0),
+        'gstAmount': _field(doc, 'gstAmount', 0),
+        'totalAmount': _field(doc, 'totalAmount', 0),
+        'status': _field(doc, 'status', ''),
+        'paymentMethod': _field(doc, 'paymentMethod', ''),
+        'transactionId': _field(doc, 'transactionId', ''),
+        'createdAt': _field(doc, 'createdAt', None).isoformat() if _field(doc, 'createdAt', None) else None,
     }
 
 
@@ -531,9 +564,24 @@ def get_stats(current_user):
 @admin_required
 def get_degrees(current_user):
     q = str(request.args.get('q', '')).strip()
-    filters = {'name__icontains': q} if q else {}
-    docs = Degree.objects(**filters).order_by('name')
-    return jsonify([_serialize_degree(d) for d in docs])
+    limit_raw = request.args.get('limit')
+    offset_raw = request.args.get('offset')
+    limit = int(limit_raw) if str(limit_raw or '').strip().isdigit() else None
+    offset = int(offset_raw) if str(offset_raw or '').strip().isdigit() else 0
+    pagination_requested = limit is not None or offset_raw is not None or limit_raw is not None
+
+    docs = list(Degree.objects().order_by('name'))
+    if q:
+        q_lower = q.lower()
+        docs = [d for d in docs if q_lower in str(getattr(d, 'name', '') or '').lower()]
+
+    total = len(docs)
+    if limit is not None:
+        docs = docs[offset:offset + limit]
+    elif pagination_requested and offset:
+        docs = docs[offset:]
+
+    return _json_list_response([_serialize_degree(d) for d in docs], total=total, limit=limit, offset=offset if pagination_requested else None)
 
 
 @admin_bp.route('/degrees', methods=['POST'])
@@ -709,13 +757,13 @@ def _serialize_department(doc):
         'name': getattr(doc, 'name', ''),
         'degree': {
             '_id': _obj_id(getattr(doc, 'degree', None)),
-            'name': getattr(getattr(doc, 'degree', None), 'name', None),
+            'name': _field(getattr(doc, 'degree', None), 'name', None),
         } if getattr(doc, 'degree', None) else None,
         'approvalStatus': getattr(doc, 'approvalStatus', 'approved'),
         'rejectionReason': getattr(doc, 'rejectionReason', ''),
         'createdBy': {
             '_id': _obj_id(getattr(doc, 'createdBy', None)),
-            'name': getattr(getattr(doc, 'createdBy', None), 'name', None),
+            'name': _field(getattr(doc, 'createdBy', None), 'name', None),
         } if getattr(doc, 'createdBy', None) else None,
         'isActive': getattr(doc, 'isActive', True),
         'createdAt': getattr(doc, 'createdAt', None).isoformat() if getattr(doc, 'createdAt', None) else None,
@@ -729,19 +777,49 @@ def get_departments(current_user):
     degree = str(request.args.get('degree', '')).strip()
     status_filter = str(request.args.get('status', '')).strip().lower()
     pending_only = str(request.args.get('pending', '')).strip().lower() in ('1', 'true', 'yes', 'on')
+    limit_raw = request.args.get('limit')
+    offset_raw = request.args.get('offset')
+    limit = int(limit_raw) if str(limit_raw or '').strip().isdigit() else None
+    offset = int(offset_raw) if str(offset_raw or '').strip().isdigit() else 0
+    pagination_requested = limit is not None or offset_raw is not None or limit_raw is not None
 
     docs = list(Department.objects().order_by('name'))
     if q:
         q_lower = q.lower()
         docs = [d for d in docs if q_lower in str(getattr(d, 'name', '') or '').lower()]
     if degree:
-        docs = [d for d in docs if str(_obj_id(getattr(d, 'degree', None))) == degree]
+        def _dept_degree_matches(d, target_degree_id):
+            raw = getattr(d, 'degree', None)
+            if raw is None:
+                return False
+
+            # Works when reference is resolved to a document.
+            extracted = _obj_id(raw)
+            if extracted is not None and str(extracted) == str(target_degree_id):
+                return True
+
+            # Fallback for adapters storing raw FK in payload.
+            raw_data = getattr(d, '_data', {}) or {}
+            raw_val = raw_data.get('degree')
+            if raw_val is not None and str(raw_val) == str(target_degree_id):
+                return True
+
+            # Last resort when reference is scalar (e.g., int FK).
+            return str(raw) == str(target_degree_id)
+
+        docs = [d for d in docs if _dept_degree_matches(d, degree)]
     if pending_only:
         status_filter = 'pending'
     if status_filter in ('approved', 'pending', 'rejected'):
         docs = [d for d in docs if getattr(d, 'approvalStatus', 'approved') == status_filter]
 
-    return jsonify([_serialize_department(d) for d in docs])
+    total = len(docs)
+    if limit is not None:
+        docs = docs[offset:offset + limit]
+    elif pagination_requested and offset:
+        docs = docs[offset:]
+
+    return _json_list_response([_serialize_department(d) for d in docs], total=total, limit=limit, offset=offset if pagination_requested else None)
 
 
 @admin_bp.route('/departments', methods=['POST'])
@@ -942,6 +1020,11 @@ def get_universities(current_user):
     q = str(request.args.get('q', '')).strip()
     status_filter = str(request.args.get('status', '')).strip().lower()
     pending_only = str(request.args.get('pending', '')).strip().lower() in ('1', 'true', 'yes', 'on')
+    limit_raw = request.args.get('limit')
+    offset_raw = request.args.get('offset')
+    limit = int(limit_raw) if str(limit_raw or '').strip().isdigit() else None
+    offset = int(offset_raw) if str(offset_raw or '').strip().isdigit() else 0
+    pagination_requested = limit is not None or offset_raw is not None or limit_raw is not None
 
     docs = list(University.objects().order_by('name'))
     if q:
@@ -951,7 +1034,12 @@ def get_universities(current_user):
         status_filter = 'pending'
     if status_filter in ('approved', 'pending', 'rejected'):
         docs = [doc for doc in docs if getattr(doc, 'approvalStatus', 'approved') == status_filter]
-    return jsonify([_serialize_university(d) for d in docs])
+    total = len(docs)
+    if limit is not None:
+        docs = docs[offset:offset + limit]
+    elif pagination_requested and offset:
+        docs = docs[offset:]
+    return _json_list_response([_serialize_university(d) for d in docs], total=total, limit=limit, offset=offset if pagination_requested else None)
 
 
 @admin_bp.route('/universities', methods=['POST'])
@@ -1062,18 +1150,30 @@ def get_colleges(current_user):
     university_id = str(request.args.get('university', '')).strip()
     status_filter = str(request.args.get('status', '')).strip().lower()
     pending_only = str(request.args.get('pending', '')).strip().lower() in ('1', 'true', 'yes', 'on')
+    limit_raw = request.args.get('limit')
+    offset_raw = request.args.get('offset')
+    limit = int(limit_raw) if str(limit_raw or '').strip().isdigit() else None
+    offset = int(offset_raw) if str(offset_raw or '').strip().isdigit() else 0
+    pagination_requested = limit is not None or offset_raw is not None or limit_raw is not None
 
     docs = list(College.objects().order_by('name'))
     if q:
         q_lower = q.lower()
-        docs = [doc for doc in docs if q_lower in str(doc.name or '').lower()]
+        docs = [doc for doc in docs if q_lower in str(getattr(doc, 'name', '') or '').lower()]
     if university_id:
-        docs = [doc for doc in docs if str(_obj_id(doc.university)) == university_id]
+        docs = [doc for doc in docs if str(_obj_id(getattr(doc, 'university', None))) == university_id]
     if pending_only:
         status_filter = 'pending'
     if status_filter in ('approved', 'pending', 'rejected'):
         docs = [doc for doc in docs if getattr(doc, 'approvalStatus', 'approved') == status_filter]
-    return jsonify([_serialize_college(d) for d in docs])
+
+    total = len(docs)
+    if limit is not None:
+        docs = docs[offset:offset + limit]
+    elif pagination_requested and offset:
+        docs = docs[offset:]
+
+    return _json_list_response([_serialize_college(d) for d in docs], total=total, limit=limit, offset=offset if pagination_requested else None)
 
 
 @admin_bp.route('/colleges', methods=['POST'])
@@ -1193,13 +1293,24 @@ def reject_college(current_user, college_id):
 def get_industries(current_user):
     q = str(request.args.get('q', '')).strip()
     status_filter = str(request.args.get('status', '')).strip()  # 'pending', 'approved', 'rejected'
+    limit_raw = request.args.get('limit')
+    offset_raw = request.args.get('offset')
+    limit = int(limit_raw) if str(limit_raw or '').strip().isdigit() else None
+    offset = int(offset_raw) if str(offset_raw or '').strip().isdigit() else 0
+    pagination_requested = limit is not None or offset_raw is not None or limit_raw is not None
     filters = {}
     if q:
         filters['name__icontains'] = q
     if status_filter in ('pending', 'approved', 'rejected'):
         filters['approvalStatus'] = status_filter
     docs = Industry.objects(**filters).order_by('name')
-    return jsonify([_serialize_industry(d) for d in docs])
+    total = docs.count()
+    docs = list(docs)
+    if limit is not None:
+        docs = docs[offset:offset + limit]
+    elif pagination_requested and offset:
+        docs = docs[offset:]
+    return _json_list_response([_serialize_industry(d) for d in docs], total=total, limit=limit, offset=offset if pagination_requested else None)
 
 
 @admin_bp.route('/industries', methods=['POST'])
@@ -1315,6 +1426,11 @@ def get_users(current_user):
     university_id = str(request.args.get('university', '')).strip()
     degree_id = str(request.args.get('degree', '')).strip()
     report_status_filter = str(request.args.get('report_status', '')).strip()
+    limit_raw = request.args.get('limit')
+    offset_raw = request.args.get('offset')
+    limit = int(limit_raw) if str(limit_raw or '').strip().isdigit() else None
+    offset = int(offset_raw) if str(offset_raw or '').strip().isdigit() else 0
+    pagination_requested = limit is not None or offset_raw is not None or limit_raw is not None
 
     users_qs = User.objects(role='student')
 
@@ -1367,12 +1483,20 @@ def get_users(current_user):
                 )
             ]
 
+    total = len(docs)
+    if limit is not None:
+        docs = docs[offset:offset + limit]
+    elif pagination_requested and offset:
+        docs = docs[offset:]
+
     result = []
     for u in docs:
         uid = _norm_id(u._data.get('id', getattr(u, 'id', None)))
         lr = last_report_map.get(uid)
         result.append(_serialize_user(u, last_report=lr))
 
+    if pagination_requested:
+        return jsonify({'items': result, 'total': total, 'limit': limit, 'offset': offset})
     return jsonify(result)
 
 
@@ -1681,7 +1805,7 @@ def email_report(current_user, report_id):
         return jsonify({'message': f'PDF generation failed: {str(e)}'}), 500
 
     file_name = f"{(r.projectTitle or 'Internship_Report').strip()}.pdf"
-    subject = f"Your Internship Report — {r.projectTitle or 'Report'}"
+    subject = f"Your Internship Report ΓÇö {r.projectTitle or 'Report'}"
     body = (
         f"Dear {student.name or 'Student'},\n\n"
         f"Your internship report '{r.projectTitle}' is attached.\n\n"
@@ -1801,7 +1925,7 @@ def update_user_email(current_user, user_id):
     target.updatedAt = datetime.utcnow()
     target.save()
 
-    print(f"[UPDATE_EMAIL] Admin '{current_user.email}' changed student email: '{old_email}' → '{new_email}'")
+    print(f"[UPDATE_EMAIL] Admin '{current_user.email}' changed student email: '{old_email}' ΓåÆ '{new_email}'")
 
     return jsonify({
         'message': 'Email updated successfully',
@@ -1881,6 +2005,11 @@ def delete_service(current_user, service_id):
 def get_payments(current_user):
     from_date = str(request.args.get('from', '')).strip()
     to_date = str(request.args.get('to', '')).strip()
+    limit_raw = request.args.get('limit')
+    offset_raw = request.args.get('offset')
+    limit = int(limit_raw) if str(limit_raw or '').strip().isdigit() else None
+    offset = int(offset_raw) if str(offset_raw or '').strip().isdigit() else 0
+    pagination_requested = limit is not None or offset_raw is not None or limit_raw is not None
 
     filters = {}
     created_filter = {}
@@ -1898,15 +2027,39 @@ def get_payments(current_user):
     if created_filter:
         filters['createdAt'] = created_filter
 
-    docs = Payment.objects(__raw__=filters).order_by('-createdAt')
-    return jsonify([_serialize_payment(p) for p in docs])
+    docs = list(Payment.objects(__raw__=filters).order_by('-createdAt'))
+    total = len(docs)
+    if limit is not None:
+        docs = docs[offset:offset + limit]
+    elif pagination_requested and offset:
+        docs = docs[offset:]
+    return _json_list_response([_serialize_payment(p) for p in docs], total=total, limit=limit, offset=offset if pagination_requested else None)
 
 
 @admin_bp.route('/reports', methods=['GET'])
 @admin_required
 def get_reports(current_user):
-    docs = Report.objects().order_by('-createdAt')
-    return jsonify([_serialize_report(r) for r in docs])
+    q = str(request.args.get('q', '')).strip().lower()
+    limit_raw = request.args.get('limit')
+    offset_raw = request.args.get('offset')
+    limit = int(limit_raw) if str(limit_raw or '').strip().isdigit() else None
+    offset = int(offset_raw) if str(offset_raw or '').strip().isdigit() else 0
+    pagination_requested = limit is not None or offset_raw is not None or limit_raw is not None
+
+    docs = list(Report.objects().order_by('-createdAt'))
+    if q:
+        docs = [doc for doc in docs if q in str(getattr(doc, 'projectTitle', '')).lower() or q in str(getattr(getattr(doc, 'user', None), 'name', '')).lower() or q in str(getattr(getattr(doc, 'user', None), 'email', '')).lower()]
+
+    total = len(docs)
+    if limit is not None:
+        docs = docs[offset:offset + limit]
+    elif pagination_requested and offset:
+        docs = docs[offset:]
+
+    items = [_serialize_report(r) for r in docs]
+    if pagination_requested:
+        return jsonify({'items': items, 'total': total, 'limit': limit, 'offset': offset})
+    return jsonify(items)
 
 
 @admin_bp.route('/reports/<report_id>', methods=['DELETE'])
@@ -1924,6 +2077,11 @@ def get_work_keywords(current_user):
     job_profile = str(request.args.get('jobProfile', '')).strip().lower()
     query = str(request.args.get('q', '')).strip().lower()
     major_id = str(request.args.get('major', '')).strip()
+    limit_raw = request.args.get('limit')
+    offset_raw = request.args.get('offset')
+    limit = int(limit_raw) if str(limit_raw or '').strip().isdigit() else None
+    offset = int(offset_raw) if str(offset_raw or '').strip().isdigit() else 0
+    pagination_requested = limit is not None or offset_raw is not None or limit_raw is not None
 
     print(f"[DEBUG ADMIN /work-keywords] Incoming params: industry_type='{industry_type}', job_profile='{job_profile}', query='{query}', major_id='{major_id}'", file=sys.stderr)
 
@@ -1949,8 +2107,18 @@ def get_work_keywords(current_user):
     # Filter by isActive
     docs = [doc for doc in docs if getattr(doc, 'isActive', True)]
     print(f"[DEBUG ADMIN /work-keywords] After isActive filter: {len(docs)}", file=sys.stderr)
-    
-    return jsonify([_serialize_work_keyword(doc) for doc in docs])
+
+    total = len(docs)
+    if limit is not None:
+        docs = docs[offset:offset + limit]
+    elif pagination_requested and offset:
+        docs = docs[offset:]
+
+    items = [_serialize_work_keyword(doc) for doc in docs]
+    if pagination_requested:
+        return jsonify({'items': items, 'total': total, 'limit': limit, 'offset': offset})
+
+    return jsonify(items)
 
 
 @admin_bp.route('/work-keywords', methods=['POST'])
@@ -2060,9 +2228,9 @@ def delete_work_keyword(current_user, keyword_id):
 
 
 
-# ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 # BULK DELETE ROUTES (Multi-select operations)
-# ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @admin_bp.route('/degrees/bulk-delete', methods=['POST'])
 @admin_required
@@ -2199,9 +2367,9 @@ def bulk_delete_work_keywords(current_user):
     return jsonify({'message': f'Deleted {deleted} work keywords', 'deleted': deleted})
 
 
-# ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 # CAREER OBJECTIVES (Resume Builder)
-# ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @admin_bp.route('/career-objectives', methods=['GET'])
 @admin_required
@@ -2290,9 +2458,9 @@ def bulk_delete_career_objectives(current_user):
     return jsonify({'message': f'Deleted {deleted}', 'deleted': deleted})
 
 
-# ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 # RESUME KEYWORDS (Resume Builder)
-# ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 @admin_bp.route('/resume-keywords', methods=['GET'])
 @admin_required

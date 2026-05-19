@@ -1302,6 +1302,25 @@
 
     const loadReports = async () => {
         try {
+            const profileRes = await fetch('/api/student/profile', {
+                credentials: 'include',
+                headers: authHeaders()
+            });
+            if (profileRes.ok) {
+                const freshProfile = await profileRes.json();
+                const cachedUserRaw = localStorage.getItem('user');
+                if (cachedUserRaw) {
+                    const cachedUser = JSON.parse(cachedUserRaw);
+                    cachedUser.profileCompleted = !!freshProfile.profileCompleted;
+                    cachedUser.name = freshProfile.name || cachedUser.name || '';
+                    cachedUser.role = freshProfile.role || cachedUser.role || '';
+                    localStorage.setItem('user', JSON.stringify(cachedUser));
+                }
+                user.profileCompleted = !!freshProfile.profileCompleted;
+                user.name = freshProfile.name || user.name || '';
+                user.role = freshProfile.role || user.role || '';
+            }
+
             if (user.role === 'student' && !user.profileCompleted) {
                 document.getElementById('profileReminder').innerHTML = `
                     <div class="alert alert-warning">

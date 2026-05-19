@@ -1446,6 +1446,32 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 {% endif %}
 <script>
+    (function checkRegistrationRedirect() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('registered') !== '1') return;
+
+        const message = params.get('message') || 'Account created! Please sign in.';
+        const email = params.get('email') || '';
+
+        const alertBox = document.getElementById('loginAlert');
+        if (alertBox) {
+            alertBox.textContent = '✓ ' + decodeURIComponent(message);
+            alertBox.style.borderColor = 'rgba(16,185,129,0.45)';
+            alertBox.style.background = 'rgba(16,185,129,0.12)';
+            alertBox.style.color = '#6ee7b7';
+            alertBox.classList.remove('d-none');
+        }
+
+        if (email) {
+            const emailInput = document.getElementById('email');
+            if (emailInput) {
+                emailInput.value = decodeURIComponent(email);
+            }
+        }
+
+        window.history.replaceState({}, document.title, '/login');
+    })();
+
     const syncExistingSession = async () => {
         const token = localStorage.getItem('token');
         if (!token) return;
@@ -1480,28 +1506,6 @@
     const alertBox = document.getElementById('loginAlert');
     const googleClientId = {{ google_client_id|tojson if google_client_id else 'null' }};
 
-    const searchParams = new URLSearchParams(window.location.search);
-    const registeredMessage = searchParams.get('message');
-    const registeredEmail = searchParams.get('email');
-    const isRegisteredFlow = searchParams.get('registered') === '1';
-
-    if (isRegisteredFlow) {
-        // Ensure first login after signup does not reuse a stale/expired token.
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-    }
-
-    if (registeredEmail) {
-        emailInput.value = registeredEmail;
-        canSubmit();
-    }
-
-    if (isRegisteredFlow) {
-        alertBox.textContent = registeredMessage || 'Account created successfully. Please sign in.';
-        alertBox.classList.remove('d-none');
-        alertBox.classList.add('alert-success');
-    }
-
     const markFieldError = (input, wrap, errorEl, show) => {
         if (show) {
             input.classList.add('input-invalid');
@@ -1521,9 +1525,7 @@
 
     const emailValid = () => /[^\s@]+@[^\s@]+\.[^\s@]+/.test(emailInput.value.trim());
 
-    if (!isRegisteredFlow) {
-        syncExistingSession();
-    }
+    syncExistingSession();
 
     document.getElementById('togglePassword').addEventListener('click', () => {
         const input = document.getElementById('password');

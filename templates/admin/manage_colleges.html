@@ -53,7 +53,7 @@
 
   <article class="panel-card panel-body table-card">
     <div style="margin-bottom:12px;">
-      <input id="searchInput" class="small-input" placeholder="Search colleges..." oninput="load()" style="max-width:320px;">
+      <input id="searchInput" class="small-input" placeholder="Search colleges..." oninput="collegesCurrentPage=1;load()" style="max-width:320px;">
     </div>
     <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
       <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
@@ -65,6 +65,13 @@
         <thead><tr><th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th><th>Name</th><th>University</th><th>State</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;margin-top:10px;">
+      <div id="collegesRange" style="color:#64748b;font-size:13px;">&nbsp;</div>
+      <div>
+        <button id="collegesPrev" class="btn-ghost" type="button">Prev</button>
+        <button id="collegesNext" class="btn-ghost" type="button">Next</button>
+      </div>
     </div>
   </article>
 </section>
@@ -157,6 +164,9 @@ if (!token) location.href = '/login';
 const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 let currentTab = 'all';
 const ENTITY_ENDPOINT = 'colleges';
+const COLLEGES_PAGE_SIZE = 50;
+let collegesCurrentPage = 1;
+let collegesTotal = 0;
 
 function updateBulkToolbar() {
   const checked = document.querySelectorAll('.row-checkbox:checked');
@@ -306,7 +316,7 @@ async function saveCollege() {
     }
     const modal = bootstrap.Modal.getInstance(document.getElementById('collegeModal'));
     if (modal) modal.hide();
-    load();
+    collegesCurrentPage = 1; load();
   } catch (err) {
     console.error(err);
     alert('Error saving college');
@@ -315,18 +325,27 @@ async function saveCollege() {
 
 async function load() {
   const q = document.getElementById('searchInput')?.value || '';
+  collegesCurrentPage = collegesCurrentPage || 1;
   const params = new URLSearchParams();
   if (q) params.set('q', q);
   if (currentTab !== 'all') params.set('status', currentTab);
+  params.set('limit', COLLEGES_PAGE_SIZE);
+  params.set('offset', (collegesCurrentPage - 1) * COLLEGES_PAGE_SIZE);
   const res = await fetch(`/api/admin/colleges?${params}`, { headers });
   const data = await res.json();
-  
-  const pendingRes = await fetch('/api/admin/colleges?status=pending', { headers });
+
+  const pendingRes = await fetch('/api/admin/colleges?status=pending&limit=1', { headers });
   const pendingData = pendingRes.ok ? await pendingRes.json() : [];
+  const pendingCount = Array.isArray(pendingData) ? (pendingData || []).length : (pendingData.total || 0);
   const countEl = document.getElementById('pendingCount');
-  if (countEl) countEl.textContent = (pendingData || []).length;
-  
-  document.getElementById('rows').innerHTML = (data || []).map(c => `
+  if (countEl) countEl.textContent = pendingCount;
+
+  // Build a lightweight client-side index of items to avoid embedding raw JSON into onclick attributes
+  const items = Array.isArray(data) ? data : (data.items || []);
+  collegesTotal = Array.isArray(data) ? (items || []).length : (data.total || 0);
+  window.allItems = {};
+  (items || []).forEach(c => { window.allItems[c._id] = c; });
+  document.getElementById('rows').innerHTML = (items || []).map(c => `
     <tr>
       <td><input type="checkbox" class="row-checkbox" data-id="${c._id}" style="width:16px;height:16px;cursor:pointer;"></td>
       <td><small class="text-muted">${c._id}</small><br><strong>${c.name}</strong>${c.rejectionReason ? `<br><small class="text-danger">Reason: ${c.rejectionReason}</small>` : ''}</td>
@@ -336,7 +355,7 @@ async function load() {
       <td>
         <div class="icon-actions">
           ${c.approvalStatus === 'pending' ? `<button class="toggle-action" onclick='approveCollege("${c._id}")' title="Approve"><i data-lucide="check" style="width:16px;height:16px;"></i></button><button class="danger-action" onclick='openRejectModal("${c._id}")' title="Reject"><i data-lucide="x" style="width:16px;height:16px;"></i></button>` : ''}
-          <button class="toggle-action" onclick='openEditModal(${JSON.stringify(c)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+          <button class="toggle-action edit-btn" data-item-id="${c._id}" title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
           <button class="danger-action" onclick='del("${c._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
         </div>
       </td>
@@ -344,6 +363,13 @@ async function load() {
   if (window.lucide) lucide.createIcons();
   window.AdminUI?.staggerRows();
   clearSelection();
+
+  // pager update
+  const start = collegesTotal ? (collegesCurrentPage - 1) * COLLEGES_PAGE_SIZE + 1 : 0;
+  const end = Math.min(collegesCurrentPage * COLLEGES_PAGE_SIZE, collegesTotal);
+  document.getElementById('collegesRange').textContent = collegesTotal ? `Showing ${start}-${end} of ${collegesTotal}` : '';
+  document.getElementById('collegesPrev').disabled = collegesCurrentPage <= 1;
+  document.getElementById('collegesNext').disabled = collegesCurrentPage >= Math.max(1, Math.ceil(collegesTotal / COLLEGES_PAGE_SIZE));
 }
 
 async function approveCollege(id) {
@@ -394,6 +420,18 @@ document.getElementById('rows').addEventListener('change', (e) => {
   if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
 });
 
-document.addEventListener('DOMContentLoaded', load);
+// Delegated listener for edit buttons: uses window.allItems to lookup the item safely
+document.getElementById('rows').addEventListener('click', (e) => {
+  const btn = e.target.closest && e.target.closest('.edit-btn');
+  if (!btn) return;
+  const id = btn.dataset.itemId;
+  const item = (window.allItems && window.allItems[id]) || null;
+  if (item) openEditModal(item);
+});
+
+document.getElementById('collegesPrev').addEventListener('click', () => { if (collegesCurrentPage > 1) { collegesCurrentPage -= 1; load(); } });
+document.getElementById('collegesNext').addEventListener('click', () => { const totalPages = Math.max(1, Math.ceil(collegesTotal / COLLEGES_PAGE_SIZE)); if (collegesCurrentPage < totalPages) { collegesCurrentPage += 1; load(); } });
+
+document.addEventListener('DOMContentLoaded', () => { load(); });
 </script>
 {% endblock %}

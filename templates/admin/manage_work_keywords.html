@@ -54,6 +54,13 @@
         <tbody id="rows"><tr><td colspan="8" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
     </div>
+    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
+      <div id="keywordsFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 keywords</div>
+      <div class="pager">
+        <button id="keywordsPrev">&lt;</button>
+        <button id="keywordsNext">&gt;</button>
+      </div>
+    </div>
   </article>
 </section>
 
@@ -110,6 +117,9 @@ if (!token) location.href = '/login';
 const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 let modal = null;
 const ENTITY_ENDPOINT = 'work-keywords';
+const PAGE_SIZE = 25;
+let currentPage = 1;
+let totalItems = 0;
 
 function updateBulkToolbar() {
   const checked = document.querySelectorAll('.row-checkbox:checked');
@@ -149,6 +159,7 @@ async function bulkDelete() {
     if (res.ok) {
       alert(`✓ ${data.deleted || ids.length} items deleted`);
       clearSelection();
+      currentPage = 1;
       loadKeywords();
     } else {
       alert(data.message || 'Bulk delete failed');
@@ -182,11 +193,20 @@ async function loadKeywords() {
   if (jobProfile) params.set('jobProfile', jobProfile);
   if (q) params.set('q', q);
   if (isActive) params.set('isActive', isActive);
+  params.set('limit', PAGE_SIZE);
+  params.set('offset', (currentPage - 1) * PAGE_SIZE);
 
   const res = await fetch(`/api/admin/work-keywords?${params.toString()}`, { headers });
   const data = await res.json();
+  const items = Array.isArray(data) ? data : (data.items || []);
+  totalItems = Array.isArray(data) ? data.length : (data.total || items.length);
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  currentPage = Math.min(currentPage, totalPages);
 
-  document.getElementById('rows').innerHTML = (data || []).map(item => `
+  // Populate a lightweight client-side index and avoid embedding raw JSON
+  window.allItems = window.allItems || {};
+  items.forEach(item => { window.allItems[item._id] = item; });
+  document.getElementById('rows').innerHTML = items.map(item => `
     <tr>
       <td><input type="checkbox" class="row-checkbox" data-id="${item._id}" style="width:16px;height:16px;cursor:pointer;"></td>
       <td>${item.keyword || '-'}</td>
@@ -197,7 +217,7 @@ async function loadKeywords() {
       <td>${item.isActive ? 'Yes' : 'No'}</td>
       <td>
         <div class="icon-actions">
-          <button class="toggle-action" onclick='openEdit(${JSON.stringify(item)})' title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+          <button class="toggle-action edit-btn" data-item-id="${item._id}" title="Edit"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
           <button class="danger-action" onclick="deleteKeyword('${item._id}')" title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
         </div>
       </td>
@@ -207,6 +227,17 @@ async function loadKeywords() {
   if (window.lucide) lucide.createIcons();
   window.AdminUI?.staggerRows();
   clearSelection();
+  const start = totalItems ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
+  const end = Math.min((currentPage - 1) * PAGE_SIZE + items.length, totalItems);
+  document.getElementById('keywordsFoot').textContent = totalItems ? `Showing ${start}-${end} of ${totalItems} keywords` : 'Showing 0-0 of 0 keywords';
+  document.getElementById('keywordsPrev').disabled = currentPage <= 1;
+  document.getElementById('keywordsNext').disabled = currentPage >= totalPages;
+}
+
+function jumpToKeywordsPage(nextPage) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  currentPage = Math.max(1, Math.min(totalPages, nextPage));
+  loadKeywords();
 }
 
 function openCreate() {
@@ -265,6 +296,7 @@ async function saveKeyword() {
 async function deleteKeyword(id) {
   if (!confirm('Delete this keyword?')) return;
   await fetch(`/api/admin/work-keywords/${id}`, { method: 'DELETE', headers });
+  currentPage = 1;
   loadKeywords();
 }
 
@@ -309,7 +341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   ['filterIndustryType', 'filterJobProfile', 'filterSearch', 'filterActive'].forEach(id => {
     const el = document.getElementById(id);
     const eventName = id === 'filterActive' ? 'change' : 'input';
-    el.addEventListener(eventName, loadKeywords);
+    el.addEventListener(eventName, () => { currentPage = 1; loadKeywords(); });
   });
   document.getElementById('selectAll').addEventListener('change', (e) => {
     document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
@@ -318,6 +350,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('rows').addEventListener('change', (e) => {
     if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
   });
+  // Delegated click handler for edit buttons
+  document.getElementById('rows').addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.edit-btn');
+    if (!btn) return;
+    const id = btn.dataset.itemId;
+    const item = (window.allItems && window.allItems[id]) || null;
+    if (item) openEdit(item);
+  });
+  document.getElementById('keywordsPrev').addEventListener('click', () => jumpToKeywordsPage(currentPage - 1));
+  document.getElementById('keywordsNext').addEventListener('click', () => jumpToKeywordsPage(currentPage + 1));
   await loadMajorsForDropdown();
   await loadKeywords();
 });

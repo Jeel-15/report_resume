@@ -70,6 +70,13 @@
         <tbody id="rows"><tr><td colspan="4" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
     </div>
+      <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;margin-top:10px;">
+        <div id="degreesRange" style="color:#64748b;font-size:13px;">&nbsp;</div>
+        <div>
+          <button id="degreesPrev" class="btn-ghost" type="button">Prev</button>
+          <button id="degreesNext" class="btn-ghost" type="button">Next</button>
+        </div>
+      </div>
   </article>
 </section>
 
@@ -139,6 +146,9 @@ const token = localStorage.getItem('token');
 if (!token) location.href = '/login';
 
 const ENTITY_ENDPOINT = 'degrees';
+const DEGREES_PAGE_SIZE = 50;
+let degreesCurrentPage = 1;
+let degreesTotal = 0;
 let degreesMap = {};
 let renameModal = null;
 let deleteModal = null;
@@ -289,15 +299,22 @@ function showInlineMsg(id, msg, isError = true) {
   el.style.display = msg ? '' : 'none';
 }
 
-async function load() {
-  const res = await api('/api/admin/degrees');
+async function load(page) {
+  degreesCurrentPage = page || degreesCurrentPage || 1;
+  const params = new URLSearchParams();
+  params.set('limit', DEGREES_PAGE_SIZE);
+  params.set('offset', (degreesCurrentPage - 1) * DEGREES_PAGE_SIZE);
+  const res = await api(`/api/admin/degrees?${params}`);
   const data = await res.json();
 
+  const items = Array.isArray(data) ? data : (data.items || []);
+  degreesTotal = Array.isArray(data) ? (items || []).length : (data.total || 0);
+
   degreesMap = {};
-  (data || []).forEach(d => { degreesMap[d._id] = d; });
+  (items || []).forEach(d => { degreesMap[d._id] = d; });
 
   const tbody = document.getElementById('rows');
-  tbody.innerHTML = (data || []).map(d => `
+  tbody.innerHTML = (items || []).map(d => `
     <tr>
       <td><input type="checkbox" class="row-checkbox" data-id="${d._id}" style="width:16px;height:16px;cursor:pointer;"></td>
       <td><strong>${d.name}</strong></td>
@@ -318,6 +335,13 @@ async function load() {
   if (window.lucide) lucide.createIcons();
   window.AdminUI?.staggerRows();
   clearSelection();
+
+  // update pager
+  const start = degreesTotal ? (degreesCurrentPage - 1) * DEGREES_PAGE_SIZE + 1 : 0;
+  const end = Math.min(degreesCurrentPage * DEGREES_PAGE_SIZE, degreesTotal);
+  document.getElementById('degreesRange').textContent = degreesTotal ? `Showing ${start}-${end} of ${degreesTotal}` : '';
+  document.getElementById('degreesPrev').disabled = degreesCurrentPage <= 1;
+  document.getElementById('degreesNext').disabled = degreesCurrentPage >= Math.max(1, Math.ceil(degreesTotal / DEGREES_PAGE_SIZE));
 }
 
 async function addDegree() {
@@ -342,7 +366,7 @@ async function addDegree() {
     input.value = '';
     showInlineMsg('addDegreeMsg', '✓ Degree added', false);
     setTimeout(() => showInlineMsg('addDegreeMsg', ''), 2000);
-    load();
+    degreesCurrentPage = 1; load();
   } else {
     const data = await res.json().catch(() => ({}));
     input.classList.add('is-invalid');
@@ -379,7 +403,7 @@ async function saveRename() {
   if (res.ok) {
     renameModal.hide();
     showToast('✓ Saved');
-    load();
+    degreesCurrentPage = 1; load();
   } else {
     const data = await res.json().catch(() => ({}));
     showInlineMsg('renameErrorMsg', data.message || 'Rename failed', true);
@@ -400,7 +424,7 @@ async function confirmDelete() {
   if (res.ok) {
     deleteModal.hide();
     showToast('✓ Saved');
-    load();
+    degreesCurrentPage = 1; load();
   } else {
     deleteModal.hide();
     showToast('Delete failed', true);
@@ -414,7 +438,7 @@ async function toggleDegreeActive(id, currentState) {
   });
   if (res.ok) {
     showToast('✓ Saved');
-    load();
+    degreesCurrentPage = 1; load();
   } else {
     showToast('Update failed', true);
   }
@@ -445,6 +469,9 @@ document.addEventListener('DOMContentLoaded', () => {
       updateBulkToolbar();
     }
   });
+
+  document.getElementById('degreesPrev').addEventListener('click', () => { if (degreesCurrentPage > 1) { degreesCurrentPage -= 1; load(); } });
+  document.getElementById('degreesNext').addEventListener('click', () => { const totalPages = Math.max(1, Math.ceil(degreesTotal / DEGREES_PAGE_SIZE)); if (degreesCurrentPage < totalPages) { degreesCurrentPage += 1; load(); } });
 
   load();
 });

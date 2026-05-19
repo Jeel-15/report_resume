@@ -1433,6 +1433,16 @@ body{font-family:var(--body);background:var(--ink);color:var(--white);overflow-x
 
 @media(max-width:900px){.trust-grid{grid-template-columns:1fr}}
 
+/* Stronger mobile overrides to ensure stacking and reduced padding */
+@media (max-width: 900px) {
+  #preview.trust-layer .trust-inner { padding-left: 12px; padding-right: 12px; }
+  #preview.trust-layer .trust-grid { grid-template-columns: 1fr !important; gap: 1rem; }
+  #preview.trust-layer .trust-card { padding: 1rem; border-radius: 12px; }
+  #preview.trust-layer .trust-card-icon { width:48px; height:48px; font-size:1.25rem; }
+  #preview.trust-layer .trust-card h3 { font-size:1rem; }
+  #preview.trust-layer .trust-card p { font-size:0.95rem; }
+}
+
 @media (prefers-reduced-motion: reduce){
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important}

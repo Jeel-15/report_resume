@@ -1359,6 +1359,14 @@
             try {
                 const freshProfile = await apiGet('/api/student/profile');
                 updateCompletionIndicator(freshProfile);
+
+                const userRaw = localStorage.getItem('user');
+                if (userRaw) {
+                    const user = JSON.parse(userRaw);
+                    user.profileCompleted = !!freshProfile.profileCompleted;
+                    user.name = freshProfile.name || user.name || '';
+                    localStorage.setItem('user', JSON.stringify(user));
+                }
             } catch (_) {}
 
             setTimeout(() => {

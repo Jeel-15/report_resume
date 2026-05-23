@@ -4,13 +4,7 @@
 
 {% block extra_css %}
 <style>
-    body {
-        background:
-            radial-gradient(1100px 420px at -10% -20%, rgba(59, 130, 246, 0.16), transparent 62%),
-            radial-gradient(980px 360px at 110% -16%, rgba(20, 184, 166, 0.20), transparent 58%),
-            linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
-        color: #0f172a;
-    }
+    /* Body background removed to inherit brand background from base.html */
 
     i.bi {
         display: inline-block;
@@ -18,11 +12,6 @@
     }
 
     .resumes-shell {
-        --dash-card: #ffffff;
-        --dash-card-soft: #f8fbff;
-        --dash-border: #d7e5ff;
-        --dash-text: #0f172a;
-        --dash-muted: #475569;
         max-width: 1440px;
         margin: 0 auto;
         animation: pageIn 0.25s ease;
@@ -45,7 +34,7 @@
         margin: 0;
         font-size: clamp(1.8rem, 2.6vw, 2.2rem);
         font-weight: 700;
-        color: var(--dash-text);
+        color: var(--txt);
     }
 
     .stat-cards-row {
@@ -82,13 +71,13 @@
         font-size: 1.55rem;
         font-weight: 700;
         line-height: 1;
-        color: #0f172a;
+        color: var(--txt);
     }
     .stat-card-label {
         margin-top: 4px;
         font-size: 12px;
         font-weight: 600;
-        color: #64748b;
+        color: var(--txt2);
         text-transform: uppercase;
         letter-spacing: 0.06em;
     }
@@ -104,10 +93,10 @@
         flex-wrap: wrap;
         margin-bottom: 16px;
         padding: 14px 16px;
-        border: 1px solid var(--dash-border);
+        border: 1px solid var(--brd);
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.92);
-        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.06);
+        background: var(--card);
+        box-shadow: var(--shadow-sm);
     }
 
     .toolbar-left,
@@ -129,7 +118,7 @@
         left: 14px;
         top: 50%;
         transform: translateY(-50%);
-        color: #94a3b8;
+        color: var(--txt3);
         pointer-events: none;
     }
 
@@ -138,17 +127,17 @@
         height: 42px;
         padding: 0 42px 0 38px;
         border-radius: 12px;
-        border: 1px solid #d7e5ff;
-        background: #fff;
-        color: #0f172a;
+        border: 1px solid var(--brd);
+        background: var(--card);
+        color: var(--txt);
         font-size: 14px;
         outline: none;
         box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.02);
     }
 
     .search-input:focus {
-        border-color: #60a5fa;
-        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
+        border-color: var(--acc2);
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.08);
     }
 
     .search-clear {
@@ -160,8 +149,8 @@
         height: 28px;
         border: none;
         border-radius: 999px;
-        background: #e2e8f0;
-        color: #475569;
+        background: var(--srf);
+        color: var(--txt2);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -170,20 +159,20 @@
     .sort-select {
         height: 42px;
         border-radius: 12px;
-        border: 1px solid #d7e5ff;
-        background: #fff;
+        border: 1px solid var(--brd);
+        background: var(--card);
         padding: 0 14px;
         font-size: 14px;
-        color: #0f172a;
+        color: var(--txt);
         outline: none;
     }
 
     .resumes-count {
         font-size: 12px;
         font-weight: 600;
-        color: #64748b;
-        background: #eff6ff;
-        border: 1px solid #dbeafe;
+        color: var(--txt2);
+        background: var(--srf);
+        border: 1px solid var(--brd);
         border-radius: 999px;
         padding: 7px 12px;
         white-space: nowrap;
@@ -195,11 +184,11 @@
     }
 
     .report-card {
-        border: 1px solid var(--dash-border);
-        border-left: 4px solid #93c5fd;
+        border: 1px solid var(--brd);
+        border-left: 4px solid var(--acc2);
         border-radius: 14px;
-        background: var(--dash-card);
-        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
+        background: var(--card);
+        box-shadow: var(--shadow-sm);
         padding: 14px 14px 14px 12px;
         display: grid;
         grid-template-columns: auto 1fr;
@@ -222,21 +211,21 @@
         justify-content: center;
         font-size: 1.05rem;
         font-weight: 700;
-        color: #1e3a8a;
-        background: #e8f1ff;
+        color: var(--txt);
+        background: var(--srf);
     }
 
-    .report-card.generated { border-left-color: #22c55e; }
-    .report-card.edited { border-left-color: #f59e0b; }
-    .report-card.generating { border-left-color: #60a5fa; }
-    .report-card.error { border-left-color: #ef4444; }
-    .report-card.draft { border-left-color: #cbd5e1; }
+    .report-card.generated { border-left-color: var(--grn); }
+    .report-card.edited { border-left-color: var(--amb); }
+    .report-card.generating { border-left-color: var(--acc2); }
+    .report-card.error { border-left-color: var(--red); }
+    .report-card.draft { border-left-color: var(--brd); }
 
-    .report-card.generated .report-icon { background: #dbeafe; color: #1e3a8a; }
-    .report-card.edited .report-icon { background: #e6f0ff; color: #1d4ed8; }
-    .report-card.generating .report-icon { background: #eef5ff; color: #2563eb; }
-    .report-card.error .report-icon { background: #e0ecff; color: #1d4ed8; }
-    .report-card.draft .report-icon { background: #f1f6ff; color: #3b82f6; }
+    .report-card.generated .report-icon { background: var(--srf); color: var(--txt); }
+    .report-card.edited .report-icon { background: var(--card); color: var(--acc2); }
+    .report-card.generating .report-icon { background: var(--srf); color: var(--acc2); }
+    .report-card.error .report-icon { background: var(--srf); color: var(--acc2); }
+    .report-card.draft .report-icon { background: var(--srf); color: var(--acc2); }
 
     .report-main {
         min-width: 0;
@@ -551,15 +540,20 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="/static/js/student-ui.js"></script>
 <script>
-const token = localStorage.getItem('token');
-const authHeaders = () => token ? { 'Authorization': `Bearer ${token}` } : {};
+const studentUI = window.studentUI || {};
+const token = studentUI.getToken ? studentUI.getToken() : localStorage.getItem('token');
+const authHeaders = () => studentUI.authHeaders ? studentUI.authHeaders() : (token ? { 'Authorization': `Bearer ${token}` } : {});
 const jsonHeaders = () => ({
-    ...authHeaders(),
-    'Content-Type': 'application/json'
+    ...(studentUI.jsonHeaders ? studentUI.jsonHeaders() : {
+        ...authHeaders(),
+        'Content-Type': 'application/json'
+    })
 });
 
 const apiUrl = (path, params = {}) => {
+    if (studentUI.apiUrl) return studentUI.apiUrl(path, params, true);
     const url = new URL(path, window.location.origin);
     if (token) {
         url.searchParams.set('token', token);
@@ -588,6 +582,10 @@ function escapeHtml(v) {
 }
 
 function showToast(msg, type = 'info') {
+    if (studentUI.showToast) {
+        studentUI.showToast(msg, type, 2800);
+        return;
+    }
     let el = document.getElementById('resumePageToast');
     if (!el) {
         el = document.createElement('div');

@@ -1,0 +1,496 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'assignments' %}
+
+{% block title %}Assignment Sessions - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Assignment Sessions</h1>
+      <p class="page-subtitle">Track assignment generation lifecycle across all students.</p>
+    </div>
+    <div class="page-header-actions">
+      <button class="btn-ghost" type="button" onclick="currentPage=1; loadAssignments();">
+        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="stats-chips">
+    <span class="stats-chip">Total: <b id="assignmentsTotal">0</b></span>
+    <span class="stats-chip">Generated: <b id="assignmentsGenerated">0</b></span>
+    <span class="stats-chip">Error: <b id="assignmentsError">0</b></span>
+  </div>
+
+  <div class="admin-filter-bar">
+    <input id="filterSearch" class="small-input search-input" placeholder="Search title, student, or university...">
+    <select id="filterType" class="small-input">
+      <option value="">All Types</option>
+      <option value="essay">Essay</option>
+      <option value="research_paper">Research Paper</option>
+      <option value="lab_report">Lab Report</option>
+      <option value="case_study">Case Study</option>
+      <option value="presentation_script">Presentation Script</option>
+    </select>
+    <select id="filterStatus" class="small-input">
+      <option value="">All Statuses</option>
+      <option value="draft">Draft</option>
+      <option value="generating">Generating</option>
+      <option value="generated">Generated</option>
+      <option value="error">Error</option>
+    </select>
+    <input id="filterFromDate" class="small-input" type="date" aria-label="From date">
+    <input id="filterToDate" class="small-input" type="date" aria-label="To date">
+  </div>
+
+  <article class="panel-card panel-body table-card">
+    <div class="bulk-toolbar" id="bulkToolbar">
+      <span class="bulk-toolbar-count" id="selectedCount">0 selected</span>
+      <button class="bulk-toolbar-delete" type="button" onclick="bulkDelete()">Delete Selected</button>
+      <button class="bulk-toolbar-clear" type="button" onclick="clearSelection()">Clear</button>
+    </div>
+
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Student</th>
+            <th>University</th>
+            <th>Words</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="assignmentsBody">
+          <tr><td colspan="9" style="text-align:center;color:#94a3b8;">Loading assignment sessions...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-foot-row">
+      <span id="assignmentsFoot">Showing 0 sessions</span>
+      <div class="pager-simple">
+        <button type="button" id="assignmentsPrevPage">‹ Prev</button>
+        <button type="button" id="assignmentsNextPage">Next ›</button>
+      </div>
+    </div>
+  </article>
+</section>
+
+<div class="modal fade" id="assignmentInspectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <style>
+        .modal .page-title { font-size: 1.5rem; margin: 0; color: #0f172a; }
+        .modal .page-subtitle { color: #6b7280; margin-top: 6px; font-size: 0.95rem; }
+        .modal .panel-card { background: #fff; border: 1px solid #eef2f6; border-radius: 12px; box-shadow: 0 8px 20px rgba(2,6,23,0.06); }
+        .modal .panel-card .text-muted.small { color: #94a3b8; font-size: 12px; }
+        .modal .panel-card .fw-semibold { font-weight: 700; color: #0f172a; font-size: 15px; }
+        .modal .status-badge { font-weight: 600; padding: 6px 10px; border-radius: 8px; font-size: 13px; display:inline-block; }
+        .modal .status-generated { background: #ecfdf5; color: #027a48; border: 1px solid #bbf7d0; }
+        .modal .status-processing { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; }
+        .modal .status-failed { background: #fff1f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .modal .modal-body { padding-top: 10px; }
+        .modal .page-title.modal-title { font-size: 1.6rem; }
+      </style>
+      <div class="modal-header" style="border-bottom:0;padding-bottom:0;">
+        <div style="flex:1;">
+          <h2 class="page-title modal-title" id="inspectTitle">Assignment Session</h2>
+          <div class="page-subtitle text-muted small" id="inspectMeta">&nbsp;</div>
+        </div>
+        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4"><div class="panel-card p-3"><div class="text-muted small">Student</div><div id="inspectStudent" class="fw-semibold"></div></div></div>
+          <div class="col-md-4"><div class="panel-card p-3"><div class="text-muted small">University</div><div id="inspectUniversity" class="fw-semibold"></div></div></div>
+          <div class="col-md-4"><div class="panel-card p-3"><div class="text-muted small">Status</div><div id="inspectStatus" class="fw-semibold"></div></div></div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4"><div class="panel-card p-3"><div class="text-muted small">Type</div><div id="inspectType" class="fw-semibold"></div></div></div>
+          <div class="col-md-4"><div class="panel-card p-3"><div class="text-muted small">Words</div><div id="inspectWords" class="fw-semibold"></div></div></div>
+          <div class="col-md-4"><div class="panel-card p-3"><div class="text-muted small">Target</div><div id="inspectTarget" class="fw-semibold"></div></div></div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4"><div class="panel-card p-3"><div class="text-muted small">Generations</div><div id="inspectGenerations" class="fw-semibold"></div></div></div>
+          <div class="col-md-4"><div class="panel-card p-3"><div class="text-muted small">Created</div><div id="inspectCreated" class="fw-semibold"></div></div></div>
+          <div class="col-md-4"><div class="panel-card p-3"><div class="text-muted small">Updated</div><div id="inspectUpdated" class="fw-semibold"></div></div></div>
+        </div>
+        <details class="panel-card p-3" style="background:#0b1220;color:#dbeafe;border:1px solid rgba(255,255,255,0.08);border-radius:12px;">
+          <summary style="cursor:pointer;font-weight:600;color:#fff;">Raw session data</summary>
+          <pre id="inspectJson" style="margin-top:12px;max-height:360px;overflow:auto;background:transparent;color:#dbeafe;border:0;padding:0;"></pre>
+        </details>
+        <article class="panel-card panel-body mt-3">
+          <div id="viewerLoading" style="padding:16px;color:#64748b;display:none;">Generating preview...</div>
+          <iframe id="pdfFrame" style="width:100%;height:52vh;border:1px solid #e2e8f0;border-radius:10px;display:none;"></iframe>
+        </article>
+      </div>
+      <div class="modal-footer">
+        <div style="flex:1;text-align:left;">
+          <button class="btn-ghost" type="button" id="copySessionIdBtn">Copy ID</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-outline-primary" type="button" id="previewPdfBtn">Preview PDF</button>
+          <button class="btn btn-primary" type="button" id="downloadPdfBtn">Download PDF</button>
+          <button class="btn-primary" type="button" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+(() => {
+  const token = localStorage.getItem('token');
+  if (!token) location.href = '/login';
+
+  const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const bodyEl = document.getElementById('assignmentsBody');
+  const searchEl = document.getElementById('filterSearch');
+  const typeEl = document.getElementById('filterType');
+  const statusEl = document.getElementById('filterStatus');
+  const fromEl = document.getElementById('filterFromDate');
+  const toEl = document.getElementById('filterToDate');
+  const totalEl = document.getElementById('assignmentsTotal');
+  const generatedEl = document.getElementById('assignmentsGenerated');
+  const errorEl = document.getElementById('assignmentsError');
+  const footEl = document.getElementById('assignmentsFoot');
+  const inspectModalEl = document.getElementById('assignmentInspectModal');
+  const inspectModal = window.bootstrap ? new bootstrap.Modal(inspectModalEl) : null;
+  const inspectTitle = document.getElementById('inspectTitle');
+  const inspectMeta = document.getElementById('inspectMeta');
+  const inspectStudent = document.getElementById('inspectStudent');
+  const inspectUniversity = document.getElementById('inspectUniversity');
+  const inspectStatus = document.getElementById('inspectStatus');
+  const inspectType = document.getElementById('inspectType');
+  const inspectWords = document.getElementById('inspectWords');
+  const inspectTarget = document.getElementById('inspectTarget');
+  const inspectGenerations = document.getElementById('inspectGenerations');
+  const inspectCreated = document.getElementById('inspectCreated');
+  const inspectUpdated = document.getElementById('inspectUpdated');
+  const inspectJson = document.getElementById('inspectJson');
+  const copySessionIdBtn = document.getElementById('copySessionIdBtn');
+
+  const PAGE_SIZE = 20;
+  let currentPage = 1;
+  let totalItems = 0;
+  let pager = null;
+  let currentRows = [];
+  let activeSession = null;
+  let updateBulkToolbar = function () {};
+  let clearSelection = function () {};
+  const previewPdfBtn = document.getElementById('previewPdfBtn');
+  const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+  const viewerLoading = document.getElementById('viewerLoading');
+  const pdfFrame = document.getElementById('pdfFrame');
+
+  const TYPE_LABELS = {
+    essay: 'Essay',
+    research_paper: 'Research Paper',
+    lab_report: 'Lab Report',
+    case_study: 'Case Study',
+    presentation_script: 'Presentation Script',
+  };
+
+  const STATUS_CLASS = (status) => {
+    const value = String(status || '').toLowerCase();
+    if (value === 'generated') return 'status-generated';
+    if (value === 'generating') return 'status-processing';
+    if (value === 'error') return 'status-failed';
+    return 'status-draft';
+  };
+
+  const escapeHtml = (value) => String(value == null ? '' : value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+  const setStats = (stats = {}) => {
+    totalEl.textContent = String(stats.total ?? totalItems ?? 0);
+    generatedEl.textContent = String(stats.generated ?? 0);
+    errorEl.textContent = String(stats.error ?? 0);
+  };
+
+  const updateFoot = (items) => {
+    const start = totalItems ? ((currentPage - 1) * PAGE_SIZE) + 1 : 0;
+    const end = Math.min((currentPage * PAGE_SIZE), totalItems || 0);
+    footEl.textContent = totalItems ? `Showing ${start}-${end} of ${totalItems.toLocaleString('en-IN')} sessions` : 'Showing 0 sessions';
+    if (pager) pager.setTotal(totalItems, currentPage);
+    document.getElementById('assignmentsPrevPage').disabled = currentPage <= 1;
+    document.getElementById('assignmentsNextPage').disabled = currentPage >= Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  };
+
+  const renderRows = (items) => {
+    currentRows = items || [];
+    if (!currentRows.length) {
+      bodyEl.innerHTML = '<tr class="show"><td colspan="9" style="text-align:center;color:#94a3b8;">No assignment sessions found.</td></tr>';
+      updateFoot([]);
+      return;
+    }
+
+    bodyEl.innerHTML = currentRows.map((item) => {
+      const title = escapeHtml(item.title || 'Untitled Assignment');
+      const student = escapeHtml(item.studentName || item.userName || item.user?.name || '-');
+      const university = escapeHtml(item.universityName || '-');
+      const typeLabel = escapeHtml(TYPE_LABELS[item.assignmentType] || item.assignmentType || '-');
+      const status = String(item.status || 'draft');
+      const words = Number(item.wordCountCurrent || 0).toLocaleString('en-IN');
+      const date = item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN') : '-';
+      return `
+        <tr class="show">
+          <td><input type="checkbox" class="row-checkbox" data-id="${escapeHtml(item._id || '')}" style="width:16px;height:16px;cursor:pointer;"></td>
+          <td>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <strong>${title}</strong>
+              <span style="color:#94a3b8;font-size:12px;">${escapeHtml(item._id || '')}</span>
+            </div>
+          </td>
+          <td>${typeLabel}</td>
+          <td>${student}</td>
+          <td>${university}</td>
+          <td>${words}</td>
+          <td><span class="status-badge ${STATUS_CLASS(status)}">${escapeHtml(status)}</span></td>
+          <td>${date}</td>
+          <td>
+            <div class="icon-actions">
+              <button type="button" class="inspect-session-btn" data-id="${escapeHtml(item._id || '')}"><i data-lucide="eye" style="width:16px;height:16px;"></i></button>
+              <button type="button" class="copy-session-btn" data-id="${escapeHtml(item._id || '')}"><i data-lucide="copy" style="width:16px;height:16px;"></i></button>
+              <button type="button" class="delete-session-btn" data-id="${escapeHtml(item._id || '')}"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+    updateFoot(currentRows);
+    bindActionButtons();
+  };
+
+  async function bulkDelete() {
+    const checked = document.querySelectorAll('.row-checkbox:checked');
+    if (!checked.length) return;
+    const ids = Array.from(checked).map((cb) => cb.dataset.id);
+    const confirmed = await window.showBulkConfirm(ids.length, 'assignment sessions');
+    if (!confirmed) return;
+    try {
+      const res = await fetch('/api/admin/assignments/bulk-delete', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Bulk delete failed');
+      window.showToast(`Deleted ${data.deleted || ids.length} assignment sessions`, 'success');
+      clearSelection();
+      await loadAssignments();
+    } catch (error) {
+      window.showToast(error.message || 'Bulk delete failed', 'error');
+    }
+  }
+
+  const bindActionButtons = () => {
+    document.querySelectorAll('.inspect-session-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const session = currentRows.find((item) => String(item._id) === String(btn.dataset.id));
+        if (!session || !inspectModal) return;
+        activeSession = session;
+        inspectTitle.textContent = session.title || 'Assignment Session';
+        inspectMeta.textContent = `${TYPE_LABELS[session.assignmentType] || session.assignmentType || 'Assignment'} · ${session.createdAt ? new Date(session.createdAt).toLocaleString('en-IN') : ''}`;
+        inspectStudent.textContent = session.studentName || session.userName || session.user?.name || '-';
+        inspectUniversity.textContent = session.universityName || '-';
+        inspectStatus.innerHTML = `<span class="status-badge ${STATUS_CLASS(session.status)}">${escapeHtml(session.status || 'draft')}</span>`;
+        inspectType.textContent = TYPE_LABELS[session.assignmentType] || session.assignmentType || '-';
+        inspectWords.textContent = `${Number(session.wordCountCurrent || 0).toLocaleString('en-IN')} words`;
+        inspectTarget.textContent = `${Number(session.wordCountTarget || 0).toLocaleString('en-IN')} words`;
+        inspectGenerations.textContent = String(session.generationCount || 0);
+        inspectCreated.textContent = session.createdAt ? new Date(session.createdAt).toLocaleString('en-IN') : '-';
+        inspectUpdated.textContent = session.updatedAt ? new Date(session.updatedAt).toLocaleString('en-IN') : '-';
+        inspectJson.textContent = JSON.stringify(session, null, 2);
+        inspectModal.show();
+      });
+    });
+
+    if (previewPdfBtn) {
+      previewPdfBtn.onclick = async () => {
+        if (!activeSession) return;
+        const id = activeSession._id;
+        viewerLoading.style.display = 'block';
+        pdfFrame.style.display = 'none';
+        try {
+          const res = await fetch(`/api/admin/assignments/${encodeURIComponent(id)}/pdf?preview=1`, { headers, method: 'GET' });
+          if (!res.ok) throw new Error('Preview not available');
+          const blob = await res.blob();
+          if (pdfFrame._blobUrl) URL.revokeObjectURL(pdfFrame._blobUrl);
+          pdfFrame._blobUrl = URL.createObjectURL(blob);
+          pdfFrame.src = pdfFrame._blobUrl;
+          pdfFrame.style.display = 'block';
+        } catch (err) {
+          window.showToast(err.message || 'Failed to load preview', 'error');
+        } finally {
+          viewerLoading.style.display = 'none';
+        }
+      };
+    }
+
+    if (downloadPdfBtn) {
+      downloadPdfBtn.onclick = () => {
+        if (!activeSession) return window.showToast('No session selected', 'error');
+        const token = localStorage.getItem('token');
+        const url = `/api/admin/assignments/${encodeURIComponent(activeSession._id)}/pdf${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+        window.open(url, '_blank');
+      };
+    }
+
+    document.querySelectorAll('.copy-session-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(btn.dataset.id || '');
+          window.showToast('Session ID copied', 'success');
+        } catch {
+          window.showToast('Copy failed', 'error');
+        }
+      });
+    });
+
+    document.querySelectorAll('.delete-session-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const confirmed = await window.showBulkConfirm(1, 'assignment session');
+        if (!confirmed) return;
+        try {
+          const res = await fetch(`/api/admin/assignments/${encodeURIComponent(btn.dataset.id)}`, {
+            method: 'DELETE',
+            headers,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.message || 'Delete failed');
+          window.showToast('Assignment session deleted', 'success');
+          await loadAssignments();
+        } catch (error) {
+          window.showToast(error.message || 'Delete failed', 'error');
+        }
+      });
+    });
+
+    if (copySessionIdBtn) {
+      copySessionIdBtn.onclick = async () => {
+        if (!activeSession) return;
+        try {
+          await navigator.clipboard.writeText(activeSession._id || '');
+          window.showToast('Session ID copied', 'success');
+        } catch {
+          window.showToast('Copy failed', 'error');
+        }
+      };
+    }
+  };
+
+  const buildQuery = () => {
+    const params = new URLSearchParams();
+    params.set('limit', PAGE_SIZE);
+    params.set('offset', (currentPage - 1) * PAGE_SIZE);
+    if (searchEl.value.trim()) params.set('q', searchEl.value.trim());
+    if (typeEl.value) params.set('type', typeEl.value);
+    if (statusEl.value) params.set('status', statusEl.value);
+    if (fromEl.value) params.set('from', fromEl.value);
+    if (toEl.value) params.set('to', toEl.value);
+    return params;
+  };
+
+  const fetchJson = async (url) => {
+    const response = await fetch(url, { headers });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || 'Request failed');
+    return data;
+  };
+
+  const loadStats = async () => {
+    try {
+      const stats = await fetchJson('/api/admin/assignments/stats');
+      setStats(stats || {});
+    } catch (error) {
+      // fall back to list-derived stats
+    }
+  };
+
+  const loadAssignments = async () => {
+    try {
+      const data = await fetchJson(`/api/admin/assignments?${buildQuery().toString()}`);
+      const items = Array.isArray(data) ? data : (data.items || []);
+      totalItems = Number(data.total ?? items.length ?? 0);
+      currentPage = Math.max(1, Math.min(currentPage, Math.max(1, Math.ceil(totalItems / PAGE_SIZE))));
+      renderRows(items);
+      setStats({
+        total: totalItems,
+        generated: items.filter((item) => String(item.status) === 'generated').length,
+        error: items.filter((item) => String(item.status) === 'error').length,
+      });
+    } catch (error) {
+      bodyEl.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#fca5a5;">${escapeHtml(error.message || 'Failed to load sessions')}</td></tr>`;
+      window.showToast(error.message || 'Failed to load sessions', 'error');
+    }
+  };
+
+  const applyFilters = () => {
+    currentPage = 1;
+    loadAssignments();
+  };
+
+  [searchEl, typeEl, statusEl, fromEl, toEl].forEach((el) => {
+    el.addEventListener('input', applyFilters);
+    el.addEventListener('change', applyFilters);
+  });
+
+  document.getElementById('assignmentsPrevPage').addEventListener('click', () => {
+    if (currentPage <= 1) return;
+    currentPage -= 1;
+    loadAssignments();
+  });
+
+  document.getElementById('assignmentsNextPage').addEventListener('click', () => {
+    const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+    if (currentPage >= totalPages) return;
+    currentPage += 1;
+    loadAssignments();
+  });
+
+  pager = window.initPager({
+    prevId: 'assignmentsPrevPage',
+    nextId: 'assignmentsNextPage',
+    footId: 'assignmentsFoot',
+    pageSize: PAGE_SIZE,
+    onPage: function (page) {
+      currentPage = page;
+      loadAssignments();
+    }
+  });
+
+  const bulkSelect = window.initBulkSelect({
+    selectAllId: 'selectAll',
+    tbodyId: 'assignmentsBody',
+    toolbarId: 'bulkToolbar',
+    countId: 'selectedCount',
+    checkboxClass: 'row-checkbox'
+  });
+  updateBulkToolbar = bulkSelect.updateToolbar;
+  clearSelection = bulkSelect.clearSelection;
+  window.bulkDelete = bulkDelete;
+  window.clearSelection = clearSelection;
+  updateBulkToolbar();
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadStats();
+    await loadAssignments();
+  });
+})();
+</script>
+{% endblock %}

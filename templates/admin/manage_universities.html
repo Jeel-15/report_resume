@@ -3,47 +3,35 @@
 
 {% block title %}Universities - ReportGen Admin{% endblock %}
 
-{% block page_css %}
-<style>
-  .status-badge {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-  .badge-approved { background: rgba(5,150,105,0.15); color: #10b981; }
-  .badge-pending  { background: rgba(245,158,11,0.15); color: #f59e0b; }
-  .badge-rejected { background: rgba(239,68,68,0.15);  color: #ef4444; }
-  .tab-btn { cursor: pointer; border-bottom: 2px solid transparent; padding: 6px 14px; font-weight: 600; background: none; border-top: none; border-left: none; border-right: none; color: #64748b; }
-  .tab-btn.active { border-bottom-color: #3b82f6; color: #1d4ed8; }
-</style>
-{% endblock %}
+{# migrated styles moved to static/css/admin-ui.css #}
 
 {% block admin_content %}
 <section class="dashboard-grid">
-  <div>
-    <h1 class="page-title">Manage Universities</h1>
-    <p class="page-subtitle">Create a clean university master list and merge duplicate records safely.</p>
-  </div>
-
-  <div class="stats-inline">
-    <span class="stats-chip">Total: <b id="uniCount">0</b></span>
-    <button class="btn-ghost" type="button" id="refreshBtn"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
-    <button class="btn-primary" type="button" id="addBtn"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add University</button>
-  </div>
-
-  <article class="panel-card panel-body" style="display:grid;gap:12px;">
-    <h3 style="margin:0;font-size:16px;color:#0f172a;">Status Filters</h3>
-    <div class="toolbar" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-      <button class="tab-btn active" id="tab-all" onclick="switchTab('all')">All</button>
-      <button class="tab-btn" id="tab-pending" onclick="switchTab('pending')">⏳ Pending Review <span id="pendingCount" class="badge bg-warning text-dark ms-1">0</span></button>
-      <button class="tab-btn" id="tab-approved" onclick="switchTab('approved')">✓ Approved</button>
-      <button class="tab-btn" id="tab-rejected" onclick="switchTab('rejected')">✗ Rejected</button>
-      <div style="flex:1 1 280px;"></div>
-      <input type="text" class="small-input" id="searchInput" placeholder="Search universities..." oninput="loadUniversities()" style="min-width:280px;max-width:360px;">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Universities</h1>
+      <p class="page-subtitle">Manage the university master list and approve student submissions.</p>
     </div>
-  </article>
+    <div class="page-header-actions">
+      <button class="btn-ghost" type="button" id="refreshBtn"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh</button>
+      <button class="btn-primary" type="button" id="addBtn"><i data-lucide="plus" style="width:14px;height:14px;"></i> Add University</button>
+    </div>
+  </div>
+
+  <div class="stats-chips">
+    <span class="stats-chip">Total: <b id="uniCount">0</b></span>
+    <span class="stats-chip chip-pending">Pending: <b id="uniPendingCount">0</b></span>
+  </div>
+
+  <div class="admin-filter-bar">
+    <button class="admin-tab-btn active" id="tab-all" onclick="switchTab('all')">All</button>
+    <button class="admin-tab-btn" id="tab-pending" onclick="switchTab('pending')">Pending <span class="pending-count-badge" id="pendingCount">0</span></button>
+    <button class="admin-tab-btn" id="tab-approved" onclick="switchTab('approved')">Approved</button>
+    <button class="admin-tab-btn" id="tab-rejected" onclick="switchTab('rejected')">Rejected</button>
+    <div class="admin-filter-bar-right">
+      <input type="text" class="small-input search-input" id="searchInput" placeholder="Search universities...">
+    </div>
+  </div>
 
   <article class="panel-card panel-body" style="display:grid;gap:12px;">
     <h3 style="margin:0;font-size:16px;color:#0f172a;">Merge Universities</h3>
@@ -55,10 +43,10 @@
   </article>
 
   <article class="panel-card panel-body table-card">
-    <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
-      <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
-      <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
-      <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+    <div class="bulk-toolbar" id="bulkToolbar">
+      <span class="bulk-toolbar-count" id="selectedCount">0 selected</span>
+      <button class="bulk-toolbar-delete" onclick="bulkDelete()">Delete Selected</button>
+      <button class="bulk-toolbar-clear" onclick="clearSelection()">Clear</button>
     </div>
     <div class="data-table-wrap">
       <table class="data-table stagger-table">
@@ -75,11 +63,11 @@
         <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading universities...</td></tr></tbody>
       </table>
     </div>
-    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
-      <div id="universitiesFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 universities</div>
-      <div class="pager">
-        <button id="unisPrev">&lt;</button>
-        <button id="unisNext">&gt;</button>
+    <div class="table-foot-row">
+      <span id="universitiesFoot">Showing 0 universities</span>
+      <div class="pager-simple">
+        <button id="unisPrev">‹ Prev</button>
+        <button id="unisNext">Next ›</button>
       </div>
     </div>
   </article>
@@ -173,38 +161,21 @@
   const UNIS_PAGE_SIZE = 25;
   let unisCurrentPage = 1;
   let totalUnis = 0;
+  let updateBulkToolbar = () => {};
+  let clearSelection = () => {};
+  let pager = null;
 
   // ─────────────────────────────────────────────────────────────
   // Multi-select logic
   // ─────────────────────────────────────────────────────────────
 
-  function updateBulkToolbar() {
-    const checked = document.querySelectorAll('.row-checkbox:checked');
-    const toolbar = document.getElementById('bulkToolbar');
-    const count = document.getElementById('selectedCount');
-    if (checked.length > 0) {
-      toolbar.style.display = 'flex';
-      count.textContent = `${checked.length} selected`;
-    } else {
-      toolbar.style.display = 'none';
-    }
-    const all = document.querySelectorAll('.row-checkbox');
-    document.getElementById('selectAll').checked = all.length > 0 && checked.length === all.length;
-    document.getElementById('selectAll').indeterminate = checked.length > 0 && checked.length < all.length;
-  }
-
-  function clearSelection() {
-    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
-    document.getElementById('selectAll').checked = false;
-    document.getElementById('selectAll').indeterminate = false;
-    document.getElementById('bulkToolbar').style.display = 'none';
-  }
+  // bulk helpers will be wired to shared AdminUI.initBulkSelect
 
   async function bulkDelete() {
     const checked = document.querySelectorAll('.row-checkbox:checked');
     if (!checked.length) return;
     const ids = Array.from(checked).map(cb => cb.dataset.id);
-    const confirmed = await showBulkConfirm(ids.length);
+    const confirmed = await (window.showBulkConfirm ? window.showBulkConfirm(ids.length, 'universities') : Promise.resolve(confirm(`Delete ${ids.length} items?`)));
     if (!confirmed) return;
     try {
       const headers = authHeaders();
@@ -215,30 +186,18 @@
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        alert(`✓ ${data.deleted || ids.length} items deleted`);
+        if (window.showToast) window.showToast(`Deleted ${data.deleted || ids.length} items`, 'success');
         clearSelection();
         loadUniversities();
       } else {
-        alert(data.message || 'Bulk delete failed');
+        if (window.showToast) window.showToast(data.message || 'Bulk delete failed', 'error');
       }
     } catch (err) {
-      alert('Network error during bulk delete');
+      if (window.showToast) window.showToast('Network error during bulk delete', 'error');
     }
   }
 
-  function showBulkConfirm(count) {
-    return new Promise((resolve) => {
-      const existing = document.getElementById('bulkConfirmBar');
-      if (existing) existing.remove();
-      const bar = document.createElement('div');
-      bar.id = 'bulkConfirmBar';
-      bar.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);`;
-      bar.innerHTML = `<span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span><button id="bulkConfirmYes" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button><button id="bulkConfirmNo" style="padding:6px 12px;background:transparent;border:1px solid #aaa;color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">Cancel</button>`;
-      document.body.appendChild(bar);
-      document.getElementById('bulkConfirmYes').onclick = () => { bar.remove(); resolve(true); };
-      document.getElementById('bulkConfirmNo').onclick = () => { bar.remove(); resolve(false); };
-    });
-  }
+  // global showBulkConfirm from admin-ui.js will be used where available
 
   const authHeaders = () => {
     const token = window.AdminUI.getAuthToken();
@@ -250,14 +209,14 @@
 
   const switchTab = (tab) => {
     currentTab = tab;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(`tab-${tab}`).classList.add('active');
     loadUniversities();
   };
 
   const statusBadge = (s) => {
     const map = { approved: 'badge-approved', pending: 'badge-pending', rejected: 'badge-rejected' };
-    return `<span class="status-badge ${map[s] || 'badge-approved'}">${s || 'approved'}</span>`;
+    return `<span class="approval-badge ${map[s] || 'badge-approved'}">${s || 'approved'}</span>`;
   };
 
   const renderRows = (items) => {
@@ -311,14 +270,17 @@
       const pendingData = Array.isArray(pendingRes) ? pendingRes : (pendingRes?.items || []);
       const countEl = document.getElementById('pendingCount');
       if (countEl) countEl.textContent = (pendingData || []).length;
+      const uniPendingCountEl = document.getElementById('uniPendingCount');
+      if (uniPendingCountEl) uniPendingCountEl.textContent = (pendingData || []).length;
 
       renderRows(items);
 
+      // update global counts and pager
+      totalUnis = totalUnis || 0;
       const start = (unisCurrentPage - 1) * UNIS_PAGE_SIZE + 1;
       const end = Math.min(unisCurrentPage * UNIS_PAGE_SIZE, totalUnis);
-      document.getElementById('universitiesFoot').textContent = `Showing ${start}-${end} of ${totalUnis}`;
-      document.getElementById('unisPrev').disabled = unisCurrentPage <= 1;
-      document.getElementById('unisNext').disabled = end >= totalUnis;
+      if (uniCount) uniCount.textContent = String(totalUnis || 0);
+      if (pager && typeof pager.setTotal === 'function') pager.setTotal(totalUnis, unisCurrentPage);
     } catch (err) {
       console.error(err);
       rowsEl.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ef4444;">Failed to load universities.</td></tr>';
@@ -385,7 +347,7 @@
 
       if (!response.ok) {
         const d = await response.json();
-        alert(d.message || 'Error saving university');
+        if (window.showToast) window.showToast(d.message || 'Error saving university', 'error');
         return;
       }
 
@@ -394,14 +356,11 @@
       await loadUniversities();
     } catch (err) {
       console.error(err);
-      alert('Error saving university');
+      if (window.showToast) window.showToast('Error saving university', 'error');
     }
   };
 
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('unisPrev')?.addEventListener('click', () => { if (unisCurrentPage > 1) { unisCurrentPage -= 1; loadUniversities(); } });
-    document.getElementById('unisNext')?.addEventListener('click', () => { unisCurrentPage += 1; loadUniversities(); });
-  });
+  
 
   const deleteUniversity = async (id) => {
     if (!confirm('Delete university?')) return;
@@ -444,7 +403,7 @@
     if (!headers) return;
     const res = await fetch(`/api/admin/universities/${id}/approve`, { method: 'PUT', headers });
     if (res.ok) { loadUniversities(); }
-    else { const d = await res.json(); alert(d.message || 'Error'); }
+    else { const d = await res.json(); if (window.showToast) window.showToast(d.message || 'Error', 'error'); }
   };
 
   const openRejectUniModal = (id) => {
@@ -463,7 +422,7 @@
     });
     bootstrap.Modal.getInstance(document.getElementById('rejectUniModal'))?.hide();
     if (res.ok) { loadUniversities(); }
-    else { const d = await res.json(); alert(d.message || 'Error'); }
+    else { const d = await res.json(); if (window.showToast) window.showToast(d.message || 'Error', 'error'); }
   };
 
   const bindRowActions = () => {
@@ -490,17 +449,19 @@
   mergeBtn.addEventListener('click', mergeUniversities);
   document.getElementById('addBtn').addEventListener('click', openAddModal);
   
-  // Setup selectAll checkbox
-  document.getElementById('selectAll').addEventListener('change', (e) => {
-    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
-    updateBulkToolbar();
-  });
+  // Initialization: wire shared bulk-select and pager, then load
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.initBulkSelect) {
+      const bulkSelect = window.initBulkSelect({ selectAllId: 'selectAll', tbodyId: 'rows', toolbarId: 'bulkToolbar', countId: 'selectedCount' });
+      updateBulkToolbar = bulkSelect.updateToolbar;
+      clearSelection = bulkSelect.clearSelection;
+    }
 
-  // Setup individual checkboxes via event delegation
-  rowsEl.addEventListener('change', (e) => {
-    if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
-  });
+    if (window.initPager) {
+      pager = window.initPager({ prevId: 'unisPrev', nextId: 'unisNext', footId: 'universitiesFoot', pageSize: UNIS_PAGE_SIZE, onPage: function (page) { unisCurrentPage = page; loadUniversities(); } });
+    }
 
-  document.addEventListener('DOMContentLoaded', loadUniversities);
+    loadUniversities();
+  });
 </script>
 {% endblock %}

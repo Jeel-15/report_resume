@@ -5,26 +5,31 @@
 
 {% block admin_content %}
 <section class="dashboard-grid">
-  <div>
-    <h1 class="page-title">Manage Major Policies</h1>
-    <p class="page-subtitle">Configure language and content policy for each major. Report sections are managed from the dedicated Report Sections page.</p>
-  </div>
-
-  <div class="stats-inline">
-    <button class="btn-primary" type="button" onclick="openAddMajorModal()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Major</button>
-    <a class="btn-outline-secondary" href="/admin/report-sections" title="Manage report sections hierarchy"><i data-lucide="file-stack" style="width:14px;height:14px;"></i>Report Sections</a>
-    <button class="btn-outline-secondary" type="button" onclick="downloadMajorsCsv()" title="Download majors data as CSV"><i data-lucide="download" style="width:14px;height:14px;"></i>Export CSV</button>
-    <a class="btn-outline-secondary" href="/admin/bulk-import" title="Bulk import degrees, departments and majors"><i data-lucide="upload" style="width:14px;height:14px;"></i>Bulk Import</a>
-  </div>
-
-  <article class="panel-card panel-body" style="display:grid;gap:12px;">
-    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filter by Degree</h3>
-    <div class="toolbar" style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) 140px;gap:12px;">
-      <select id="filterDegree" class="small-input"></select>
-      <select id="filterDepartment" class="small-input"></select>
-      <button class="btn-ghost" type="button" onclick="loadMajors()">Apply</button>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Majors</h1>
+      <p class="page-subtitle">Configure language and content policy for each major. Report sections are managed from the dedicated Report Sections page.</p>
     </div>
-  </article>
+    <div class="page-header-actions">
+      <button class="btn-ghost" type="button" onclick="loadMajors()">
+        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+      </button>
+      <button class="btn-primary" type="button" onclick="openAddMajorModal()">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Major
+      </button>
+    </div>
+  </div>
+
+  <div class="admin-filter-bar">
+    <select id="filterDegree" class="small-input"></select>
+    <select id="filterDepartment" class="small-input"></select>
+    <button class="btn-ghost" type="button" onclick="loadMajors()">Apply</button>
+    <div class="admin-filter-bar-right">
+      <a class="btn-outline-secondary" href="/admin/report-sections" title="Manage report sections hierarchy"><i data-lucide="file-stack" style="width:14px;height:14px;"></i> Report Sections</a>
+      <button class="btn-outline-secondary" type="button" onclick="downloadMajorsCsv()" title="Download majors data as CSV"><i data-lucide="download" style="width:14px;height:14px;"></i> Export CSV</button>
+      <a class="btn-outline-secondary" href="/admin/bulk-import" title="Bulk import degrees, departments and majors"><i data-lucide="upload" style="width:14px;height:14px;"></i> Bulk Import</a>
+    </div>
+  </div>
 
   <article class="panel-card panel-body table-card">
     <div class="data-table-wrap">

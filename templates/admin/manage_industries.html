@@ -3,61 +3,52 @@
 
 {% block title %}Industries - ReportGen Admin{% endblock %}
 
-{% block page_css %}
-<style>
-  .status-badge {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-  .badge-approved { background: rgba(5,150,105,0.15); color: #10b981; }
-  .badge-pending  { background: rgba(245,158,11,0.15); color: #f59e0b; }
-  .badge-rejected { background: rgba(239,68,68,0.15);  color: #ef4444; }
-  .tab-btn { cursor: pointer; border-bottom: 2px solid transparent; padding: 6px 14px; font-weight: 600; background: none; border-top: none; border-left: none; border-right: none; color: #64748b; }
-  .tab-btn.active { border-bottom-color: #3b82f6; color: #1d4ed8; }
-</style>
-{% endblock %}
+{# migrated styles moved to static/css/admin-ui.css #}
 
 {% block admin_content %}
 <section class="dashboard-grid">
-  <div>
-    <h1 class="page-title">Manage Industries</h1>
-    <p class="page-subtitle">Maintain student-submitted industries, approvals, and industry metadata.</p>
-  </div>
-
-  <div class="stats-inline">
-    <button class="btn-ghost" type="button" onclick="load()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
-    <button class="btn-primary" type="button" onclick="openAddModal()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Industry</button>
-  </div>
-
-  <article class="panel-card panel-body" style="display:grid;gap:12px;">
-    <h3 style="margin:0;font-size:16px;color:#0f172a;">Status Filters</h3>
-    <div class="toolbar" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-      <button class="tab-btn active" id="tab-all" onclick="switchTab('all')">All</button>
-      <button class="tab-btn" id="tab-pending" onclick="switchTab('pending')">⏳ Pending Review <span id="pendingCount" class="badge bg-warning text-dark ms-1">0</span></button>
-      <button class="tab-btn" id="tab-approved" onclick="switchTab('approved')">✓ Approved</button>
-      <button class="tab-btn" id="tab-rejected" onclick="switchTab('rejected')">✗ Rejected</button>
-      <div style="flex:1 1 280px;"></div>
-      <input type="text" class="small-input" id="searchInput" placeholder="Search industries..." oninput="load()" style="min-width:280px;max-width:360px;">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Industries</h1>
+      <p class="page-subtitle">Manage industry records and review student-submitted companies.</p>
     </div>
-  </article>
+    <div class="page-header-actions">
+      <button class="btn-ghost" type="button" onclick="load()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh</button>
+      <button class="btn-primary" type="button" onclick="openAddModal()"><i data-lucide="plus" style="width:14px;height:14px;"></i> Add Industry</button>
+    </div>
+  </div>
 
-  <article class="panel-card panel-body" style="display:grid;gap:12px;">
-    <h3 style="margin:0;font-size:16px;color:#0f172a;">Merge Duplicate Industries</h3>
-    <div class="toolbar" style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;">
+  <div class="stats-chips">
+    <span class="stats-chip">Total: <b id="industryCount">0</b></span>
+    <span class="stats-chip chip-pending">Pending: <b id="industryPendingCount">0</b></span>
+  </div>
+
+  <div class="admin-filter-bar">
+    <button class="admin-tab-btn active" id="tab-all" onclick="switchTab('all')">All</button>
+    <button class="admin-tab-btn" id="tab-pending" onclick="switchTab('pending')">Pending <span id="pendingCount" class="pending-count-badge">0</span></button>
+    <button class="admin-tab-btn" id="tab-approved" onclick="switchTab('approved')">✓ Approved</button>
+    <button class="admin-tab-btn" id="tab-rejected" onclick="switchTab('rejected')">✗ Rejected</button>
+    <div class="admin-filter-bar-right">
+      <input type="text" class="small-input search-input" id="searchInput" placeholder="Search industries..." oninput="load()">
+    </div>
+  </div>
+
+  <details style="margin-bottom:12px;">
+    <summary style="font-size:13px;font-weight:600;color:var(--rg-text);cursor:pointer;padding:8px 0;">
+      Merge Duplicate Industries
+    </summary>
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;margin-top:10px;padding:12px;background:var(--rg-card);border:1px solid var(--rg-line-soft);border-radius:10px;">
       <input id="sourceId" class="small-input" placeholder="Source ID (to remove)">
       <input id="targetId" class="small-input" placeholder="Target ID (to keep)">
-      <button class="btn-warning" type="button" onclick="merge()">Merge</button>
+      <button class="btn-danger" type="button" onclick="merge()">Merge</button>
     </div>
-  </article>
+  </details>
 
   <article class="panel-card panel-body table-card">
-    <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
-      <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
-      <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
-      <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+    <div class="bulk-toolbar" id="bulkToolbar">
+      <span class="bulk-toolbar-count" id="selectedCount">0 selected</span>
+      <button class="bulk-toolbar-delete" onclick="bulkDelete()">Delete Selected</button>
+      <button class="bulk-toolbar-clear" onclick="clearSelection()">Clear</button>
     </div>
     <div class="data-table-wrap">
       <table class="data-table stagger-table">
@@ -224,7 +215,7 @@ async function bulkDelete() {
   const checked = document.querySelectorAll('.row-checkbox:checked');
   if (!checked.length) return;
   const ids = Array.from(checked).map(cb => cb.dataset.id);
-  const confirmed = await showBulkConfirm(ids.length);
+  const confirmed = await (window.showBulkConfirm ? window.showBulkConfirm(ids.length, 'industries') : Promise.resolve(confirm(`Delete ${ids.length} items?`)));
   if (!confirmed) return;
   try {
     const res = await fetch(`/api/admin/${ENTITY_ENDPOINT}/bulk-delete`, {
@@ -234,34 +225,20 @@ async function bulkDelete() {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      alert(`✓ ${data.deleted || ids.length} items deleted`);
+      if (window.showToast) window.showToast(`Deleted ${data.deleted || ids.length} items`, 'success');
       clearSelection();
       load();
     } else {
-      alert(data.message || 'Bulk delete failed');
+      if (window.showToast) window.showToast(data.message || 'Bulk delete failed', 'error');
     }
   } catch (err) {
-    alert('Network error during bulk delete');
+    if (window.showToast) window.showToast('Network error during bulk delete', 'error');
   }
-}
-
-function showBulkConfirm(count) {
-  return new Promise((resolve) => {
-    const existing = document.getElementById('bulkConfirmBar');
-    if (existing) existing.remove();
-    const bar = document.createElement('div');
-    bar.id = 'bulkConfirmBar';
-    bar.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);`;
-    bar.innerHTML = `<span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span><button id="bulkConfirmYes" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button><button id="bulkConfirmNo" style="padding:6px 12px;background:transparent;border:1px solid #aaa;color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">Cancel</button>`;
-    document.body.appendChild(bar);
-    document.getElementById('bulkConfirmYes').onclick = () => { bar.remove(); resolve(true); };
-    document.getElementById('bulkConfirmNo').onclick = () => { bar.remove(); resolve(false); };
-  });
 }
 
 function switchTab(tab) {
   currentTab = tab;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(`tab-${tab}`).classList.add('active');
   load();
 }
@@ -272,23 +249,27 @@ async function load() {
   if (q) params.set('q', q);
   if (currentTab !== 'all') params.set('status', currentTab);
 
-  const res = await fetch(`/api/admin/industries?${params}`, { headers });
-  const data = await res.json();
+  const data = await window.AdminUI.apiPaged('/api/admin/industries', { params });
+  const normalized = window.AdminUI.normalizeListResponse(data);
 
   const pendingRes = await fetch('/api/admin/industries?status=pending', { headers });
   const pendingData = await pendingRes.json();
   const countEl = document.getElementById('pendingCount');
   if (countEl) countEl.textContent = (pendingData || []).length;
+  const industryPendingCountEl = document.getElementById('industryPendingCount');
+  if (industryPendingCountEl) industryPendingCountEl.textContent = (pendingData || []).length;
+  const industryCountEl = document.getElementById('industryCount');
+  if (industryCountEl) industryCountEl.textContent = String((normalized.items || []).length || 0);
 
   const statusBadge = (s) => {
     const map = { approved: 'badge-approved', pending: 'badge-pending', rejected: 'badge-rejected' };
-    return `<span class="status-badge ${map[s] || 'badge-approved'}">${s || 'approved'}</span>`;
+    return `<span class="approval-badge ${map[s] || 'badge-approved'}">${s || 'approved'}</span>`;
   };
 
   // Build a lightweight client-side index of items to avoid embedding raw JSON into onclick attributes
   window.allItems = {};
-  (data || []).forEach(i => { window.allItems[i._id] = i; });
-  document.getElementById('rows').innerHTML = (data || []).map(i => `
+  (normalized.items || []).forEach(i => { window.allItems[i._id] = i; });
+  document.getElementById('rows').innerHTML = (normalized.items || []).map(i => `
     <tr>
       <td><input type="checkbox" class="row-checkbox" data-id="${i._id}" style="width:16px;height:16px;cursor:pointer;"></td>
       <td><small class="text-muted" style="font-size:10px;">${i._id}</small><br><strong>${i.name}</strong>${i.rejectionReason ? `<br><small class="text-danger">Reason: ${i.rejectionReason}</small>` : ''}</td>
@@ -311,7 +292,7 @@ async function approveIndustry(id) {
   if (!confirm('Approve this industry?')) return;
   const res = await fetch(`/api/admin/industries/${id}/approve`, { method: 'PUT', headers });
   if (res.ok) { load(); }
-  else { const d = await res.json(); alert(d.message || 'Error'); }
+  else { const d = await res.json(); if (window.showToast) window.showToast(d.message || 'Error', 'error'); }
 }
 
 function openRejectModal(id) {
@@ -328,7 +309,7 @@ async function confirmReject() {
   });
   bootstrap.Modal.getInstance(document.getElementById('rejectModal'))?.hide();
   if (res.ok) { load(); }
-  else { const d = await res.json(); alert(d.message || 'Error'); }
+  else { const d = await res.json(); if (window.showToast) window.showToast(d.message || 'Error', 'error'); }
 }
 
 function openAddModal() {
@@ -376,7 +357,7 @@ async function saveIndustry() {
     keyActivities: document.getElementById('editActivities').value.split('\n').map(s => s.trim()).filter(Boolean),
     isActive: document.getElementById('editIsActive').checked,
   };
-  if (!payload.name) { alert('Name is required'); return; }
+  if (!payload.name) { if (window.showToast) window.showToast('Name is required', 'warning'); return; }
 
   const url = id ? `/api/admin/industries/${id}` : '/api/admin/industries';
   const method = id ? 'PUT' : 'POST';
@@ -388,7 +369,7 @@ async function saveIndustry() {
   const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
   bootstrap.Modal.getInstance(document.getElementById('industryModal'))?.hide();
   if (res.ok) { load(); }
-  else { const d = await res.json(); alert(d.message || 'Error'); }
+  else { const d = await res.json(); if (window.showToast) window.showToast(d.message || 'Error', 'error'); }
 }
 
 async function del(id) {
@@ -400,24 +381,16 @@ async function del(id) {
 async function merge() {
   const sourceId = document.getElementById('sourceId').value.trim();
   const targetId = document.getElementById('targetId').value.trim();
-  if (!sourceId || !targetId) { alert('Enter both source and target IDs'); return; }
-  if (!confirm(`Merge ${sourceId} → ${targetId}? This cannot be undone.`)) return;
+  if (!sourceId || !targetId) { if (window.showToast) window.showToast('Enter both source and target IDs', 'warning'); return; }
+  const confirmed = await (window.showBulkConfirm ? window.showBulkConfirm(1, 'industry merge') : Promise.resolve(confirm(`Merge ${sourceId} → ${targetId}? This cannot be undone.`)));
+  if (!confirmed) return;
   const res = await fetch('/api/admin/industries/merge', {
     method: 'POST', headers, body: JSON.stringify({ sourceId, targetId })
   });
   const d = await res.json();
-  alert(d.message || 'Done');
+  if (window.showToast) window.showToast(d.message || 'Done', 'success');
   load();
 }
-
-document.getElementById('selectAll').addEventListener('change', (e) => {
-  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
-  updateBulkToolbar();
-});
-
-document.getElementById('rows').addEventListener('change', (e) => {
-  if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
-});
 
 // Delegated listener for edit buttons: uses window.allItems to lookup the item safely
 document.getElementById('rows').addEventListener('click', (e) => {
@@ -428,6 +401,14 @@ document.getElementById('rows').addEventListener('click', (e) => {
   if (item) openEditModal(item);
 });
 
-document.addEventListener('DOMContentLoaded', load);
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.initBulkSelect) {
+    const bulkSelect = window.initBulkSelect({ selectAllId: 'selectAll', tbodyId: 'rows', toolbarId: 'bulkToolbar', countId: 'selectedCount' });
+    updateBulkToolbar = bulkSelect.updateToolbar;
+    clearSelection = bulkSelect.clearSelection;
+  }
+
+  load();
+});
 </script>
 {% endblock %}

@@ -217,13 +217,20 @@
 
 {% block admin_content %}
 <section class="dashboard-grid">
-    <div>
-        <h1 class="page-title">Students</h1>
-        <p class="page-subtitle">Manage student accounts, generate reports, and dispatch communications.</p>
+    <div class="page-header">
+        <div class="page-header-left">
+            <h1 class="page-title">Students</h1>
+            <p class="page-subtitle">Manage student accounts, generate reports, and dispatch communications.</p>
+        </div>
+        <div class="page-header-actions">
+            <button class="btn-ghost" type="button" onclick="loadUsers()">
+                <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+            </button>
+        </div>
     </div>
 
     <!-- Stats row -->
-    <div class="stats-inline">
+    <div class="stats-chips">
         <span class="stats-chip">Total: <b id="statTotal">0</b></span>
         <span class="stats-chip">Active: <b id="statActive">0</b></span>
         <span class="stats-chip">Inactive: <b id="statInactive">0</b></span>
@@ -233,8 +240,8 @@
 
     <article class="panel-card panel-body table-card">
         <!-- Toolbar with filters -->
-        <div class="toolbar" style="flex-wrap:wrap; gap:8px;">
-            <input class="small-input" type="text" placeholder="Search name or email..." id="userSearch">
+        <div class="admin-filter-bar">
+            <input class="small-input search-input" type="text" placeholder="Search name or email..." id="userSearch">
             <select class="small-input" id="filterUniversity" style="min-width:160px;">
                 <option value="">All Universities</option>
             </select>
@@ -248,16 +255,13 @@
                 <option value="error">✗ Error</option>
                 <option value="none">— No Report</option>
             </select>
-            <button class="btn-primary" type="button" onclick="loadUsers()" style="margin-left:auto;">
-                Refresh
-            </button>
         </div>
 
         <!-- Bulk Delete Toolbar -->
-        <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
-          <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
-          <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
-          <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+        <div class="bulk-toolbar" id="bulkToolbar">
+          <span class="bulk-toolbar-count" id="selectedCount">0 selected</span>
+          <button class="bulk-toolbar-delete" onclick="bulkDelete()">Delete Selected</button>
+          <button class="bulk-toolbar-clear" onclick="clearSelection()">Clear</button>
         </div>
 
         <!-- Table -->
@@ -409,38 +413,18 @@ let totalUsers = 0;
 let allUsers = [];
 let allMajors = [];
 let allDegrees = [];
+let clearSelection = function () {};
+let updateBulkToolbar = function () {};
 
 // ─────────────────────────────────────────────────────────────
 // Multi-select functions for bulk delete
 // ─────────────────────────────────────────────────────────────
 
-function updateBulkToolbar() {
-  const checked = document.querySelectorAll('.row-checkbox:checked');
-  const toolbar = document.getElementById('bulkToolbar');
-  const count = document.getElementById('selectedCount');
-  if (checked.length > 0) {
-    toolbar.style.display = 'flex';
-    count.textContent = `${checked.length} selected`;
-  } else {
-    toolbar.style.display = 'none';
-  }
-  const all = document.querySelectorAll('.row-checkbox');
-  document.getElementById('selectAll').checked = all.length > 0 && checked.length === all.length;
-  document.getElementById('selectAll').indeterminate = checked.length > 0 && checked.length < all.length;
-}
-
-function clearSelection() {
-  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
-  document.getElementById('selectAll').checked = false;
-  document.getElementById('selectAll').indeterminate = false;
-  document.getElementById('bulkToolbar').style.display = 'none';
-}
-
 async function bulkDelete() {
   const checked = document.querySelectorAll('.row-checkbox:checked');
   if (!checked.length) return;
   const ids = Array.from(checked).map(cb => cb.dataset.id);
-  const confirmed = await showBulkConfirm(ids.length);
+    const confirmed = await window.showBulkConfirm(ids.length, 'students');
   if (!confirmed) return;
   try {
     const res = await fetch(`/api/admin/${ENTITY_ENDPOINT}/bulk-delete`, {
@@ -450,29 +434,15 @@ async function bulkDelete() {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      alert(`✓ ${data.deleted || ids.length} items deleted`);
+            window.showToast(`Deleted ${data.deleted || ids.length} students`, 'success');
       clearSelection();
       loadUsers();
     } else {
-      alert(data.message || 'Bulk delete failed');
+            window.showToast(data.message || 'Bulk delete failed', 'error');
     }
   } catch (err) {
-    alert('Network error during bulk delete');
+        window.showToast('Network error during bulk delete', 'error');
   }
-}
-
-function showBulkConfirm(count) {
-  return new Promise((resolve) => {
-    const existing = document.getElementById('bulkConfirmBar');
-    if (existing) existing.remove();
-    const bar = document.createElement('div');
-    bar.id = 'bulkConfirmBar';
-    bar.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);`;
-    bar.innerHTML = `<span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span><button id="bulkConfirmYes" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button><button id="bulkConfirmNo" style="padding:6px 12px;background:transparent;border:1px solid #aaa;color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">Cancel</button>`;
-    document.body.appendChild(bar);
-    document.getElementById('bulkConfirmYes').onclick = () => { bar.remove(); resolve(true); };
-    document.getElementById('bulkConfirmNo').onclick = () => { bar.remove(); resolve(false); };
-  });
 }
 
 // -- Helpers ---------------------------------------------------------------
@@ -729,9 +699,10 @@ async function loadUsers() {
     params.set('offset', (usersCurrentPage - 1) * USERS_PAGE_SIZE);
 
     try {
-        const data = await window.AdminUI.adminApiGet(`/api/admin/users?${params}`) || { items: [] };
-        const users = data.items || [];
-        totalUsers = data.total || 0;
+        const data = await window.AdminUI.apiPaged('/api/admin/users', { params }) || {};
+        const normalized = window.AdminUI.normalizeListResponse(data);
+        const users = normalized.items || [];
+        totalUsers = normalized.total || 0;
         allUsers = users;
 
         // Update stats via stats endpoint for accurate totals
@@ -838,7 +809,7 @@ function renderUsers(rows) {
         </tr>
     `).join('');
 
-    document.getElementById('usersFoot').textContent = `Showing ${rows.length} student${rows.length !== 1 ? 's' : ''}`;
+        window.AdminUI.setListFoot(document.getElementById('usersFoot'), totalUsers, usersCurrentPage, USERS_PAGE_SIZE, 'Showing 0 students');
     window.AdminUI?.staggerRows?.();
     clearSelection();
 }
@@ -1188,15 +1159,14 @@ document.getElementById('userSearch')?.addEventListener('input', loadUsers);
 
 document.addEventListener('DOMContentLoaded', async () => {
     await Promise.all([loadFilterOptions(), loadMajorsForGenerate()]);
-    
-    document.getElementById('selectAll').addEventListener('change', (e) => {
-        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
-        updateBulkToolbar();
+
+    const bulkSelect = window.initBulkSelect({
+        selectAllId: 'selectAll', tbodyId: 'usersBody',
+        toolbarId: 'bulkToolbar', countId: 'selectedCount',
     });
-    
-    document.getElementById('usersBody').addEventListener('change', (e) => {
-        if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
-    });
+    updateBulkToolbar = bulkSelect.updateToolbar;
+    clearSelection = bulkSelect.clearSelection;
+    updateBulkToolbar();
     
     document.getElementById('usersPrev').addEventListener('click', () => {
         if (usersCurrentPage > 1) { usersCurrentPage -= 1; loadUsers(); }

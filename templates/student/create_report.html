@@ -4,13 +4,7 @@
 
 {% block extra_css %}
 <style>
-    body {
-        background:
-            radial-gradient(1100px 420px at -10% -20%, rgba(59, 130, 246, 0.16), transparent 62%),
-            radial-gradient(980px 360px at 110% -16%, rgba(147, 197, 253, 0.25), transparent 58%),
-            linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
-        color: #0f172a;
-    }
+    /* Body background removed to inherit brand background from base.html */
 
     .create-shell {
         max-width: 1320px;
@@ -20,13 +14,13 @@
     @keyframes createIn { from {opacity:0; transform: translateY(10px);} to {opacity:1; transform: translateY(0);} }
 
     .create-intro-card {
-        border: 1px solid #dbe7ff;
+        border: 1px solid var(--brd);
         border-radius: 16px;
         background:
             radial-gradient(460px 130px at -6% -20%, rgba(59, 130, 246, 0.14), transparent 70%),
             radial-gradient(380px 120px at 110% -20%, rgba(147, 197, 253, 0.2), transparent 72%),
-            #ffffff;
-        box-shadow: 0 12px 30px rgba(37, 99, 235, 0.08);
+            var(--card);
+        box-shadow: var(--shadow-sm);
         padding: 18px 20px;
         display: flex;
         align-items: center;
@@ -40,9 +34,9 @@
         align-items: center;
         gap: 6px;
         border-radius: 999px;
-        border: 1px solid #bfdbfe;
-        background: #eff6ff;
-        color: #1d4ed8;
+        border: 1px solid var(--brd);
+        background: var(--srf);
+        color: var(--acc2);
         padding: 6px 10px;
         font-size: 12px;
         font-weight: 600;
@@ -73,16 +67,16 @@
     .step-card,
     .summary-card,
     .form-main-card {
-        border: 1px solid #dbe7ff;
+        border: 1px solid var(--brd);
         border-radius: 16px;
-        background: #fff;
-        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.07);
+        background: var(--card);
+        box-shadow: var(--shadow-sm);
     }
 
     .side-head {
         font-size: 12px;
         font-weight: 700;
-        color: #64748b;
+        color: var(--txt2);
         letter-spacing: 0.02em;
         text-transform: uppercase;
         margin-bottom: 8px;
@@ -92,8 +86,8 @@
         position: sticky;
         top: 84px;
         padding: 12px;
-        background: #f8fbff;
-        border-color: #cfe0ff;
+        background: var(--srf);
+        border-color: var(--brd);
     }
 
     .step-list {
@@ -117,7 +111,7 @@
         gap: 0.7rem;
         padding: 8px 8px;
         border-radius: 11px;
-        color: #64748b;
+        color: var(--txt2);
         font-size: 0.85rem;
         transition: transform .25s ease, color .25s ease, background-color .25s ease;
         transform-origin: left center;
@@ -126,13 +120,13 @@
     }
 
     .step-item.done {
-        color: #065f46;
+        color: var(--grn);
         background: #ecfdf5;
     }
 
     .step-item.active {
-        color: #1d4ed8;
-        background: #eff6ff;
+        color: var(--acc2);
+        background: var(--srf);
         transform: scale(1.02);
     }
 
@@ -145,22 +139,22 @@
         justify-content: center;
         font-size: 0.75rem;
         font-weight: 700;
-        border: 1px solid #bfdbfe;
-        color: #64748b;
-        background: #fff;
+        border: 1px solid var(--brd);
+        color: var(--txt2);
+        background: var(--card);
         transition: transform .25s ease, background-color .25s ease, border-color .25s ease, color .25s ease;
     }
 
     .step-item.done .step-dot {
-        border-color: #10b981;
-        color: #fff;
-        background: #10b981;
+        border-color: var(--grn);
+        color: var(--color-white);
+        background: var(--grn);
     }
 
     .step-item.active .step-dot {
-        border-color: #2563eb;
-        color: #fff;
-        background: #2563eb;
+        border-color: var(--acc2);
+        color: var(--color-white);
+        background: var(--acc2);
         transform: scale(1.06);
     }
 
@@ -763,8 +757,10 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="/static/js/student-ui.js"></script>
 <script>
-    const token = localStorage.getItem('token');
+    const studentUI = window.studentUI || {};
+    const token = studentUI.getToken ? studentUI.getToken() : localStorage.getItem('token');
 
     let profile = null;
     let degrees = [];
@@ -776,8 +772,10 @@
     let jobProfileSuggestions = [];
 
     const authHeaders = (extra = {}) => ({
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        ...extra
+        ...(studentUI.authHeaders ? studentUI.authHeaders(extra) : {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            ...extra
+        })
     });
 
     const syncSkillInputValue = () => {

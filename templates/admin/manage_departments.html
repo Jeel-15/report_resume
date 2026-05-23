@@ -3,95 +3,52 @@
 
 {% block title %}Departments - ReportGen Admin{% endblock %}
 
-{% block page_css %}
-<style>
-  .status-badge {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-  .badge-approved { background: rgba(5,150,105,0.15); color: #10b981; }
-  .badge-pending  { background: rgba(245,158,11,0.15); color: #f59e0b; }
-  .badge-rejected { background: rgba(239,68,68,0.15);  color: #ef4444; }
-</style>
-{% endblock %}
+{# page-specific CSS moved to static/css/admin-ui.css #}
 
 {% block admin_content %}
 <section class="dashboard-grid">
-  <div>
-    <h1 class="page-title">Manage Departments</h1>
-    <p class="page-subtitle">Build degree-wise department hierarchy and review pending submissions.</p>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Departments</h1>
+      <p class="page-subtitle">Build the degree-wise department hierarchy.</p>
+    </div>
+    <div class="page-header-actions">
+      <a href="/admin/bulk-import" class="btn-ghost">
+        <i data-lucide="upload" style="width:14px;height:14px;"></i> Bulk Import
+      </a>
+      <button class="btn-ghost" type="button" onclick="downloadTemplate()">
+        <i data-lucide="download" style="width:14px;height:14px;"></i> Template
+      </button>
+      <button class="btn-ghost" type="button" onclick="loadDepartments()">
+        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+      </button>
+      <button class="btn-primary" type="button" onclick="openCreate()">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Department
+      </button>
+    </div>
+  </div>
+  <div class="stats-chips">
+    <span class="stats-chip">Pending: <b id="pendingCount">0</b></span>
   </div>
 
-  <div class="stats-inline">
-    <a href="/admin/bulk-import" class="btn-ghost"><i data-lucide="upload" style="width:14px;height:14px;"></i>Bulk Import</a>
-    <button class="btn-ghost" type="button" onclick="downloadTemplate()"><i data-lucide="download" style="width:14px;height:14px;"></i>Template</button>
-    <button class="btn-ghost" type="button" onclick="loadDepartments()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
-    <button class="btn-primary" type="button" onclick="openCreate()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Department</button>
+  <div class="admin-filter-bar">
+    <select id="filterDegree" class="small-input">
+      <option value="">All Degrees</option>
+    </select>
+    <input id="filterSearch" class="small-input search-input" placeholder="Search departments...">
+    <select id="filterStatus" class="small-input">
+      <option value="">All Statuses</option>
+      <option value="approved">Approved</option>
+      <option value="pending">Pending</option>
+      <option value="rejected">Rejected</option>
+    </select>
   </div>
-
-  <article class="panel-card panel-body" style="display:grid;gap:12px;">
-    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filters</h3>
-    <div class="toolbar" style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) 170px;gap:12px;">
-      <select id="filterDegree" class="small-input"></select>
-      <input id="filterSearch" class="small-input" placeholder="Search departments...">
-      <select id="filterStatus" class="small-input">
-        <option value="">All statuses</option>
-        <option value="approved">Approved</option>
-        <option value="pending">Pending</option>
-        <option value="rejected">Rejected</option>
-      </select>
-    </div>
-    <div style="font-size:12px;color:#64748b;">
-      Pending review count: <strong id="pendingCount">0</strong>
-    </div>
-  </article>
 
   <article class="panel-card panel-body table-card">
-    <div id="bulkToolbar" style="
-      display:none;
-      align-items:center;
-      gap:12px;
-      padding:10px 16px;
-      background:#fff3cd;
-      border:1px solid #ffc107;
-      border-radius:8px;
-      margin-bottom:12px;
-      font-size:13px;
-    ">
-      <span id="selectedCount" style="font-weight:600;color:#856404;">
-        0 selected
-      </span>
-      <button 
-        onclick="bulkDelete()" 
-        style="
-          padding:6px 16px;
-          background:#dc2626;
-          color:#fff;
-          border:none;
-          border-radius:6px;
-          font-size:13px;
-          font-weight:600;
-          cursor:pointer;
-        "
-      >
-        🗑 Delete Selected
-      </button>
-      <button 
-        onclick="clearSelection()" 
-        style="
-          padding:6px 12px;
-          background:transparent;
-          border:1px solid #aaa;
-          border-radius:6px;
-          font-size:13px;
-          cursor:pointer;
-        "
-      >
-        ✕ Clear
-      </button>
+    <div class="bulk-toolbar" id="bulkToolbar">
+      <span class="bulk-toolbar-count" id="selectedCount">0 selected</span>
+      <button class="bulk-toolbar-delete" onclick="bulkDelete()">Delete Selected</button>
+      <button class="bulk-toolbar-clear" onclick="clearSelection()">Clear</button>
     </div>
     <div class="data-table-wrap">
       <table class="data-table stagger-table">
@@ -108,11 +65,11 @@
         <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
     </div>
-    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
-      <div id="departmentsFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 departments</div>
-      <div class="pager">
-        <button id="deptsPrev">&lt;</button>
-        <button id="deptsNext">&gt;</button>
+    <div class="table-foot-row">
+      <span id="departmentsFoot">Showing 0 departments</span>
+      <div class="pager-simple">
+        <button id="deptsPrev">‹ Prev</button>
+        <button id="deptsNext">Next ›</button>
       </div>
     </div>
   </article>
@@ -177,60 +134,20 @@ const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'applicati
 const ENTITY_ENDPOINT = 'departments';
 let degrees = [];
 let modal = null;
+let clearSelection = function(){};
+let updateBulkToolbar = function(){};
+let pager = null;
 
-function showToast(msg, isError = false) {
-  let el = document.getElementById('toastMsg');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'toastMsg';
-    el.style.cssText = `
-      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-      background:#0f172a;color:#fff;padding:10px 24px;border-radius:8px;
-      font-size:13px;font-weight:600;z-index:9999;opacity:0;
-      pointer-events:none;transition:opacity 0.3s ease;
-    `;
-    document.body.appendChild(el);
-  }
-  el.textContent = msg;
-  el.style.background = isError ? '#dc2626' : '#0f172a';
-  el.style.opacity = '1';
-  setTimeout(() => { el.style.opacity = '0'; }, 2500);
-}
+// Use shared window.showToast from static/js/admin-ui.js
 
-// ─────────────────────────────────────────────────────────────
-// Multi-select logic
-// ─────────────────────────────────────────────────────────────
-
-function updateBulkToolbar() {
-  const checked = document.querySelectorAll('.row-checkbox:checked');
-  const toolbar = document.getElementById('bulkToolbar');
-  const count = document.getElementById('selectedCount');
-  if (checked.length > 0) {
-    toolbar.style.display = 'flex';
-    count.textContent = `${checked.length} selected`;
-  } else {
-    toolbar.style.display = 'none';
-  }
-  const all = document.querySelectorAll('.row-checkbox');
-  document.getElementById('selectAll').checked = 
-    all.length > 0 && checked.length === all.length;
-  document.getElementById('selectAll').indeterminate = 
-    checked.length > 0 && checked.length < all.length;
-}
-
-function clearSelection() {
-  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
-  document.getElementById('selectAll').checked = false;
-  document.getElementById('selectAll').indeterminate = false;
-  document.getElementById('bulkToolbar').style.display = 'none';
-}
+// Multi-select handled by window.initBulkSelect
 
 async function bulkDelete() {
   const checked = document.querySelectorAll('.row-checkbox:checked');
   if (!checked.length) return;
   
   const ids = Array.from(checked).map(cb => cb.dataset.id);
-  const confirmed = await showBulkConfirm(ids.length);
+  const confirmed = await window.showBulkConfirm(ids.length, 'departments');
   if (!confirmed) return;
 
   try {
@@ -242,57 +159,22 @@ async function bulkDelete() {
     
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      showToast(`✓ ${data.deleted || ids.length} departments deleted`);
+      window.showToast(`Deleted ${data.deleted || ids.length} departments`, 'success');
       clearSelection();
       loadDepartments();
     } else {
-      showToast(data.message || 'Bulk delete failed', true);
+      window.showToast(data.message || 'Bulk delete failed', 'error');
     }
   } catch (err) {
-    showToast('Network error during bulk delete', true);
+    window.showToast('Network error during bulk delete', 'error');
   }
 }
 
-function showBulkConfirm(count) {
-  return new Promise((resolve) => {
-    const existing = document.getElementById('bulkConfirmBar');
-    if (existing) existing.remove();
-    
-    const bar = document.createElement('div');
-    bar.id = 'bulkConfirmBar';
-    bar.style.cssText = `
-      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-      background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;
-      font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;
-      box-shadow:0 4px 20px rgba(0,0,0,0.3);
-    `;
-    bar.innerHTML = `
-      <span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span>
-      <button id="bulkConfirmYes" style="
-        padding:6px 16px;background:#dc2626;color:#fff;border:none;
-        border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
-        Delete
-      </button>
-      <button id="bulkConfirmNo" style="
-        padding:6px 12px;background:transparent;border:1px solid #aaa;
-        color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
-        Cancel
-      </button>
-    `;
-    document.body.appendChild(bar);
-    
-    document.getElementById('bulkConfirmYes').onclick = () => { 
-      bar.remove(); resolve(true); 
-    };
-    document.getElementById('bulkConfirmNo').onclick = () => { 
-      bar.remove(); resolve(false); 
-    };
-  });
-}
+// Bulk confirm provided by window.showBulkConfirm
 
 const statusBadge = (status) => {
   const cls = status === 'pending' ? 'badge-pending' : (status === 'rejected' ? 'badge-rejected' : 'badge-approved');
-  return `<span class="status-badge ${cls}">${status || 'approved'}</span>`;
+  return `<span class="approval-badge ${cls}">${status || 'approved'}</span>`;
 };
 
 function setDegreeOptions(selectId, selected = '') {
@@ -363,12 +245,15 @@ async function loadDepartments(page) {
   if (window.lucide) lucide.createIcons();
   window.AdminUI?.staggerRows();
   clearSelection();
-
-  const start = (deptsCurrentPage - 1) * DEPTS_PAGE_SIZE + 1;
-  const end = Math.min(deptsCurrentPage * DEPTS_PAGE_SIZE, totalDepts);
-  document.getElementById('departmentsFoot').textContent = `Showing ${start}-${end} of ${totalDepts}`;
-  document.getElementById('deptsPrev').disabled = deptsCurrentPage <= 1;
-  document.getElementById('deptsNext').disabled = end >= totalDepts;
+  if (pager) {
+    pager.setTotal(totalDepts, deptsCurrentPage);
+  } else {
+    const start = (deptsCurrentPage - 1) * DEPTS_PAGE_SIZE + 1;
+    const end = Math.min(deptsCurrentPage * DEPTS_PAGE_SIZE, totalDepts);
+    document.getElementById('departmentsFoot').textContent = `Showing ${start}-${end} of ${totalDepts}`;
+    document.getElementById('deptsPrev').disabled = deptsCurrentPage <= 1;
+    document.getElementById('deptsNext').disabled = end >= totalDepts;
+  }
 }
 
 function openCreate() {
@@ -398,7 +283,7 @@ async function saveDepartment() {
   };
 
   if (!payload.name || !payload.degree) {
-    showToast('Department name and degree are required', true);
+    window.showToast('Department name and degree are required', 'error');
     return;
   }
 
@@ -407,63 +292,26 @@ async function saveDepartment() {
   const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
   const data = await res.json();
   if (!res.ok) {
-    showToast(data.message || 'Save failed', true);
+    window.showToast(data.message || 'Save failed', 'error');
     return;
   }
 
   modal.hide();
-  showToast(id ? '✓ Department updated' : '✓ Department created');
+  window.showToast(id ? 'Department updated' : 'Department created', 'success');
   loadDepartments();
 }
 
-function showDeleteDepartmentConfirm() {
-  return new Promise((resolve) => {
-    const existing = document.getElementById('bulkConfirmBar');
-    if (existing) existing.remove();
-
-    const bar = document.createElement('div');
-    bar.id = 'bulkConfirmBar';
-    bar.style.cssText = `
-      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-      background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;
-      font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;
-      box-shadow:0 4px 20px rgba(0,0,0,0.3);
-    `;
-    bar.innerHTML = `
-      <span>Delete this department? This cannot be undone.</span>
-      <button id="bulkConfirmYes" style="
-        padding:6px 16px;background:#dc2626;color:#fff;border:none;
-        border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">
-        Delete
-      </button>
-      <button id="bulkConfirmNo" style="
-        padding:6px 12px;background:transparent;border:1px solid #aaa;
-        color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">
-        Cancel
-      </button>
-    `;
-    document.body.appendChild(bar);
-
-    document.getElementById('bulkConfirmYes').onclick = () => {
-      bar.remove();
-      resolve(true);
-    };
-    document.getElementById('bulkConfirmNo').onclick = () => {
-      bar.remove();
-      resolve(false);
-    };
-  });
-}
+// single-delete confirmation uses window.showBulkConfirm
 
 async function deleteDepartment(id) {
-  const confirmed = await showDeleteDepartmentConfirm();
+  const confirmed = await window.showBulkConfirm(1, 'department');
   if (!confirmed) return;
   const res = await fetch(`/api/admin/departments/${id}`, { method: 'DELETE', headers });
   if (res.ok) {
-    showToast('✓ Department deleted');
+    window.showToast('Department deleted', 'success');
     loadDepartments();
   } else {
-    showToast('Delete failed', true);
+    window.showToast('Delete failed', 'error');
   }
 }
 
@@ -493,7 +341,7 @@ async function confirmReject() {
 async function downloadTemplate() {
   const res = await fetch('/api/admin/bulk-import/template/departments', { headers: { 'Authorization': `Bearer ${token}` } });
   if (!res.ok) {
-    showToast('Unable to download template', true);
+    window.showToast('Unable to download template', 'error');
     return;
   }
   const blob = await res.blob();
@@ -515,20 +363,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('filterDegree').addEventListener('change', loadDepartments);
   document.getElementById('filterStatus').addEventListener('change', loadDepartments);
   document.getElementById('filterSearch').addEventListener('input', loadDepartments);
-  
-  // Setup selectAll checkbox
-  document.getElementById('selectAll').addEventListener('change', (e) => {
-    document.querySelectorAll('.row-checkbox')
-      .forEach(cb => cb.checked = e.target.checked);
-    updateBulkToolbar();
+  // Wire shared bulk select handlers
+  const bulkSelect = window.initBulkSelect({
+    selectAllId: 'selectAll',
+    tbodyId: 'rows',
+    toolbarId: 'bulkToolbar',
+    countId: 'selectedCount',
+    checkboxClass: 'row-checkbox'
   });
-
-  // Setup individual checkboxes via event delegation on tbody
-  document.getElementById('rows').addEventListener('change', (e) => {
-    if (e.target.classList.contains('row-checkbox')) {
-      updateBulkToolbar();
-    }
-  });
+  updateBulkToolbar = bulkSelect.updateToolbar;
+  clearSelection = bulkSelect.clearSelection;
+  updateBulkToolbar();
 
   // Delegated listener for edit buttons: uses window.allItems to lookup the item safely
   document.getElementById('rows').addEventListener('click', (e) => {
@@ -542,11 +387,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadDegrees();
   await loadDepartments();
 
-  // Pager controls
-  document.getElementById('deptsPrev').addEventListener('click', () => {
-    if (deptsCurrentPage > 1) { deptsCurrentPage -= 1; loadDepartments(); }
+  // Wire shared pager helper
+  pager = window.initPager({
+    prevId: 'deptsPrev',
+    nextId: 'deptsNext',
+    footId: 'departmentsFoot',
+    pageSize: DEPTS_PAGE_SIZE,
+    onPage: function (page) { deptsCurrentPage = page; loadDepartments(); }
   });
-  document.getElementById('deptsNext').addEventListener('click', () => { deptsCurrentPage += 1; loadDepartments(); });
 });
 </script>
 {% endblock %}

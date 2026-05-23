@@ -399,14 +399,27 @@
 
 {% block admin_content %}
 <section class="studio-shell">
-  <div class="studio-top">
-    <div>
-      <h1 class="studio-title">Report Sections Studio</h1>
-      <p class="studio-subtitle">Redesigned for scale: fast navigation, clear hierarchy, and zero-loss functionality.</p>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Report Sections Studio</h1>
+      <p class="page-subtitle">Redesigned for scale: fast navigation, clear hierarchy, and zero-loss functionality.</p>
     </div>
-    <div class="workspace-actions">
+    <div class="page-header-actions">
       <button class="btn-ghost" type="button" id="loadTemplateBtn">Load Template</button>
       <button class="btn-primary" type="button" id="saveTemplateBtn">Save Template</button>
+    </div>
+  </div>
+
+  <div class="admin-filter-bar">
+    <div class="mode-switch" id="modeSwitch">
+      <button class="mode-btn active" type="button" data-mode="editor">Editor</button>
+      <button class="mode-btn" type="button" data-mode="overview">Overview</button>
+    </div>
+
+    <div class="level-switch" id="levelSwitch" style="display:none;">
+      <button class="level-btn active" type="button" data-level="university">University</button>
+      <button class="level-btn" type="button" data-level="college">College</button>
+      <button class="level-btn" type="button" data-level="major">Major</button>
     </div>
   </div>
 
@@ -422,19 +435,6 @@
         <p class="panel-note">Switch mode, level, and target scope.</p>
       </div>
       <div class="panel-body">
-        <div class="mode-switch" id="modeSwitch">
-          <button class="mode-btn active" type="button" data-mode="editor">Editor</button>
-          <button class="mode-btn" type="button" data-mode="overview">Overview</button>
-        </div>
-
-        <hr>
-
-        <div class="level-switch" id="levelSwitch" style="display:none;">
-          <button class="level-btn active" type="button" data-level="university">University</button>
-          <button class="level-btn" type="button" data-level="college">College</button>
-          <button class="level-btn" type="button" data-level="major">Major</button>
-        </div>
-
         <div id="scopeUniversity" class="scope-grid">
           <div>
             <label class="form-label">University</label>

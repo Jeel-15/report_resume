@@ -1,0 +1,1980 @@
+{% extends "base.html" %}
+{% block title %}Assignment Studio - ReportGen{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root {
+  /* Light theme variable aliases — NEVER use dark-world rgba(255,255,255,X) values */
+  --bg: var(--page-bg);
+  --panel: var(--card);
+  --panel-2: var(--srf);
+  --card: var(--card);
+  --card-2: var(--srf2);
+  --border: var(--brd);
+  --muted: var(--txt3);
+  --accent: var(--acc2);
+  --accent-2: var(--acc);
+  --accent-glow: rgba(124,58,237,0.06);
+  --success: var(--grn);
+  --warning: var(--amb);
+  --danger: var(--red);
+  --info: #38bdf8;
+  /* Missing shadow and color variables that base.html does not define */
+  --shadow-sm: 0 1px 3px rgba(26,26,46,0.06);
+  --shadow-md: 0 4px 12px rgba(26,26,46,0.07);
+  --shadow-lg: 0 10px 28px rgba(26,26,46,0.09);
+  --color-white: #ffffff;
+}
+
+body {
+  background: var(--page-bg);
+  color: var(--txt);
+}
+
+.as-studio-shell {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 18px 14px 22px;
+  animation: asFadeUp 0.25s ease;
+}
+
+.as-studio-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--brd);
+  border-radius: 20px;
+  background:
+    radial-gradient(900px 220px at 0% 0%, rgba(59,130,246,0.10), transparent 55%),
+    linear-gradient(165deg, rgba(255,255,255,0.98) 0%, rgba(239,246,255,0.94) 100%);
+  box-shadow: 0 16px 36px rgba(30,64,175,0.08);
+  padding: 20px 22px;
+  margin-bottom: 14px;
+}
+
+.as-title-wrap {
+  min-width: 0;
+}
+
+.as-kicker {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.as-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.as-title {
+  margin: 0;
+  font-size: clamp(24px, 2.2vw, 36px);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--txt);
+  font-weight: 700;
+}
+
+.as-save-pill,
+.as-status-pill,
+.as-word-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid var(--brd);
+  background: var(--srf2);
+  color: var(--txt);
+  box-shadow: var(--shadow-sm);
+}
+
+.as-save-pill.saving { color: var(--amb); background: #fffbeb; border-color: #fde68a; }
+.as-save-pill.saved  { color: var(--grn); background: #ecfdf5; border-color: #a7f3d0; }
+.as-save-pill.error  { color: var(--red); background: #fef2f2; border-color: #fecaca; }
+
+.as-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.as-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+
+.as-btn:hover { transform: translateY(-1px); }
+.as-btn:disabled { opacity: .72; cursor: not-allowed; transform: none; }
+.as-btn-primary {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+  color: var(--color-white);
+  box-shadow: 0 10px 30px rgba(29,78,216,0.16);
+}
+.as-btn-secondary {
+  background: var(--srf2);
+  color: var(--txt);
+  border-color: var(--brd);
+}
+.as-btn-ghost {
+  background: transparent;
+  color: var(--txt3);
+  border-color: var(--brd);
+}
+.as-btn-danger {
+  background: rgba(239,68,68,0.08);
+  color: var(--red);
+  border-color: rgba(239,68,68,0.12);
+}
+
+.as-studio-body {
+  display: grid;
+  grid-template-columns: minmax(340px, 42%) 8px minmax(420px, 58%);
+  gap: 0;
+  min-height: calc(100vh - 168px);
+  border: 1px solid var(--brd);
+  border-radius: 20px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--card) 0%, var(--srf) 100%);
+  box-shadow: var(--shadow-lg);
+}
+
+.as-left-panel,
+.as-right-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--brd);
+  background: linear-gradient(180deg, var(--card) 0%, var(--srf) 100%);
+  box-shadow: var(--shadow-sm);
+}
+
+.as-left-panel { background:
+    radial-gradient(700px 160px at 6% 8%, rgba(59,130,246,0.04), transparent 55%),
+    linear-gradient(180deg, var(--card) 0%, var(--srf) 100%);
+}
+.as-right-panel { background:
+    radial-gradient(700px 160px at 100% 8%, rgba(59,130,246,0.03), transparent 55%),
+    linear-gradient(180deg, var(--card) 0%, var(--srf) 100%);
+}
+
+.as-divider {
+  /* Fixed: rgba white gradients are invisible on light theme — use visible light border */
+  background: var(--brd);
+  cursor: col-resize;
+  position: relative;
+  width: 8px;
+  flex-shrink: 0;
+}
+.as-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: var(--acc2);
+  opacity: 0.35;
+  transition: opacity 0.15s ease, height 0.15s ease;
+}
+.as-divider:hover::after {
+  opacity: 0.7;
+  height: 64px;
+}
+
+.as-card-shell {
+  border: 1px solid var(--brd);
+  border-radius: 18px;
+  background:
+    radial-gradient(700px 160px at 6% 8%, rgba(59,130,246,0.06), transparent 60%),
+    linear-gradient(180deg, var(--card) 0%, var(--srf) 100%);
+  box-shadow: var(--shadow-md);
+  padding: 16px;
+}
+
+.as-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.as-section-title {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  color: var(--txt);
+}
+
+.as-section-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--txt3);
+  line-height: 1.45;
+}
+
+.as-type-picker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--srf2) 0%, var(--card) 100%);
+  border: 1px solid rgba(13,18,40,0.02);
+}
+
+.as-type-card {
+  border: 1px solid var(--brd);
+  border-radius: 14px;
+  background: var(--srf);
+  color: var(--txt);
+  padding: 10px 8px;
+  min-height: 78px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.as-type-card:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 8px 28px rgba(59,130,246,0.08); }
+.as-type-card.selected { border: 2px solid var(--accent); box-shadow: 0 8px 36px rgba(29,78,216,0.08); background: linear-gradient(180deg, var(--srf) 0%, var(--srf2) 100%); }
+
+  .as-type-card.selected { border-color: transparent; background: linear-gradient(135deg, var(--srf2), var(--srf)); }
+  .as-type-card.selected .as-type-icon { background: linear-gradient(135deg, var(--acc2) 0%, var(--acc) 100%); color: var(--color-white); box-shadow: 0 8px 28px rgba(29,78,216,0.12); }
+  .as-type-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    min-height: 84px;
+    padding: 12px 10px;
+    border-radius: 12px;
+    transition: all .18s ease;
+    background: linear-gradient(180deg, var(--card) 0%, var(--srf2) 100%);
+  }
+
+  .as-type-icon { font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--srf2), var(--card)); color: var(--acc2); box-shadow: inset 0 1px 2px rgba(255,255,255,0.6); }
+  .as-type-card:hover .as-type-icon { box-shadow: 0 8px 22px rgba(59,130,246,0.08); }
+
+  .as-type-label { font-size: 13px; font-weight: 700; color: var(--txt); }
+  .as-type-sub { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--txt2); font-weight: 800; }
+.as-type-icon i { font-size: 18px; line-height: 1; display: inline-block; color: inherit; width: 18px; height: 18px; }
+  .as-type-icon svg { width: 18px; height: 18px; display: inline-block; color: inherit; }
+.as-type-label { font-size: 11px; font-weight: 700; text-align: center; }
+
+/* Disabled / locked state for type picker */
+.as-type-card.disabled,
+.as-type-card[disabled] {
+  opacity: 0.64;
+  filter: grayscale(60%);
+  cursor: not-allowed;
+  pointer-events: none;
+  border-color: rgba(13,18,40,0.06);
+  box-shadow: none !important;
+  transform: none !important;
+}
+.as-type-card.disabled .as-type-icon,
+.as-type-card[disabled] .as-type-icon {
+  filter: grayscale(100%);
+  background: linear-gradient(180deg, var(--card) 0%, var(--srf) 100%);
+  color: var(--txt2);
+  box-shadow: none !important;
+}
+.as-type-card.disabled .as-type-label,
+.as-type-card[disabled] .as-type-label,
+.as-type-card.disabled .as-type-sub,
+.as-type-card[disabled] .as-type-sub {
+  color: var(--txt2);
+}
+
+/* Make disabled primary/secondary buttons more obvious */
+.as-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: grayscale(20%);
+  transform: none;
+}
+
+.as-form-container,
+.as-output-container,
+.as-chat-console,
+.as-compliance-footer,
+.as-section-card,
+.as-empty-output,
+.as-empty-chat,
+.as-generating-state,
+.as-error-state {
+  border: 1px solid var(--brd);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+}
+
+.as-form-container {
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.4));
+  border-radius: 12px;
+  border: 1px solid var(--brd);
+}
+
+.as-form-animate {
+  animation: asFadeUp 0.18s ease;
+}
+
+.as-form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.as-field { display: grid; gap: 6px; }
+.as-field-full { grid-column: 1 / -1; }
+.as-field label {
+  font-size: 12px;
+  color: var(--txt);
+  font-weight: 700;
+}
+.as-req { color: var(--red); }
+.as-field input,
+.as-field select,
+.as-field textarea {
+  width: 100%;
+  border: 1px solid var(--brd);
+  border-radius: 12px;
+  padding: 11px 12px;
+  background: var(--srf);
+  color: var(--txt);
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.as-field textarea { resize: vertical; min-height: 86px; }
+.as-field input:focus,
+.as-field select:focus,
+.as-field textarea:focus { border-color: var(--accent); box-shadow: 0 6px 22px rgba(59,130,246,0.06); }
+.as-field input::placeholder,
+.as-field textarea::placeholder { color: var(--txt3); }
+
+.as-stepper {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  gap: 8px;
+  align-items: center;
+}
+.as-stepper button {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--brd);
+  background: var(--srf);
+  color: var(--txt);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.as-stepper button:hover {
+  background: rgba(59,130,246,0.06);
+  border-color: var(--acc2);
+  color: var(--acc2);
+}
+.as-stepper input { text-align: center; }
+
+.as-generate-bar,
+.as-chat-toolbar,
+.as-footer-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.as-generate-bar { justify-content: space-between; }
+
+.as-output-container { padding: 14px; flex: 1; min-height: 280px; background: var(--page-bg); border-radius: 12px; }
+.as-output-scroll {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.as-section-card { padding: 14px; }
+.as-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.as-section-title-text { margin: 0; font-size: 15px; color: var(--txt); }
+.as-section-edit { border: 1px solid var(--brd); background: var(--srf2); color: var(--txt); border-radius: 10px; width: 34px; height: 34px; cursor: pointer; }
+.as-section-content { color: var(--txt); line-height: 1.75; font-size: 14px; }
+.as-section-content h1,
+.as-section-content h2,
+.as-section-content h3 { color: var(--txt); margin-top: 14px; font-weight: 700; }
+.as-section-content p { margin: 0 0 10px; }
+.as-section-content ul,
+.as-section-content ol { margin: 0 0 10px 20px; }
+.as-section-content li { margin-bottom: 6px; }
+.as-section-content blockquote { margin: 12px 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--srf); color: var(--txt3); }
+.as-section-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+.as-section-content table th,
+.as-section-content table td {
+  border: 1px solid var(--brd);
+  padding: 8px 10px;
+}
+.as-section-content table th {
+  background: var(--srf);
+  font-weight: 600;
+  color: var(--txt2);
+}
+
+.as-empty-output,
+.as-empty-chat,
+.as-generating-state,
+.as-error-state { padding: 18px; color: var(--txt3); }
+.as-generating-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.as-generating-state::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(59,130,246,0.28);
+  border-top-color: var(--acc2);
+  animation: asSpin .75s linear infinite;
+}
+.as-empty-output a, .as-empty-chat a { color: var(--accent); text-decoration: none; font-weight: 700; }
+
+.as-generate-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.as-generate-prompt h3 { margin: 0; font-size: 14px; color: var(--txt); }
+.as-generate-prompt p { margin: 0; color: var(--muted); font-size: 12px; }
+
+.as-compliance-footer {
+  padding: 14px;
+}
+.as-compliance-meter {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.as-meter { width: 100%; height: 10px; border-radius: 999px; overflow: hidden; background: var(--srf); margin-top: 12px; }
+
+/* Range slider styling to match site */
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 10px; background: transparent; }
+input[type=range]::-webkit-slider-runnable-track { height: 8px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 999px; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--color-white); box-shadow: 0 6px 18px rgba(0,0,0,0.12); margin-top: -5px; border: 3px solid var(--accent); }
+input[type=range]:focus { outline: none; }
+.as-meter > span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--warning), var(--accent));
+  transition: width .25s ease, background .25s ease;
+}
+.meter-green > span { background: linear-gradient(90deg, #22c55e, #34d399); }
+.meter-amber > span { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.meter-red > span { background: linear-gradient(90deg, #ef4444, #f97316); }
+
+.as-chat-console { padding: 14px; }
+.as-chat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.as-chip { border: 1px solid var(--brd); background: var(--srf2); color: var(--txt); border-radius: 999px; padding: 7px 10px; font-size: 12px; cursor: pointer; }
+.as-chat-list {
+  display: grid;
+  gap: 10px;
+  max-height: 240px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.as-chat-item { padding: 10px 12px; border-radius: 12px; line-height: 1.5; font-size: 13px; border: 1px solid var(--brd); }
+.as-chat-item.user {
+  background: var(--srf2);
+  color: var(--txt);
+  border-left: 3px solid var(--acc2);
+}
+.as-chat-item.assistant {
+  background: rgba(59,130,246,0.04);
+  color: var(--txt);
+  border-left: 3px solid var(--acc);
+}
+.as-chat-input-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 12px;
+}
+.as-chat-input-row input { width: 100%; border: 1px solid var(--brd); border-radius: 12px; padding: 12px 14px; background: var(--srf); color: var(--txt); }
+.as-chat-input-row input:focus {
+  outline: none;
+  border-color: rgba(99,102,241,0.75);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.14);
+}
+
+.as-mobile-preview-fab {
+  display: none;
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 40;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, var(--acc2) 0%, var(--acc) 100%);
+  color: #fff;
+  box-shadow: 0 18px 36px rgba(124,58,237,0.28);
+  font-weight: 800;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.as-rewrite-overlay { display: none; position: fixed; inset: 0; z-index: 60; background: rgba(15,17,25,0.45); backdrop-filter: blur(4px); align-items: flex-end; justify-content: center; padding: 18px; }
+.as-rewrite-card { width: min(920px, 100%); border: 1px solid var(--brd); border-radius: 18px; background: var(--card); box-shadow: var(--shadow-lg); padding: 14px; }
+.as-rewrite-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.as-rewrite-head h3 { margin: 0; font-size: 16px; color: var(--txt); }
+.as-rewrite-head button { border: 0; background: transparent; color: var(--txt3); font-size: 18px; cursor: pointer; }
+.as-rewrite-card textarea { width: 100%; min-height: 110px; resize: vertical; border-radius: 14px; border: 1px solid var(--brd); background: var(--srf); color: var(--txt); padding: 12px 14px; }
+.as-rewrite-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@keyframes asFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes asSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1200px) {
+  .as-studio-body { grid-template-columns: 1fr; }
+  .as-divider { display: none; }
+}
+
+@media (max-width: 900px) {
+  .as-type-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .as-form-grid { grid-template-columns: 1fr; }
+  .as-mobile-preview-fab { display: inline-flex; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set initial_session_id = session_id|default(none) %}
+<main class="as-studio-shell">
+  <section class="as-studio-header">
+    <div class="as-title-wrap">
+      <p class="as-kicker">Assignment Studio</p>
+      <div class="as-title-row">
+        <h1 class="as-title" id="studioTitle">Assignment Workspace</h1>
+        <span class="as-save-pill" id="saveStatus">Draft saved locally</span>
+      </div>
+      <p class="as-section-subtitle" id="studioSubtitle">Build, generate, refine, and download academic assignments from one workspace.</p>
+    </div>
+    <div class="as-header-actions">
+      <span class="as-status-pill" id="statusPill">Status: draft</span>
+      <span class="as-word-pill" id="wordPill">0 / 0 words</span>
+      <button type="button" class="as-btn as-btn-secondary" id="downloadPdfBtn">PDF</button>
+      <button type="button" class="as-btn as-btn-secondary" id="downloadDocxBtn">DOCX</button>
+      <button type="button" class="as-btn as-btn-primary" id="generateBtn">Generate</button>
+      <button type="button" class="as-btn as-btn-secondary" id="startNewDraftBtn" style="display:none;margin-left:8px;">Start New Draft</button>
+    </div>
+  </section>
+
+  <section class="as-studio-body" id="studioBody" data-left-width="42">
+    <div class="as-left-panel" id="leftPanel">
+      <div class="as-card-shell">
+        <div class="as-section-head">
+          <div>
+            <h2 class="as-section-title">Choose Assignment Type</h2>
+            <p class="as-section-subtitle">Select the document style before filling the context form.</p>
+          </div>
+        </div>
+        <div class="as-type-picker" id="typePicker">
+          <button class="as-type-card selected" data-type="essay" onclick="selectType('essay')" type="button">
+            <span class="as-type-icon"><i class="bi bi-journal-text" aria-hidden="true"></i></span>
+            <span class="as-type-label">Essay</span>
+            <span class="as-type-sub">Start Here</span>
+          </button>
+          <button class="as-type-card" data-type="research_paper" onclick="selectType('research_paper')" type="button">
+            <span class="as-type-icon"><i class="bi bi-book" aria-hidden="true"></i></span>
+            <span class="as-type-label">Research</span>
+            <span class="as-type-sub">Set Direction</span>
+          </button>
+          <button class="as-type-card" data-type="lab_report" onclick="selectType('lab_report')" type="button">
+            <span class="as-type-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M6 2a1 1 0 100 2h.764l.72 2.16A2 2 0 0010.4 8.1l3.2 6.4A3 3 0 0114 19.5V21a1 1 0 11-2 0v-1.5a3 3 0 01-.6-1.35L7.2 9.5A2 2 0 006.66 7.1L6 4H18v2a1 1 0 102 0V3a1 1 0 00-1-1H6z" />
+              </svg>
+            </span>
+            <span class="as-type-label">Lab Report</span>
+            <span class="as-type-sub">Method & Data</span>
+          </button>
+          <button class="as-type-card" data-type="case_study" onclick="selectType('case_study')" type="button">
+            <span class="as-type-icon"><i class="bi bi-bar-chart" aria-hidden="true"></i></span>
+            <span class="as-type-label">Case Study</span>
+            <span class="as-type-sub">Analyze</span>
+          </button>
+          <button class="as-type-card" data-type="presentation_script" onclick="selectType('presentation_script')" type="button">
+            <span class="as-type-icon"><i class="bi bi-mic" aria-hidden="true"></i></span>
+            <span class="as-type-label">Presentation</span>
+            <span class="as-type-sub">Speaker Notes</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="as-card-shell as-form-container as-form-animate" id="assignmentFormContainer"></div>
+
+      <div class="as-card-shell">
+        <div class="as-generate-bar">
+          <div class="as-generate-prompt">
+            <h3>Generate your draft</h3>
+            <p>We save changes automatically as you type.</p>
+          </div>
+          <div class="as-footer-actions">
+            <button type="button" class="as-btn as-btn-secondary" id="saveBtn">Save Draft</button>
+            <button type="button" class="as-btn as-btn-primary" id="generateBtn2">Generate / Regenerate</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="as-divider" id="dragDivider" aria-hidden="true"></div>
+
+    <div class="as-right-panel" id="rightPanel">
+      <div class="as-output-container">
+        <div class="as-section-head">
+          <div>
+            <h2 class="as-section-title">Document Output</h2>
+            <p class="as-section-subtitle">Generated sections, rewrite tools, and live status appear here.</p>
+          </div>
+        </div>
+        <div class="as-output-scroll" id="outputContainer">
+          <div class="as-empty-output" id="outputEmptyState">No sections generated yet. Generate your assignment to begin.</div>
+          <div class="as-generating-state" id="generatingState" style="display:none;">Generating your draft... we will poll for updates automatically.</div>
+          <div class="as-error-state" id="errorState" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="as-compliance-footer">
+        <div class="as-compliance-meter meter-green" id="wordCountMeter">
+          <span>Words: <b id="wordCountCurrent">0</b> / <b id="wordCountTarget">0</b> <span id="wordCountFlag">✓</span></span>
+          <span>Sections: <b id="sectionCount">0</b> generated</span>
+        </div>
+        <div class="as-meter"><span id="meterFill"></span></div>
+      </div>
+
+      <div class="as-chat-console">
+        <div class="as-section-head">
+          <div>
+            <h2 class="as-section-title">Chat Refinement</h2>
+            <p class="as-section-subtitle">Use quick chips or free text to refine the generated document.</p>
+          </div>
+        </div>
+        <div class="as-chat-chips" id="chatChips"></div>
+        <div class="as-chat-list" id="chatList">
+          <div class="as-empty-chat">No chat yet. Generate the draft first, then refine it here.</div>
+        </div>
+        <div class="as-chat-input-row">
+          <input type="text" id="chatInput" placeholder="Refine the document, add examples, shorten a section...">
+          <button type="button" class="as-btn as-btn-primary" id="sendChatBtn">Send</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<button class="as-mobile-preview-fab" type="button" id="previewFab">👁 Preview</button>
+
+<div class="as-rewrite-overlay" id="sectionRewriteOverlay" aria-hidden="true">
+  <div class="as-rewrite-card">
+    <div class="as-rewrite-head">
+      <h3 id="rewriteSectionTitle">Rewrite section</h3>
+      <button type="button" id="closeRewriteOverlay">✕</button>
+    </div>
+    <textarea id="rewriteInput" placeholder="Describe how you want this section refined..."></textarea>
+    <div class="as-rewrite-footer">
+      <button type="button" class="as-btn as-btn-secondary" id="cancelRewriteBtn">Cancel</button>
+      <button type="button" class="as-btn as-btn-primary" id="applyRewriteBtn">Apply</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+<script src="/static/js/student-ui.js"></script>
+<script>
+marked.setOptions({ breaks: true, gfm: true });
+
+const token = localStorage.getItem('token');
+const studentUI = window.studentUI || {};
+const sessionIdFromRoute = {{ (session_id if session_id is defined else none)|tojson }};
+let sessionId = sessionIdFromRoute || null;
+let currentSession = null;
+let currentType = 'essay';
+let _pollTimer = null;
+let _pollCount = 0;
+let _isSaving = false;
+let _autoSaveTimer = null;
+let _activeChips = [];
+const MAX_POLLS = 60;
+
+const TYPE_LABELS = {
+  essay: 'Essay',
+  research_paper: 'Research Paper',
+  lab_report: 'Lab Report',
+  case_study: 'Case Study',
+  presentation_script: 'Presentation Script',
+};
+
+const STATUS_LABELS = {
+  draft: 'Draft',
+  generating: 'Generating',
+  generated: 'Generated',
+  error: 'Error',
+};
+
+const CHAT_CHIPS = {
+  essay: ['Make More Formal', 'Add India Context', 'Make Shorter', 'Add Examples', 'Improve Flow'],
+  research_paper: ['Add More Citations', 'Strengthen Abstract', 'Add India Statistics', 'Improve Flow'],
+  lab_report: ['Add Error Analysis', 'Improve Data Tables', 'Expand Procedure', 'Add Precautions'],
+  case_study: ['Strengthen Recommendation', 'Add SWOT Analysis', 'Add India Examples', 'Improve Analysis'],
+  presentation_script: ['Shorten Speaker Notes', 'Add Transitions', 'Make it More Engaging', 'Add CTA'],
+};
+
+const FORM_TEMPLATES = {
+  essay: `
+    <div class="as-form-grid">
+      <div class="as-field as-field-full">
+        <label for="fTopic">Topic / Title <span class="as-req">*</span></label>
+        <input type="text" id="fTopic" placeholder="e.g. Impact of Social Media on Mental Health" autocomplete="off">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fThesis">Core Thesis / Argument</label>
+        <textarea id="fThesis" rows="2" placeholder="Optional: what is the central argument?"></textarea>
+      </div>
+      <div class="as-field">
+        <label for="fAcademicLevel">Academic Level <span class="as-req">*</span></label>
+        <select id="fAcademicLevel">
+          <option value="Undergraduate">Undergraduate</option>
+          <option value="Postgraduate">Postgraduate</option>
+          <option value="High School">High School</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fTone">Tone Profile <span class="as-req">*</span></label>
+        <select id="fTone">
+          <option value="Academic">Academic</option>
+          <option value="Semi-Formal">Semi-Formal</option>
+          <option value="Reflective">Reflective</option>
+          <option value="Persuasive">Persuasive</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fCitation">Citation Style</label>
+        <select id="fCitation">
+          <option value="None">None</option>
+          <option value="APA-7">APA-7</option>
+          <option value="MLA-9">MLA-9</option>
+          <option value="Harvard">Harvard</option>
+          <option value="Chicago">Chicago</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fSubject">Subject / Course</label>
+        <input type="text" id="fSubject" placeholder="e.g. Environmental Science">
+      </div>
+      <div class="as-field as-field-full">
+        <label>Word Count Target: <b id="wordCountLabel">800</b> words</label>
+        <input type="range" id="fWordCount" min="300" max="5000" step="50" value="800" oninput="document.getElementById('wordCountLabel').textContent=this.value">
+      </div>
+      <div class="as-field">
+        <label>Body Paragraphs</label>
+        <div class="as-stepper">
+          <button type="button" onclick="stepperChange('fBodyParagraphs',-1)">−</button>
+          <input type="number" id="fBodyParagraphs" value="3" min="2" max="8" readonly>
+          <button type="button" onclick="stepperChange('fBodyParagraphs',1)">+</button>
+        </div>
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fInstructions">Additional Instructions</label>
+        <textarea id="fInstructions" rows="2" placeholder="Optional: any specific requirements"></textarea>
+      </div>
+    </div>
+  `,
+  research_paper: `
+    <div class="as-form-grid">
+      <div class="as-field as-field-full">
+        <label for="fResearchTopic">Research Topic <span class="as-req">*</span></label>
+        <input type="text" id="fResearchTopic" placeholder="e.g. Renewable energy adoption in India" autocomplete="off">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fResearchQuestion">Research Question</label>
+        <textarea id="fResearchQuestion" rows="2" placeholder="Optional: what is the primary question?"></textarea>
+      </div>
+      <div class="as-field">
+        <label for="fMethodology">Methodology Focus</label>
+        <select id="fMethodology">
+          <option value="Review">Literature Review</option>
+          <option value="Qualitative">Qualitative</option>
+          <option value="Quantitative">Quantitative</option>
+          <option value="Mixed Methods">Mixed Methods</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fResearchLevel">Academic Level <span class="as-req">*</span></label>
+        <select id="fResearchLevel">
+          <option value="Undergraduate">Undergraduate</option>
+          <option value="Postgraduate">Postgraduate</option>
+          <option value="Doctorate">Doctorate</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fResearchCitation">Citation Style</label>
+        <select id="fResearchCitation">
+          <option value="APA-7">APA-7</option>
+          <option value="MLA-9">MLA-9</option>
+          <option value="Harvard">Harvard</option>
+          <option value="Chicago">Chicago</option>
+          <option value="IEEE">IEEE</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fResearchSubject">Subject / Discipline</label>
+        <input type="text" id="fResearchSubject" placeholder="e.g. Computer Science">
+      </div>
+      <div class="as-field as-field-full">
+        <label>Word Count Target: <b id="wordCountLabel">1500</b> words</label>
+        <input type="range" id="fResearchWordCount" min="500" max="10000" step="100" value="1500" oninput="document.getElementById('wordCountLabel').textContent=this.value">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fResearchInstructions">Additional Instructions</label>
+        <textarea id="fResearchInstructions" rows="2" placeholder="Optional: journal style, scope, or emphasis"></textarea>
+      </div>
+    </div>
+  `,
+  lab_report: `
+    <div class="as-form-grid">
+      <div class="as-field as-field-full">
+        <label for="fExperimentTitle">Experiment Title <span class="as-req">*</span></label>
+        <input type="text" id="fExperimentTitle" placeholder="e.g. Analysis of Osmosis in Potato Cells" autocomplete="off">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fObjective">Objective / Aim</label>
+        <textarea id="fObjective" rows="2" placeholder="What was the goal of the experiment?"></textarea>
+      </div>
+      <div class="as-field">
+        <label for="fMethod">Method Summary</label>
+        <select id="fMethod">
+          <option value="Standard">Standard</option>
+          <option value="Detailed">Detailed</option>
+          <option value="Concise">Concise</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fVariables">Variables / Setup</label>
+        <input type="text" id="fVariables" placeholder="e.g. independent and dependent variables">
+      </div>
+      <div class="as-field">
+        <label for="fLabTone">Tone Profile</label>
+        <select id="fLabTone">
+          <option value="Formal">Formal</option>
+          <option value="Technical">Technical</option>
+          <option value="Simple">Simple</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fLabSubject">Subject / Course</label>
+        <input type="text" id="fLabSubject" placeholder="e.g. Biology">
+      </div>
+      <div class="as-field as-field-full">
+        <label>Word Count Target: <b id="wordCountLabel">1200</b> words</label>
+        <input type="range" id="fLabWordCount" min="400" max="6000" step="50" value="1200" oninput="document.getElementById('wordCountLabel').textContent=this.value">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fLabInstructions">Additional Instructions</label>
+        <textarea id="fLabInstructions" rows="2" placeholder="Optional: mention tables, charts, or formatting"></textarea>
+      </div>
+    </div>
+  `,
+  case_study: `
+    <div class="as-form-grid">
+      <div class="as-field as-field-full">
+        <label for="fCaseTitle">Case Study Title <span class="as-req">*</span></label>
+        <input type="text" id="fCaseTitle" placeholder="e.g. Tata Steel digital transformation case study" autocomplete="off">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fCaseProblem">Problem Statement</label>
+        <textarea id="fCaseProblem" rows="2" placeholder="Summarise the core business / social problem"></textarea>
+      </div>
+      <div class="as-field">
+        <label for="fOrganization">Organization / Brand</label>
+        <input type="text" id="fOrganization" placeholder="e.g. Tata Steel">
+      </div>
+      <div class="as-field">
+        <label for="fIndustry">Industry</label>
+        <input type="text" id="fIndustry" placeholder="e.g. Manufacturing">
+      </div>
+      <div class="as-field">
+        <label for="fFramework">Analysis Framework</label>
+        <select id="fFramework">
+          <option value="SWOT">SWOT</option>
+          <option value="PESTLE">PESTLE</option>
+          <option value="Porter Five Forces">Porter Five Forces</option>
+          <option value="Root Cause">Root Cause</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fCaseTone">Tone Profile</label>
+        <select id="fCaseTone">
+          <option value="Analytical">Analytical</option>
+          <option value="Formal">Formal</option>
+          <option value="Consulting">Consulting</option>
+        </select>
+      </div>
+      <div class="as-field as-field-full">
+        <label>Word Count Target: <b id="wordCountLabel">1000</b> words</label>
+        <input type="range" id="fCaseWordCount" min="400" max="6000" step="50" value="1000" oninput="document.getElementById('wordCountLabel').textContent=this.value">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fCaseInstructions">Additional Instructions</label>
+        <textarea id="fCaseInstructions" rows="2" placeholder="Optional: mention recommendation style, region, or scope"></textarea>
+      </div>
+    </div>
+  `,
+  presentation_script: `
+    <div class="as-form-grid">
+      <div class="as-field as-field-full">
+        <label for="fPresentationTitle">Presentation Title <span class="as-req">*</span></label>
+        <input type="text" id="fPresentationTitle" placeholder="e.g. Climate Change and Urban Planning" autocomplete="off">
+      </div>
+      <div class="as-field">
+        <label for="fAudience">Audience</label>
+        <input type="text" id="fAudience" placeholder="e.g. Undergraduate classmates">
+      </div>
+      <div class="as-field">
+        <label for="fDuration">Duration (minutes)</label>
+        <input type="number" id="fDuration" min="3" max="45" value="8">
+      </div>
+      <div class="as-field">
+        <label for="fSlides">Slide Count</label>
+        <input type="number" id="fSlides" min="5" max="30" value="10">
+      </div>
+      <div class="as-field">
+        <label for="fPresentationTone">Tone Profile</label>
+        <select id="fPresentationTone">
+          <option value="Engaging">Engaging</option>
+          <option value="Formal">Formal</option>
+          <option value="Persuasive">Persuasive</option>
+          <option value="Academic">Academic</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fPresentationStyle">Speaker Style</label>
+        <select id="fPresentationStyle">
+          <option value="Confident">Confident</option>
+          <option value="Conversational">Conversational</option>
+          <option value="Professional">Professional</option>
+        </select>
+      </div>
+      <div class="as-field as-field-full">
+        <label>Word Count Target: <b id="wordCountLabel">900</b> words</label>
+        <input type="range" id="fPresentationWordCount" min="300" max="4000" step="50" value="900" oninput="document.getElementById('wordCountLabel').textContent=this.value">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fPresentationInstructions">Additional Instructions</label>
+        <textarea id="fPresentationInstructions" rows="2" placeholder="Optional: mention transitions, call to action, or delivery style"></textarea>
+      </div>
+    </div>
+  `,
+};
+
+const authHeaders = (extra = {}) => ({
+  ...(studentUI.authHeaders ? studentUI.authHeaders(extra) : {
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...extra,
+  }),
+});
+
+const jsonHeaders = (extra = {}) => ({
+  ...(studentUI.jsonHeaders ? studentUI.jsonHeaders(extra) : {
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    'Content-Type': 'application/json',
+    ...extra,
+  }),
+});
+
+const escapeHtml = (value) => String(value == null ? '' : value)
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#39;');
+
+const formatDate = (value) => {
+  if (!value) return '';
+  try {
+    return new Date(value).toLocaleDateString(undefined, {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+    });
+  } catch {
+    return String(value);
+  }
+};
+
+const apiGet = async (url) => {
+  const response = await fetch(url, { headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || 'Request failed');
+  return data;
+};
+
+const apiPost = async (url, payload) => {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(payload || {}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || 'Request failed');
+  return data;
+};
+
+const apiPut = async (url, payload) => {
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: jsonHeaders(),
+    body: JSON.stringify(payload || {}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || 'Request failed');
+  return data;
+};
+
+const apiDelete = async (url) => {
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || 'Request failed');
+  return data;
+};
+
+const statusClass = (status) => `as-status-${status || 'draft'}`;
+
+// Fixed: delegate to global showToast defined in base.html which uses site light-theme colors
+const showToast = (message, kind = 'info') => {
+  if (studentUI.showToast) {
+    studentUI.showToast(message, kind);
+    return;
+  }
+  const typeMap = { error: 'error', success: 'success', warning: 'warning', info: 'info' };
+  if (window.showToast && window.showToast !== showToast) {
+    window.showToast(message, typeMap[kind] || 'info');
+  }
+};
+
+const setSaveStatus = (state, text) => {
+  const el = document.getElementById('saveStatus');
+  if (!el) return;
+  el.className = `as-save-pill ${state || ''}`.trim();
+  el.textContent = text || 'Saved';
+};
+
+const setStatusPill = (status) => {
+  const el = document.getElementById('statusPill');
+  if (!el) return;
+  el.textContent = `Status: ${STATUS_LABELS[status] || status || 'Draft'}`;
+};
+
+const setWordPill = (current, target) => {
+  const el = document.getElementById('wordPill');
+  const currentNum = Number(current || 0);
+  const targetNum = Number(target || 0);
+  if (!el) return;
+  el.textContent = `${currentNum.toLocaleString('en-IN')} / ${targetNum.toLocaleString('en-IN')} words`;
+};
+
+const setMeter = (current, target) => {
+  const currentNum = Number(current || 0);
+  const targetNum = Number(target || 0);
+  const ratio = targetNum > 0 ? (currentNum / targetNum) * 100 : 0;
+  const meter = document.getElementById('wordCountMeter');
+  const fill = document.getElementById('meterFill');
+  const currentEl = document.getElementById('wordCountCurrent');
+  const targetEl = document.getElementById('wordCountTarget');
+  const flagEl = document.getElementById('wordCountFlag');
+  const sectionEl = document.getElementById('sectionCount');
+  if (currentEl) currentEl.textContent = currentNum.toLocaleString('en-IN');
+  if (targetEl) targetEl.textContent = targetNum.toLocaleString('en-IN');
+  if (sectionEl) sectionEl.textContent = String((currentSession && currentSession.documentSections && currentSession.documentSections.length) || 0);
+  if (meter) meter.className = 'as-compliance-meter';
+  if (fill) fill.style.width = `${Math.min(ratio, 100)}%`;
+  if (ratio >= 0 && ratio < 90) {
+    if (meter) meter.classList.add('meter-amber');
+    if (flagEl) flagEl.textContent = 'under';
+  } else if (ratio > 125) {
+    if (meter) meter.classList.add('meter-red');
+    if (flagEl) flagEl.textContent = 'over';
+  } else {
+    if (meter) meter.classList.add('meter-green');
+    if (flagEl) flagEl.textContent = '✓';
+  }
+};
+
+const renderChatHistory = () => {
+  const chatList = document.getElementById('chatList');
+  if (!chatList) return;
+  const history = (currentSession && Array.isArray(currentSession.chatHistory)) ? currentSession.chatHistory : [];
+  if (!history.length) {
+    chatList.innerHTML = '<div class="as-empty-chat">No chat yet. Generate the draft first, then refine it here.</div>';
+    return;
+  }
+  chatList.innerHTML = history.map((item) => {
+    const role = item.role === 'assistant' ? 'assistant' : 'user';
+    const message = escapeHtml(item.message || '');
+    return `<div class="as-chat-item ${role}"><b>${role === 'assistant' ? 'Assistant' : 'You'}:</b> ${message}</div>`;
+  }).join('');
+  chatList.scrollTop = chatList.scrollHeight;
+};
+
+const addChatMessage = (role, message) => {
+  const chatList = document.getElementById('chatList');
+  if (!chatList) return null;
+  const empty = chatList.querySelector('.as-empty-chat');
+  if (empty) empty.remove();
+  const item = document.createElement('div');
+  item.className = `as-chat-item ${role}`;
+  item.dataset.role = role;
+  item.innerHTML = `<b>${role === 'assistant' ? 'Assistant' : 'You'}:</b> ${escapeHtml(message)}`;
+  chatList.appendChild(item);
+  chatList.scrollTop = chatList.scrollHeight;
+  return item;
+};
+
+const updateChatMessage = (node, message) => {
+  if (node) node.innerHTML = `<b>Assistant:</b> ${escapeHtml(message)}`;
+};
+
+const renderAssignmentForm = (type) => {
+  const container = document.getElementById('assignmentFormContainer');
+  if (!container) return;
+  currentType = type || 'essay';
+  document.querySelectorAll('.as-type-card').forEach((card) => {
+    card.classList.toggle('selected', card.dataset.type === currentType);
+  });
+  container.classList.remove('as-form-animate');
+  container.innerHTML = FORM_TEMPLATES[currentType] || FORM_TEMPLATES.essay;
+  container.offsetHeight;
+  container.classList.add('as-form-animate');
+  renderChatChips(currentType);
+  bindFormInputs();
+  fillFormFromContext();
+  syncHeaderFromSession();
+};
+
+const selectType = (type) => {
+  const switchingExistingSession = !!(sessionId && currentSession && String(currentSession.assignmentType || '') !== String(type || ''));
+  if (switchingExistingSession) {
+    // Keep old assignment untouched; start a fresh workspace for the new type.
+    sessionId = null;
+    currentSession = null;
+    setStudioReadOnly(false);
+    clearInterval(_pollTimer);
+    history.replaceState({}, '', '/student/assignments/new');
+    setSaveStatus('', 'Draft saved locally');
+    setStatusPill('draft');
+    setWordPill(0, 0);
+    renderDocumentSections([]);
+    renderChatHistory();
+    showToast('Started a new assignment draft for selected type', 'success');
+  }
+  currentType = type;
+  document.querySelectorAll('.as-type-card').forEach((card) => {
+    card.classList.toggle('selected', card.dataset.type === type);
+  });
+  if (currentSession) currentSession.assignmentType = type;
+  renderAssignmentForm(type);
+  scheduleAutoSave();
+};
+
+const stepperChange = (fieldId, delta) => {
+  const input = document.getElementById(fieldId);
+  if (!input) return;
+  const min = Number(input.min || 0);
+  const max = Number(input.max || 999999);
+  const current = Number(input.value || min);
+  const next = Math.min(max, Math.max(min, current + Number(delta || 0)));
+  input.value = String(next);
+  scheduleAutoSave();
+  updateCurrentContextTitle();
+};
+
+const getFieldValue = (id) => {
+  const el = document.getElementById(id);
+  return el ? String(el.value || '').trim() : '';
+};
+
+const getNumberValue = (id, fallback) => {
+  const el = document.getElementById(id);
+  const parsed = Number.parseInt(el ? el.value : '', 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const buildContextPayload = (type) => {
+  if (type === 'essay') {
+    return {
+      topic: getFieldValue('fTopic'),
+      thesis: getFieldValue('fThesis'),
+      academicLevel: getFieldValue('fAcademicLevel'),
+      toneProfile: getFieldValue('fTone'),
+      citationStyle: getFieldValue('fCitation'),
+      subject: getFieldValue('fSubject'),
+      wordCountTarget: getNumberValue('fWordCount', 800),
+      bodyParagraphs: getNumberValue('fBodyParagraphs', 3),
+      additionalInstructions: getFieldValue('fInstructions'),
+    };
+  }
+  if (type === 'research_paper') {
+    return {
+      researchTopic: getFieldValue('fResearchTopic'),
+      researchQuestion: getFieldValue('fResearchQuestion'),
+      methodology: getFieldValue('fMethodology'),
+      academicLevel: getFieldValue('fResearchLevel'),
+      citationStyle: getFieldValue('fResearchCitation'),
+      subject: getFieldValue('fResearchSubject'),
+      wordCountTarget: getNumberValue('fResearchWordCount', 1500),
+      additionalInstructions: getFieldValue('fResearchInstructions'),
+    };
+  }
+  if (type === 'lab_report') {
+    return {
+      experimentTitle: getFieldValue('fExperimentTitle'),
+      objective: getFieldValue('fObjective'),
+      method: getFieldValue('fMethod'),
+      variables: getFieldValue('fVariables'),
+      toneProfile: getFieldValue('fLabTone'),
+      subject: getFieldValue('fLabSubject'),
+      wordCountTarget: getNumberValue('fLabWordCount', 1200),
+      additionalInstructions: getFieldValue('fLabInstructions'),
+    };
+  }
+  if (type === 'case_study') {
+    return {
+      caseTitle: getFieldValue('fCaseTitle'),
+      problemStatement: getFieldValue('fCaseProblem'),
+      organization: getFieldValue('fOrganization'),
+      industry: getFieldValue('fIndustry'),
+      analysisFramework: getFieldValue('fFramework'),
+      toneProfile: getFieldValue('fCaseTone'),
+      wordCountTarget: getNumberValue('fCaseWordCount', 1000),
+      additionalInstructions: getFieldValue('fCaseInstructions'),
+    };
+  }
+  return {
+    presentationTitle: getFieldValue('fPresentationTitle'),
+    audience: getFieldValue('fAudience'),
+    durationMinutes: getNumberValue('fDuration', 8),
+    slideCount: getNumberValue('fSlides', 10),
+    toneProfile: getFieldValue('fPresentationTone'),
+    speakerStyle: getFieldValue('fPresentationStyle'),
+    wordCountTarget: getNumberValue('fPresentationWordCount', 900),
+    additionalInstructions: getFieldValue('fPresentationInstructions'),
+  };
+};
+
+const deriveTitle = (type) => {
+  const ctx = buildContextPayload(type);
+  return ctx.topic || ctx.researchTopic || ctx.experimentTitle || ctx.caseTitle || ctx.presentationTitle || 'Untitled Assignment';
+};
+
+const updateCurrentContextTitle = () => {
+  const title = deriveTitle(currentType);
+  const studioTitle = document.getElementById('studioTitle');
+  if (studioTitle && title) studioTitle.textContent = title;
+};
+
+const syncHeaderFromSession = () => {
+  const title = (currentSession && currentSession.title) || deriveTitle(currentType) || 'Assignment Workspace';
+  const studioTitle = document.getElementById('studioTitle');
+  const studioSubtitle = document.getElementById('studioSubtitle');
+  if (studioTitle) studioTitle.textContent = title;
+  if (studioSubtitle) {
+    studioSubtitle.textContent = currentSession
+      ? `Working on ${TYPE_LABELS[currentType] || currentType}. Session ${currentSession._id}.`
+      : 'Build, generate, refine, and download academic assignments from one workspace.';
+  }
+  setStatusPill(currentSession ? currentSession.status : 'draft');
+  setWordPill(currentSession ? currentSession.wordCountCurrent : 0, currentSession ? currentSession.wordCountTarget : 0);
+  setMeter(currentSession ? currentSession.wordCountCurrent : 0, currentSession ? currentSession.wordCountTarget : 0);
+  setDownloadAvailability();
+};
+
+const fillFormFromContext = () => {
+  const ctx = (currentSession && currentSession.contextInputs) || {};
+  const setValue = (id, value) => {
+    const el = document.getElementById(id);
+    if (el && value != null) el.value = String(value);
+  };
+  if (currentType === 'essay') {
+    setValue('fTopic', ctx.topic || currentSession?.title || '');
+    setValue('fThesis', ctx.thesis || '');
+    setValue('fAcademicLevel', ctx.academicLevel || 'Undergraduate');
+    setValue('fTone', ctx.toneProfile || 'Academic');
+    setValue('fCitation', ctx.citationStyle || 'None');
+    setValue('fSubject', ctx.subject || '');
+    setValue('fWordCount', ctx.wordCountTarget || 800);
+    setValue('fBodyParagraphs', ctx.bodyParagraphs || 3);
+    setValue('fInstructions', ctx.additionalInstructions || '');
+  } else if (currentType === 'research_paper') {
+    setValue('fResearchTopic', ctx.researchTopic || currentSession?.title || '');
+    setValue('fResearchQuestion', ctx.researchQuestion || '');
+    setValue('fMethodology', ctx.methodology || 'Review');
+    setValue('fResearchLevel', ctx.academicLevel || 'Undergraduate');
+    setValue('fResearchCitation', ctx.citationStyle || 'APA-7');
+    setValue('fResearchSubject', ctx.subject || '');
+    setValue('fResearchWordCount', ctx.wordCountTarget || 1500);
+    setValue('fResearchInstructions', ctx.additionalInstructions || '');
+  } else if (currentType === 'lab_report') {
+    setValue('fExperimentTitle', ctx.experimentTitle || currentSession?.title || '');
+    setValue('fObjective', ctx.objective || '');
+    setValue('fMethod', ctx.method || 'Standard');
+    setValue('fVariables', ctx.variables || '');
+    setValue('fLabTone', ctx.toneProfile || 'Formal');
+    setValue('fLabSubject', ctx.subject || '');
+    setValue('fLabWordCount', ctx.wordCountTarget || 1200);
+    setValue('fLabInstructions', ctx.additionalInstructions || '');
+  } else if (currentType === 'case_study') {
+    setValue('fCaseTitle', ctx.caseTitle || currentSession?.title || '');
+    setValue('fCaseProblem', ctx.problemStatement || '');
+    setValue('fOrganization', ctx.organization || '');
+    setValue('fIndustry', ctx.industry || '');
+    setValue('fFramework', ctx.analysisFramework || 'SWOT');
+    setValue('fCaseTone', ctx.toneProfile || 'Analytical');
+    setValue('fCaseWordCount', ctx.wordCountTarget || 1000);
+    setValue('fCaseInstructions', ctx.additionalInstructions || '');
+  } else {
+    setValue('fPresentationTitle', ctx.presentationTitle || currentSession?.title || '');
+    setValue('fAudience', ctx.audience || '');
+    setValue('fDuration', ctx.durationMinutes || 8);
+    setValue('fSlides', ctx.slideCount || 10);
+    setValue('fPresentationTone', ctx.toneProfile || 'Engaging');
+    setValue('fPresentationStyle', ctx.speakerStyle || 'Confident');
+    setValue('fPresentationWordCount', ctx.wordCountTarget || 900);
+    setValue('fPresentationInstructions', ctx.additionalInstructions || '');
+  }
+};
+
+const renderDocumentSections = (sections) => {
+  const container = document.getElementById('outputContainer');
+  if (!container) return;
+  const outputEmptyState = document.getElementById('outputEmptyState');
+  const generatingState = document.getElementById('generatingState');
+  const errorState = document.getElementById('errorState');
+  if (outputEmptyState) outputEmptyState.style.display = 'none';
+  if (generatingState) generatingState.style.display = 'none';
+  if (errorState) errorState.style.display = 'none';
+
+  const sorted = Array.isArray(sections) ? [...sections].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)) : [];
+  if (!sorted.length) {
+    container.innerHTML = '<div class="as-empty-output" id="outputEmptyState">No sections generated yet. Generate your assignment to begin.</div>';
+    setMeter(currentSession ? currentSession.wordCountCurrent : 0, currentSession ? currentSession.wordCountTarget : 0);
+    return;
+  }
+
+  container.innerHTML = sorted.map((section) => {
+    const key = String(section.section_key || section.key || 'section');
+    const title = escapeHtml(section.title || 'Section');
+    const body = DOMPurify.sanitize(marked.parse(String(section.content_markdown || '')));
+    const keyLiteral = JSON.stringify(key);
+    const titleLiteral = JSON.stringify(String(section.title || 'Section'));
+    return `
+      <article class="as-section-card" data-key="${escapeHtml(key)}">
+        <div class="as-section-header">
+          <div>
+            <h3 class="as-section-title-text">${title}</h3>
+          </div>
+          <button type="button" class="as-section-edit" onclick='openSectionRewrite(${keyLiteral}, ${titleLiteral})'>✎</button>
+        </div>
+        <div class="as-section-content" id="content_${escapeHtml(key)}">${body}</div>
+      </article>
+    `;
+  }).join('');
+  const sectionCount = document.getElementById('sectionCount');
+  if (sectionCount) sectionCount.textContent = String(sorted.length);
+  setMeter(currentSession ? currentSession.wordCountCurrent : 0, currentSession ? currentSession.wordCountTarget : 0);
+};
+
+const showGeneratingState = () => {
+  const container = document.getElementById('outputContainer');
+  if (container) container.innerHTML = '<div class="as-generating-state" id="generatingState">Generating your draft... we will poll for updates automatically.</div>';
+  setSaveStatus('saving', 'Generating');
+  setGenerateLoading(true);
+};
+
+const showErrorState = (message) => {
+  const container = document.getElementById('outputContainer');
+  if (container) container.innerHTML = `<div class="as-error-state" id="errorState">${escapeHtml(message || 'Generation failed.')}</div>`;
+  setSaveStatus('error', 'Error');
+  setGenerateLoading(false);
+  if (currentSession) {
+    currentSession.status = 'error';
+    currentSession.errorMessage = message || 'Generation failed.';
+  }
+  setStatusPill('error');
+};
+
+const showGeneratedState = () => {
+  setSaveStatus('saved', 'Generated');
+  setStatusPill('generated');
+  setGenerateLoading(false);
+};
+
+const setGenerateLoading = (isLoading) => {
+  const locked = isViewOnlySession();
+  ['generateBtn', 'generateBtn2'].forEach((id) => {
+    const button = document.getElementById(id);
+    if (!button) return;
+    if (!button.dataset.defaultText) button.dataset.defaultText = button.textContent;
+    button.disabled = locked || !!isLoading;
+    button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+    button.textContent = isLoading ? 'Generating...' : button.dataset.defaultText;
+  });
+};
+
+const isViewOnlySession = () => !!(currentSession && String(currentSession.status || '') === 'generated');
+
+const setStudioReadOnly = (isReadOnly) => {
+  const subtitle = document.getElementById('studioSubtitle');
+  const saveStatus = document.getElementById('saveStatus');
+  if (subtitle) {
+    subtitle.textContent = isReadOnly
+      ? 'This generated snapshot is locked. Switch to a different type to start a new draft.'
+      : 'Build, generate, refine, and download academic assignments from one workspace.';
+  }
+  if (saveStatus) {
+    saveStatus.textContent = isReadOnly ? 'Snapshot locked' : 'Draft saved locally';
+  }
+
+  const formContainer = document.getElementById('assignmentFormContainer');
+  if (formContainer) {
+    formContainer.querySelectorAll('input, select, textarea, button').forEach((el) => {
+      el.disabled = !!isReadOnly;
+    });
+  }
+
+  // Disable type-picker cards explicitly
+  document.querySelectorAll('.as-type-card').forEach((card) => {
+    try { card.disabled = !!isReadOnly; } catch (e) { /* ignore */ }
+    if (isReadOnly) card.classList.add('disabled'); else card.classList.remove('disabled');
+  });
+
+  // Show Start New Draft CTA when locked
+  const newDraftBtn = document.getElementById('startNewDraftBtn');
+  if (newDraftBtn) newDraftBtn.style.display = isReadOnly ? 'inline-flex' : 'none';
+
+  ['chatInput', 'sendChatBtn', 'applyRewriteBtn', 'generateBtn', 'generateBtn2'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !!isReadOnly || el.disabled;
+  });
+
+  if (isReadOnly) {
+    setGenerateLoading(false);
+  }
+};
+
+const setDownloadAvailability = () => {
+  const hasSections = !!(
+    currentSession &&
+    Array.isArray(currentSession.documentSections) &&
+    currentSession.documentSections.length > 0
+  );
+  ['downloadPdfBtn', 'downloadDocxBtn'].forEach((id) => {
+    const button = document.getElementById(id);
+    if (!button) return;
+    button.disabled = !hasSections;
+    button.title = hasSections ? '' : 'Generate assignment first';
+  });
+};
+
+const renderChatChips = (type) => {
+  const container = document.getElementById('chatChips');
+  if (!container) return;
+  _activeChips = CHAT_CHIPS[type] || [];
+  container.innerHTML = _activeChips.map((chip) => `<button type="button" class="as-chip" onclick='sendChat(${JSON.stringify(chip)})'>${escapeHtml(chip)}</button>`).join('');
+};
+
+const saveCurrentDraft = async () => {
+  if (!sessionId || _isSaving || isViewOnlySession()) return null;
+  _isSaving = true;
+  setSaveStatus('saving', 'Saving');
+  try {
+    const ctx = buildContextPayload(currentType);
+    const payload = {
+      assignmentType: currentType,
+      contextInputs: ctx,
+      title: deriveTitle(currentType),
+    };
+    const result = await apiPut(`/api/student/assignments/${sessionId}`, payload);
+    setSaveStatus('saved', `Saved ${result.updatedAt || ''}`.trim());
+    if (currentSession) {
+      currentSession.assignmentType = currentType;
+      currentSession.contextInputs = ctx;
+      currentSession.title = payload.title;
+      currentSession.wordCountTarget = ctx.wordCountTarget || currentSession.wordCountTarget || 0;
+    }
+    syncHeaderFromSession();
+    return result;
+  } catch (error) {
+    setSaveStatus('error', 'Save failed');
+    showToast(error.message || 'Could not save draft', 'error');
+    throw error;
+  } finally {
+    _isSaving = false;
+  }
+};
+
+const scheduleAutoSave = () => {
+  if (isViewOnlySession()) return;
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(() => {
+    saveCurrentDraft().catch(() => {});
+  }, 1500);
+};
+
+const bindFormInputs = () => {
+  const container = document.getElementById('assignmentFormContainer');
+  if (!container) return;
+  container.querySelectorAll('input, select, textarea').forEach((el) => {
+    el.addEventListener('input', () => {
+      updateCurrentContextTitle();
+      scheduleAutoSave();
+    });
+    el.addEventListener('change', () => {
+      updateCurrentContextTitle();
+      scheduleAutoSave();
+    });
+  });
+};
+
+const loadSession = async (sid) => {
+  if (!sid) {
+    setStudioReadOnly(false);
+    renderAssignmentForm(currentType);
+    syncHeaderFromSession();
+    renderChatChips(currentType);
+    return;
+  }
+  try {
+    const data = await apiGet(`/api/student/assignments/${sid}`);
+    currentSession = data;
+    currentType = data.assignmentType || 'essay';
+    sessionId = data._id || sid;
+    renderAssignmentForm(currentType);
+    fillFormFromContext();
+    syncHeaderFromSession();
+    renderChatHistory();
+    renderChatChips(currentType);
+    if (data.status === 'generated') {
+      setStudioReadOnly(true);
+      renderDocumentSections(data.documentSections || []);
+      showGeneratedState();
+    } else if (data.status === 'generating') {
+      setStudioReadOnly(false);
+      showGeneratingState();
+      startPolling();
+    } else if (data.status === 'error') {
+      setStudioReadOnly(false);
+      showErrorState(data.errorMessage || 'Generation failed.');
+    } else {
+      setStudioReadOnly(false);
+      renderDocumentSections(data.documentSections || []);
+    }
+  } catch (error) {
+    showToast(error.message || 'Could not load assignment session', 'error');
+    setStudioReadOnly(false);
+    renderAssignmentForm(currentType);
+    syncHeaderFromSession();
+  }
+};
+
+const createOrUpdateSession = async () => {
+  const ctx = buildContextPayload(currentType);
+  const title = deriveTitle(currentType);
+  if (!sessionId) {
+    const created = await apiPost('/api/student/assignments', {
+      assignmentType: currentType,
+      contextInputs: ctx,
+    });
+    sessionId = created.session._id;
+    currentSession = created.session;
+    currentSession.contextInputs = ctx;
+    currentSession.title = title;
+    history.replaceState({}, '', `/student/assignments/${sessionId}`);
+  } else {
+    await apiPut(`/api/student/assignments/${sessionId}`, {
+      assignmentType: currentType,
+      title,
+      contextInputs: ctx,
+    });
+    if (currentSession) {
+      currentSession.assignmentType = currentType;
+      currentSession.title = title;
+      currentSession.contextInputs = ctx;
+    }
+  }
+  syncHeaderFromSession();
+  return { ctx, title };
+};
+
+const startPolling = () => {
+  clearInterval(_pollTimer);
+  _pollCount = 0;
+  _pollTimer = setInterval(pollStatus, 5000);
+};
+
+const pollStatus = async () => {
+  _pollCount += 1;
+  if (_pollCount > MAX_POLLS) {
+    clearInterval(_pollTimer);
+    showErrorState('Generation timed out. Please try again.');
+    return;
+  }
+  if (!sessionId) return;
+  try {
+    const status = await apiGet(`/api/student/assignments/${sessionId}/status`);
+    if (status.status === 'generated') {
+      clearInterval(_pollTimer);
+      const fresh = await apiGet(`/api/student/assignments/${sessionId}`);
+      currentSession = fresh;
+      renderDocumentSections(fresh.documentSections || []);
+      syncHeaderFromSession();
+      showGeneratedState();
+      renderChatHistory();
+    } else if (status.status === 'error') {
+      clearInterval(_pollTimer);
+      showErrorState(status.errorMessage || 'Generation failed. Please try again.');
+    }
+  } catch (error) {
+    // keep polling on transient network errors
+  }
+};
+
+const startGeneration = async () => {
+  try {
+    if (isViewOnlySession()) {
+      showToast('This snapshot is locked. Start a new draft to generate a new version.', 'error');
+      return;
+    }
+    setGenerateLoading(true);
+    setSaveStatus('saving', 'Preparing');
+    await createOrUpdateSession();
+    showGeneratingState();
+    await apiPost(`/api/student/assignments/${sessionId}/generate`, {});
+    currentSession.status = 'generating';
+    setStatusPill('generating');
+    startPolling();
+    showToast('Generation started', 'success');
+  } catch (error) {
+    showErrorState(error.message || 'Could not start generation');
+    showToast(error.message || 'Could not start generation', 'error');
+    setGenerateLoading(false);
+  }
+};
+
+const startNewDraft = async () => {
+  if (!sessionId) return;
+  try {
+    setSaveStatus('saving', 'Creating draft...');
+    const result = await apiPost(`/api/student/assignments/${sessionId}/clone`, {});
+    if (result && result.session && result.session._id) {
+      const nid = result.session._id;
+      sessionId = nid;
+      currentSession = result.session;
+      setStudioReadOnly(false);
+      renderAssignmentForm(currentSession.assignmentType || currentType);
+      fillFormFromContext();
+      syncHeaderFromSession();
+      history.replaceState({}, '', `/student/assignments/${sessionId}`);
+      showToast('New draft created', 'success');
+    }
+  } catch (error) {
+    showToast(error.message || 'Could not create draft', 'error');
+  } finally {
+    setSaveStatus('saved', 'Draft saved locally');
+  }
+};
+
+const openSectionRewrite = (sectionKey, sectionTitle) => {
+  const overlay = document.getElementById('sectionRewriteOverlay');
+  const title = document.getElementById('rewriteSectionTitle');
+  const input = document.getElementById('rewriteInput');
+  if (!overlay || !title || !input) return;
+  overlay.dataset.sectionKey = sectionKey;
+  title.textContent = sectionTitle;
+  input.value = '';
+  overlay.style.display = 'flex';
+  input.focus();
+};
+
+const closeSectionRewrite = () => {
+  const overlay = document.getElementById('sectionRewriteOverlay');
+  if (overlay) overlay.style.display = 'none';
+};
+
+const applyRewrite = async () => {
+  const overlay = document.getElementById('sectionRewriteOverlay');
+  if (!overlay || !sessionId) return;
+  const sectionKey = overlay.dataset.sectionKey;
+  const instruction = String(document.getElementById('rewriteInput')?.value || '').trim();
+  if (!instruction) return;
+  const btn = document.getElementById('applyRewriteBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Rewriting...';
+  }
+  try {
+    const result = await apiPost(`/api/student/assignments/${sessionId}/sections/${sectionKey}/rewrite`, {
+      refinementInstruction: instruction,
+    });
+    if (!currentSession) currentSession = {};
+    currentSession.documentSections = (currentSession.documentSections || []).map((section) => (
+      String(section.section_key || section.key || '') === String(sectionKey)
+        ? { ...section, content_markdown: result.updatedContentMarkdown || section.content_markdown || '' }
+        : section
+    ));
+    currentSession.wordCountCurrent = result.wordCountCurrent || currentSession.wordCountCurrent || 0;
+    const contentEl = document.getElementById(`content_${sectionKey}`);
+    if (contentEl) {
+      contentEl.innerHTML = DOMPurify.sanitize(marked.parse(result.updatedContentMarkdown || ''));
+    }
+    syncHeaderFromSession();
+    showToast('Section updated', 'success');
+    closeSectionRewrite();
+  } catch (error) {
+    showToast(error.message || 'Rewrite failed', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Apply';
+    }
+  }
+};
+
+const sendChat = async (message) => {
+  const text = String(message || document.getElementById('chatInput')?.value || '').trim();
+  if (!text || !sessionId) return;
+  const input = document.getElementById('chatInput');
+  if (input) input.value = '';
+  addChatMessage('user', text);
+  const loadingNode = addChatMessage('assistant', 'Refining document...');
+  try {
+    const result = await apiPost(`/api/student/assignments/${sessionId}/chat`, { message: text });
+    if (!currentSession) currentSession = {};
+    currentSession.documentSections = result.documentSections || [];
+    currentSession.wordCountCurrent = result.wordCountCurrent || currentSession.wordCountCurrent || 0;
+    currentSession.chatHistory = currentSession.chatHistory || [];
+    currentSession.chatHistory.push({ role: 'user', message: text });
+    currentSession.chatHistory.push({ role: 'assistant', message: result.assistantMessage || 'Document updated.' });
+    updateChatMessage(loadingNode, result.assistantMessage || 'Document updated.');
+    renderDocumentSections(result.documentSections || []);
+    renderChatHistory();
+    syncHeaderFromSession();
+    showToast('Document refined', 'success');
+  } catch (error) {
+    updateChatMessage(loadingNode, error.message || 'Refinement failed');
+    showToast(error.message || 'Chat refinement failed', 'error');
+  }
+};
+
+const downloadFile = async (url, filename) => {
+  const response = await fetch(url, { headers: authHeaders() });
+  if (!response.ok) {
+    let message = 'Download failed';
+    try {
+      const data = await response.json();
+      message = data.message || message;
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+  const blob = await response.blob();
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(link.href);
+    link.remove();
+  }, 0);
+};
+
+const downloadPdf = async () => {
+  if (!sessionId) return showToast('Create or load an assignment first', 'error');
+  const hasSections = !!(currentSession && Array.isArray(currentSession.documentSections) && currentSession.documentSections.length > 0);
+  if (!hasSections) return showToast('Generate assignment first', 'error');
+  try {
+    const title = currentSession?.title || deriveTitle(currentType) || 'assignment';
+    await downloadFile(`/api/student/assignments/${sessionId}/pdf`, `${title.replace(/[^a-z0-9_-]+/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '') || 'assignment'}.pdf`);
+  } catch (error) {
+    showToast(error.message || 'PDF download failed', 'error');
+  }
+};
+
+const downloadDocx = async () => {
+  if (!sessionId) return showToast('Create or load an assignment first', 'error');
+  const hasSections = !!(currentSession && Array.isArray(currentSession.documentSections) && currentSession.documentSections.length > 0);
+  if (!hasSections) return showToast('Generate assignment first', 'error');
+  try {
+    const title = currentSession?.title || deriveTitle(currentType) || 'assignment';
+    await downloadFile(`/api/student/assignments/${sessionId}/docx`, `${title.replace(/[^a-z0-9_-]+/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '') || 'assignment'}.docx`);
+  } catch (error) {
+    showToast(error.message || 'DOCX download failed', 'error');
+  }
+};
+
+const initResize = () => {
+  const body = document.getElementById('studioBody');
+  const divider = document.getElementById('dragDivider');
+  if (!body || !divider) return;
+  let dragging = false;
+  const onMove = (event) => {
+    if (!dragging) return;
+    const rect = body.getBoundingClientRect();
+    const x = Math.max(320, Math.min(event.clientX - rect.left, rect.width - 420));
+    const leftPercent = Math.max(30, Math.min(60, (x / rect.width) * 100));
+    body.style.gridTemplateColumns = `${leftPercent}% 8px ${100 - leftPercent}%`;
+  };
+  divider.addEventListener('mousedown', () => {
+    dragging = true;
+    document.body.style.userSelect = 'none';
+  });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', () => {
+    dragging = false;
+    document.body.style.userSelect = '';
+  });
+};
+
+const initEvents = () => {
+  document.getElementById('saveBtn')?.addEventListener('click', () => saveCurrentDraft().catch(() => {}));
+  document.getElementById('generateBtn')?.addEventListener('click', startGeneration);
+  document.getElementById('generateBtn2')?.addEventListener('click', startGeneration);
+  document.getElementById('downloadPdfBtn')?.addEventListener('click', downloadPdf);
+  document.getElementById('downloadDocxBtn')?.addEventListener('click', downloadDocx);
+  document.getElementById('startNewDraftBtn')?.addEventListener('click', startNewDraft);
+  document.getElementById('sendChatBtn')?.addEventListener('click', () => sendChat());
+  document.getElementById('chatInput')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      sendChat();
+    }
+  });
+  document.getElementById('closeRewriteOverlay')?.addEventListener('click', closeSectionRewrite);
+  document.getElementById('cancelRewriteBtn')?.addEventListener('click', closeSectionRewrite);
+  document.getElementById('applyRewriteBtn')?.addEventListener('click', applyRewrite);
+  document.getElementById('sectionRewriteOverlay')?.addEventListener('click', (event) => {
+    if (event.target && event.target.id === 'sectionRewriteOverlay') closeSectionRewrite();
+  });
+  document.getElementById('previewFab')?.addEventListener('click', () => {
+    document.getElementById('rightPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+};
+
+// Override local showToast with global after DOM is ready
+// This ensures base.html's window.showToast is used, not the local stub above
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.showToast) {
+    // base.html's showToast is available — local stub above will delegate to it
+  }
+});
+
+const init = async () => {
+  if (!token) {
+    window.location.href = '/login';
+    return;
+  }
+  initEvents();
+  initResize();
+  renderAssignmentForm(currentType);
+  setStatusPill('draft');
+  setWordPill(0, 0);
+  setMeter(0, 0);
+  renderChatChips(currentType);
+  if (sessionId) {
+    await loadSession(sessionId);
+  } else {
+    renderDocumentSections([]);
+    syncHeaderFromSession();
+  }
+};
+
+document.addEventListener('DOMContentLoaded', init);
+window.selectType = selectType;
+window.stepperChange = stepperChange;
+window.openSectionRewrite = openSectionRewrite;
+window.sendChat = sendChat;
+</script>
+{% endblock %}

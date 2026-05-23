@@ -5,24 +5,30 @@
 
 {% block admin_content %}
 <section class="dashboard-grid">
-  <div>
-    <h1 class="page-title">Manage Blog Posts</h1>
-    <p class="page-subtitle">Create, edit, and publish blog posts to engage your audience.</p>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Blog Posts</h1>
+      <p class="page-subtitle">Create and publish blog posts for the public site.</p>
+    </div>
+    <div class="page-header-actions">
+      <button class="btn-ghost" type="button" onclick="loadPosts()">
+        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+      </button>
+      <button class="btn-primary" type="button" onclick="openCreate()">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i> New Post
+      </button>
+    </div>
   </div>
 
-  <div class="stats-inline">
-    <button class="btn-ghost" type="button" onclick="loadPosts()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
-    <button class="btn-primary" type="button" onclick="openCreate()"><i data-lucide="plus" style="width:14px;height:14px;"></i>New Post</button>
+  <div class="admin-filter-bar">
+    <input id="searchInput" class="small-input search-input" placeholder="Search by title...">
   </div>
 
   <article class="panel-card panel-body table-card">
-    <div class="toolbar">
-      <input id="searchInput" class="small-input" placeholder="Search posts by title...">
-    </div>
-    <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
-      <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
-      <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
-      <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+    <div class="bulk-toolbar" id="bulkToolbar">
+      <span class="bulk-toolbar-count" id="selectedCount">0 selected</span>
+      <button class="bulk-toolbar-delete" onclick="bulkDelete()">Delete Selected</button>
+      <button class="bulk-toolbar-clear" onclick="clearSelection()">Clear</button>
     </div>
     <div class="data-table-wrap">
       <table class="data-table stagger-table">
@@ -106,7 +112,7 @@
 </div>
 
 <script>
-const apiBaseUrl = '/admin';
+const apiBaseUrl = '/api/admin';
 const token = localStorage.getItem('token');
 let allPosts = [];
 let selectedIds = [];
@@ -163,30 +169,20 @@ function renderTable() {
       </td>
     </tr>
   `).join('');
-  
-  document.querySelectorAll('.row-check').forEach(cb => {
-    cb.addEventListener('change', updateSelection);
-  });
-  document.getElementById('selectAll').addEventListener('change', e => {
-    document.querySelectorAll('.row-check').forEach(cb => cb.checked = e.target.checked);
-    updateSelection();
-  });
 }
 
 function updateSelection() {
   selectedIds = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.dataset.id);
   const toolbar = document.getElementById('bulkToolbar');
-  if (selectedIds.length > 0) {
-    toolbar.style.display = 'flex';
-    document.getElementById('selectedCount').textContent = `${selectedIds.length} selected`;
-  } else {
-    toolbar.style.display = 'none';
-  }
+  if (toolbar) toolbar.classList.toggle('show', selectedIds.length > 0);
+  const countEl = document.getElementById('selectedCount');
+  if (countEl) countEl.textContent = `${selectedIds.length} selected`;
 }
 
 function clearSelection() {
   document.querySelectorAll('.row-check').forEach(cb => cb.checked = false);
-  document.getElementById('selectAll').checked = false;
+  const selectAll = document.getElementById('selectAll');
+  if (selectAll) selectAll.checked = false;
   updateSelection();
 }
 
@@ -270,31 +266,47 @@ function togglePublish(id, publish) {
 }
 
 function deletePost(id) {
-  if (!confirm('Delete this post?')) return;
-  api(`/blog/${id}`, 'DELETE')
-    .then(() => {
-      showToast('Post deleted', 'success');
-      loadPosts();
-    })
-    .catch(() => showToast('Error deleting post', 'error'));
+  window.showBulkConfirm(1, 'post').then((confirmed) => {
+    if (!confirmed) return;
+    api(`/blog/${id}`, 'DELETE')
+      .then(() => {
+        showToast('Post deleted', 'success');
+        loadPosts();
+      })
+      .catch(() => showToast('Error deleting post', 'error'));
+  });
 }
 
 function bulkDelete() {
   if (!selectedIds.length) return;
-  if (!confirm(`Delete ${selectedIds.length} post(s)?`)) return;
-  api('/blog/bulk-delete', 'POST', { ids: selectedIds })
-    .then(() => {
-      showToast('Posts deleted', 'success');
-      clearSelection();
-      loadPosts();
-    })
-    .catch(() => showToast('Error deleting posts', 'error'));
+  window.showBulkConfirm(selectedIds.length, 'posts').then((confirmed) => {
+    if (!confirmed) return;
+    api('/blog/bulk-delete', 'POST', { ids: selectedIds })
+      .then(() => {
+        showToast('Posts deleted', 'success');
+        clearSelection();
+        loadPosts();
+      })
+      .catch(() => showToast('Error deleting posts', 'error'));
+  });
 }
 
-document.getElementById('searchInput').addEventListener('keyup', e => {
-  loadPosts(e.target.value);
+document.addEventListener('DOMContentLoaded', () => {
+  const bulkSelect = window.initBulkSelect({
+    selectAllId: 'selectAll',
+    tbodyId: 'rows',
+    toolbarId: 'bulkToolbar',
+    countId: 'selectedCount',
+    checkboxClass: 'row-check'
+  });
+  clearSelection = bulkSelect.clearSelection;
+  document.getElementById('searchInput').addEventListener('keyup', e => {
+    loadPosts(e.target.value);
+  });
+  document.getElementById('rows').addEventListener('change', (e) => {
+    if (e.target.classList.contains('row-check')) updateSelection();
+  });
+  loadPosts();
 });
-
-loadPosts();
 </script>
 {% endblock %}

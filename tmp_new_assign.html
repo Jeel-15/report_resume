@@ -1,0 +1,3275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignment Studio - ReportGen</title>
+    
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="ReportGen">
+    <meta property="og:title" content="ReportGen — AI-Powered Internship Report Generator">
+    <meta property="og:description" content="Generate professional internship reports in minutes using AI. Trusted by students across GTU, SPPU, MU and 50+ Indian universities.">
+    <meta property="og:image" content="/static/images/og-cover.png">
+    <meta property="og:url" content="http://127.0.0.1:5000/student/assignments/new">
+    <meta property="og:locale" content="en_IN">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ReportGen — AI Internship Report Generator">
+    <meta name="twitter:description" content="Generate professional internship reports using AI in minutes.">
+    <meta name="twitter:image" content="/static/images/og-cover.png">
+
+    <link rel="canonical" href="http://127.0.0.1:5000/student/assignments/new">
+    <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
+    <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png">
+
+    <meta name="description" content="Generate professional internship reports in minutes using AI. Trusted by students across GTU, SPPU, MU and 50+ Indian universities.">
+    <meta name="keywords" content="internship report generator, AI report writer, GTU internship report, SPPU internship report, Indian university internship">
+    <meta name="author" content="ReportGen">
+        <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "ReportGen",
+            "url": "https://reportgen.in",
+            "logo": "https://reportgen.in/static/images/og-cover.png",
+            "contactPoint": [{
+                "@type": "ContactPoint",
+                "email": "support@reportgen.in",
+                "contactType": "customer support",
+                "areaServed": "IN",
+                "availableLanguage": "en"
+            }]
+        }
+        </script>
+    
+    <!-- Design system CSS variables & base styles -->
+    <link rel="stylesheet" href="/static/css/design-system.css">
+    <!-- Footer styles (used by landing_footer.html partial) -->
+    <link rel="stylesheet" href="/static/css/footer.css">
+    <!-- Animation keyframes (used by all pages for .shimmer, .fade-up etc.) -->
+    <link rel="stylesheet" href="/static/css/animations.css">
+    <!-- Bootstrap CSS (kept for form components compatibility) -->
+    <link href="/static/lib/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Select2 CSS: searchable dropdown UI inside opened list -->
+    <link href="/static/lib/css/select2.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons (local fallback + CDN) -->
+    <!-- Local copy kept for offline dev; CDN used to ensure font files load correctly in dev environments -->
+    <link href="/static/lib/css/bootstrap-icons.css" rel="stylesheet" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css'">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" crossorigin="anonymous">
+    <!-- Google Fonts -->
+    <link href="/static/lib/css/google-fonts-main.css" rel="stylesheet">
+    <!-- GSAP Library -->
+    <script src="/static/lib/js/gsap.min.js"></script>
+    <script src="/static/lib/js/ScrollTrigger.min.js"></script>
+    
+    <style>
+
+        :root {
+            --pri: #0f0f1e;
+            --acc: #e84393;
+            --acc2: #7c3aed;
+            --page-bg: #f0f2f8;
+            --card: #ffffff;
+            --srf: #f6f4fc;
+            --srf2: #ffffff;
+            --brd: #e8e4f0;
+            --txt: #1a1a2e;
+            --txt2: #6b6783;
+            --txt3: #9b97b0;
+            --grn: #059669;
+            --amb: #d97706;
+            --red: #dc2626;
+            --font-disp: 'DM Serif Display', serif;
+            --font-body: 'DM Sans', sans-serif;
+            --shadow-soft: 0 10px 28px rgba(26, 26, 46, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background:
+                radial-gradient(950px 320px at -10% -20%, rgba(124, 58, 237, 0.10), transparent 60%),
+                radial-gradient(880px 280px at 110% -10%, rgba(232, 67, 147, 0.08), transparent 60%),
+                var(--page-bg);
+            color: var(--txt);
+        }
+
+        .container.main-content {
+            max-width: 1220px;
+            padding-top: 104px;
+            padding-bottom: 24px;
+        }
+
+        .navbar#mainNavbar {
+            background: var(--pri) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 6px 20px rgba(26, 26, 46, 0.2);
+            margin-bottom: 1.4rem !important;
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+        }
+
+        .navbar-brand {
+            font-family: var(--font-disp);
+            letter-spacing: -0.2px;
+            font-size: 1.45rem;
+            color: #fff !important;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.52rem;
+        }
+
+        .brand-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.55rem;
+            height: 1.55rem;
+            border-radius: 0.45rem;
+            font-size: 0.92rem;
+            background: rgba(255, 255, 255, 0.16);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+        }
+
+        .navbar .nav-link {
+            color: rgba(255, 255, 255, 0.72) !important;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: color .18s ease;
+            position: relative;
+        }
+
+        .navbar .nav-link::after {
+            content: '';
+            position: absolute;
+            left: 0.5rem;
+            right: 0.5rem;
+            bottom: 0.18rem;
+            height: 2px;
+            background: linear-gradient(135deg, var(--acc2), var(--acc));
+            border-radius: 999px;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.24s ease;
+        }
+
+        .navbar .nav-link:hover,
+        .navbar .nav-link:focus {
+            color: #fff !important;
+        }
+
+        .navbar .nav-link:hover::after,
+        .navbar .nav-link:focus::after,
+        .navbar .nav-link.active::after {
+            transform: scaleX(1);
+        }
+
+        .navbar .nav-link.active {
+            color: #fff !important;
+            background: linear-gradient(135deg, var(--acc2), var(--acc));
+            border-radius: 999px;
+            padding-left: 0.7rem;
+            padding-right: 0.7rem;
+        }
+
+        .navbar .dropdown-toggle::after {
+            margin-left: 0.45rem;
+            vertical-align: 0.15em;
+        }
+
+        .nav-section-divider {
+            width: 1px;
+            height: 1.2rem;
+            background: rgba(255, 255, 255, 0.2);
+            margin: 0 0.28rem;
+            align-self: center;
+        }
+
+        #mainNavbar .dropdown-menu {
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 12px 28px rgba(17, 24, 39, 0.15);
+            border-radius: 0.8rem;
+            padding: 0.35rem;
+        }
+
+        #mainNavbar .dropdown-item {
+            border-radius: 0.55rem;
+            font-size: 0.86rem;
+            padding: 0.45rem 0.62rem;
+        }
+
+        #mainNavbar .dropdown-item.active,
+        #mainNavbar .dropdown-item:active {
+            background: linear-gradient(135deg, #6e2ddc, #de2f85);
+            color: #fff;
+        }
+
+        .user-menu-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-radius: 999px;
+            padding: 0.25rem 0.65rem 0.25rem 0.35rem;
+            border-color: rgba(255, 255, 255, 0.4) !important;
+            color: #fff !important;
+        }
+
+        .navbar-toggler {
+            border: 0;
+            padding: 0.38rem 0.5rem;
+            box-shadow: none !important;
+        }
+
+        .navbar-toggler-icon-wrap {
+            display: inline-flex;
+            width: 1.45rem;
+            height: 1.15rem;
+            position: relative;
+        }
+
+        .navbar-toggler-line {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #fff;
+            border-radius: 999px;
+            transition: transform 0.22s ease, opacity 0.22s ease, top 0.22s ease;
+        }
+
+        .navbar-toggler-line:nth-child(1) { top: 0.05rem; }
+        .navbar-toggler-line:nth-child(2) { top: 0.5rem; }
+        .navbar-toggler-line:nth-child(3) { top: 0.95rem; }
+
+        .navbar-toggler.is-open .navbar-toggler-line:nth-child(1) {
+            top: 0.5rem;
+            transform: rotate(45deg);
+        }
+
+        .navbar-toggler.is-open .navbar-toggler-line:nth-child(2) {
+            opacity: 0;
+        }
+
+        .navbar-toggler.is-open .navbar-toggler-line:nth-child(3) {
+            top: 0.5rem;
+            transform: rotate(-45deg);
+        }
+
+        .user-avatar {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.6rem;
+            height: 1.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            color: #fff;
+        }
+
+        .navbar .navbar-text {
+            font-size: 0.83rem;
+            color: rgba(255, 255, 255, 0.82) !important;
+        }
+
+        .card {
+            border: 1px solid var(--brd);
+            border-radius: 14px;
+            box-shadow: var(--shadow-soft);
+            background: var(--srf2);
+            transition: transform 0.16s ease, box-shadow 0.16s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 30px rgba(26, 26, 46, 0.09);
+        }
+
+        .card-title,
+        h1, h2, h3, h4, h5 {
+            color: var(--txt);
+            font-weight: 600;
+        }
+
+        .text-muted,
+        .form-text,
+        small {
+            color: var(--txt2) !important;
+        }
+
+        .table {
+            --bs-table-bg: transparent;
+        }
+
+        .table thead th {
+            border-bottom: 1px solid var(--brd);
+            color: var(--txt3);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .table td {
+            border-color: var(--brd);
+            color: var(--txt);
+            vertical-align: middle;
+        }
+
+        .btn {
+            border-radius: 9px;
+            font-size: .82rem;
+            font-weight: 500;
+            font-family: var(--font-body);
+            letter-spacing: 0.01em;
+        }
+
+        .btn-primary {
+            border: none;
+            background: linear-gradient(135deg, var(--acc2), var(--acc));
+            box-shadow: 0 6px 16px rgba(124, 58, 237, 0.28);
+        }
+
+        .btn-primary:hover,
+        .btn-primary:focus {
+            background: linear-gradient(135deg, #6e2ddc, #de2f85);
+        }
+
+        .btn-outline-primary {
+            color: var(--acc2);
+            border-color: rgba(124, 58, 237, 0.35);
+            background: #fff;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--pri);
+            border-color: var(--pri);
+            color: #fff;
+        }
+
+        .btn-outline-secondary {
+            border-color: var(--brd);
+            color: var(--txt2);
+        }
+
+        .btn-outline-secondary:hover {
+            background: var(--srf);
+            color: var(--txt);
+            border-color: var(--txt3);
+        }
+
+        .form-control,
+        .form-select {
+            border-radius: 9px;
+            border: 1.5px solid var(--brd);
+            background: var(--srf);
+            color: var(--txt);
+            font-size: 0.84rem;
+            padding-top: 0.58rem;
+            padding-bottom: 0.58rem;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--acc2);
+            box-shadow: 0 0 0 0.18rem rgba(124, 58, 237, 0.14);
+            background: #fff;
+        }
+
+        /* Select2 global polish: keep visual compatibility with existing form-selects */
+        .select2-container {
+            width: 100% !important;
+        }
+
+        .select2-container .select2-selection--single {
+            min-height: 38px;
+            border-radius: 9px;
+            border: 1.5px solid var(--brd);
+            background: var(--srf);
+            padding: 4px 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: var(--txt);
+            line-height: 1.2;
+            padding-left: 0;
+            padding-right: 20px;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 100%;
+            right: 8px;
+        }
+
+        .select2-dropdown {
+            border: 1.5px solid var(--brd);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 2100;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+            background: #fff;
+        }
+
+        .select2-container--open .select2-dropdown--below {
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+
+        .select2-results__options {
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .select2-container--default .select2-results__option {
+            font-size: 0.84rem;
+            padding: 8px 10px;
+            color: var(--txt);
+        }
+
+        .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+            background: linear-gradient(135deg, var(--acc2), var(--acc));
+            color: #fff;
+        }
+
+        .select2-search--dropdown .select2-search__field {
+            border: 1.5px solid var(--brd);
+            border-radius: 8px;
+            min-height: 34px;
+            font-size: 0.84rem;
+        }
+
+        .select2-container--default.select2-container--focus .select2-selection--single,
+        .select2-container--default.select2-container--open .select2-selection--single {
+            border-color: var(--acc2);
+            box-shadow: 0 0 0 0.18rem rgba(124, 58, 237, 0.14);
+            background: #fff;
+        }
+
+        .input-group-text {
+            border: 1.5px solid var(--brd);
+            background: var(--srf2);
+            color: var(--txt2);
+        }
+
+        .badge {
+            border-radius: 999px;
+            font-weight: 500;
+            padding: .28rem .58rem;
+            font-size: .68rem;
+            letter-spacing: 0.01em;
+        }
+
+        .form-label {
+            color: var(--txt2);
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.4rem;
+        }
+
+        h2 {
+            font-family: var(--font-disp);
+            font-size: clamp(1.35rem, 4.2vw, 2rem);
+            font-weight: 400;
+            letter-spacing: -0.02em;
+        }
+
+        h3 {
+            font-family: var(--font-disp);
+            font-size: clamp(1.15rem, 3.2vw, 1.5rem);
+            font-weight: 400;
+            letter-spacing: -0.01em;
+        }
+
+        .table-hover tbody tr {
+            transition: background-color 0.14s ease;
+        }
+
+        .table-hover tbody tr:hover {
+            background: #fbf9ff;
+        }
+
+        #loginForm,
+        #registerForm,
+        #forgotPasswordForm {
+            position: relative;
+        }
+
+        #loginForm .btn-primary,
+        #registerForm .btn-primary,
+        #forgotPasswordForm .btn-primary {
+            min-height: 42px;
+        }
+
+        #requestOtpBtn {
+            min-height: 42px;
+        }
+
+        #statsContainer .card {
+            border: 0;
+            overflow: hidden;
+        }
+
+        #statsContainer .card .card-title {
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            opacity: 0.92;
+        }
+
+        #statsContainer .card h3 {
+            font-family: var(--font-body);
+            font-size: 1.7rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        #editorSections .card-header {
+            background: linear-gradient(180deg, #f8f6ff, #f1ecff);
+            border-bottom: 1px solid var(--brd);
+            color: var(--txt);
+            font-size: 0.8rem;
+            letter-spacing: 0.02em;
+        }
+
+        #editorSections textarea.form-control {
+            min-height: 180px;
+            line-height: 1.55;
+        }
+
+        #profileReminder .alert,
+        #profileBlock.alert {
+            border-left: 4px solid #d97706;
+        }
+
+        .bg-success { background-color: #059669 !important; }
+        .bg-danger { background-color: #dc2626 !important; }
+        .bg-warning { background-color: #f59e0b !important; }
+        .bg-info { background-color: #3b82f6 !important; }
+
+        .alert {
+            border-radius: 10px;
+            border: 1px solid var(--brd);
+            font-size: .84rem;
+        }
+
+        .toast {
+            border-radius: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container.main-content {
+                padding-top: 96px;
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+
+            #mainNavbar .container {
+                align-items: flex-start;
+            }
+
+            #mainNavbar #navItems {
+                width: 100%;
+                padding-top: 0.55rem;
+                padding-bottom: 0.6rem;
+            }
+
+            #mainNavbar #navLinks {
+                width: 100%;
+                gap: 0.2rem;
+            }
+
+            #mainNavbar #navUserActions {
+                width: 100%;
+                display: block !important;
+                margin-top: 0.5rem;
+            }
+
+            #mainNavbar #navUserActions > a,
+            #mainNavbar #navUserActions .dropdown,
+            #mainNavbar #navUserActions .dropdown > button {
+                width: 100%;
+            }
+
+            #mainNavbar #navUserActions .dropdown-toggle {
+                justify-content: space-between;
+            }
+
+            #mainNavbar #navUserActions .dropdown-menu {
+                position: static !important;
+                transform: none !important;
+                inset: auto !important;
+                width: 100%;
+                margin-top: 0.45rem;
+                border-radius: 10px;
+            }
+
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .card {
+                border-radius: 12px;
+            }
+
+            .btn {
+                min-height: 38px;
+            }
+
+            .navbar-brand {
+                font-size: 1.25rem;
+            }
+
+            h2 {
+                font-size: 1.6rem;
+            }
+
+            h3 {
+                font-size: 1.3rem;
+            }
+
+            .nav-section-divider {
+                display: none;
+            }
+
+            #mainNavbar .dropdown-menu {
+                border: 0;
+                box-shadow: none;
+                background: rgba(255, 255, 255, 0.08);
+            }
+
+            #mainNavbar .dropdown-item {
+                color: rgba(255, 255, 255, 0.86);
+            }
+
+            #mainNavbar .dropdown-item:hover {
+                background: rgba(255, 255, 255, 0.12);
+            }
+
+            .user-menu-btn {
+                margin-top: 0.4rem;
+                width: 100%;
+                justify-content: center;
+            }
+
+            #toastContainer {
+                left: 12px;
+                right: 12px;
+                bottom: 14px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .container.main-content {
+                padding-top: 88px;
+                padding-left: 10px;
+                padding-right: 10px;
+                padding-bottom: 16px;
+            }
+
+            .navbar#mainNavbar {
+                margin-bottom: 0.9rem !important;
+            }
+
+            .navbar-brand {
+                font-size: 1.03rem;
+                max-width: 78vw;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .brand-icon {
+                width: 1.35rem;
+                height: 1.35rem;
+                font-size: 0.8rem;
+            }
+
+            .navbar .nav-link {
+                font-size: 0.84rem;
+                padding-top: 0.45rem;
+                padding-bottom: 0.45rem;
+            }
+
+            h2 {
+                font-size: 1.35rem;
+            }
+
+            h3 {
+                font-size: 1.15rem;
+            }
+
+            #toastContainer {
+                left: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+    <!-- Responsive helpers (mobile-first utilities) -->
+    <link rel="stylesheet" href="/static/css/responsive.css">
+    
+    
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root {
+  /* Map assignment studio semantic variables to the site's design-system (light) variables */
+  --bg: var(--page-bg);
+  --panel: var(--card);
+  --panel-2: var(--srf);
+  --card: var(--card);
+  --card-2: var(--srf2);
+  --border: var(--brd);
+  --muted: var(--txt3);
+  --accent: var(--acc2);
+  --accent-2: var(--acc);
+  --accent-glow: rgba(124,58,237,0.06);
+  --success: var(--grn);
+  --warning: var(--amb);
+  --danger: var(--red);
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 28px 22px 34px;
+  animation: asFadeUp 0.25s ease;
+  background: var(--page-bg);
+  color: var(--txt);
+}
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 20px;
+  background: transparent;
+  box-shadow: var(--shadow-md);
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+.as-title {
+  margin: 0;
+  font-size: clamp(24px, 2.2vw, 36px);
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+  font-weight: 800;
+  color: var(--txt);
+}
+}
+
+.as-title-wrap {
+  min-width: 0;
+.as-save-pill,
+.as-status-pill,
+.as-word-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid var(--brd);
+  background: var(--srf2);
+  color: var(--txt);
+}
+.as-title-row {
+  display: flex;
+.as-header-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end }
+  margin: 0;
+  font-size: clamp(24px, 2.2vw, 36px);
+.as-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: 14px; padding: 10px 16px; font-size: 13px; font-weight: 800; text-decoration: none; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+  font-size: 12px;
+  font-weight: 700;
+.as-btn-primary { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%); color: var(--color-white); box-shadow: var(--shadow-lg); border-radius: 14px; padding: 10px 18px }
+
+.as-save-pill.saving { color: #fbbf24; }
+.as-type-card { border: 1px solid var(--brd); border-radius: 14px; background: var(--srf); color: var(--txt); padding: 12px 10px; min-height:86px; }
+.as-save-pill.saved { color: #86efac; }
+.as-save-pill.error { color: #fca5a5; }
+.as-type-icon { font-size: 22px; line-height: 1; display:block; }
+
+.as-header-actions {
+.as-form-container { padding: 18px }
+  gap: 8px;
+  flex-wrap: wrap;
+.as-form-grid { display:grid; gap:14px; grid-template-columns: repeat(2, minmax(0,1fr)); }
+  display: inline-flex;
+  align-items: center;
+.as-field label { font-size: 13px; color: var(--txt3); font-weight: 800 }
+  padding: 10px 14px;
+  font-size: 13px;
+.as-stepper button { width:36px; height:36px; border-radius:10px; border:1px solid var(--brd); background:var(--srf2); color:var(--txt); font-size:18px; cursor:pointer }
+  color: var(--color-white);
+  box-shadow: var(--shadow-md);
+}
+.as-btn-secondary {
+  background: var(--srf2);
+  color: var(--txt);
+  border-color: var(--brd);
+}
+.as-btn-ghost {
+  background: transparent;
+  color: var(--txt3);
+  border-color: var(--brd);
+}
+.as-btn-danger {
+  background: rgba(239,68,68,0.08);
+  color: var(--red);
+  border-color: rgba(239,68,68,0.12);
+}
+
+.as-studio-body {
+  display: grid;
+  grid-template-columns: minmax(340px, 42%) 8px minmax(420px, 58%);
+  gap: 0;
+  min-height: calc(100vh - 168px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
+}
+
+.as-left-panel,
+.as-right-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+}
+
+.as-left-panel { background: var(--card); }
+.as-right-panel { background: var(--card); }
+
+.as-divider {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.10), rgba(255,255,255,0.02));
+  cursor: col-resize;
+  position: relative;
+}
+.as-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 68px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.16);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+.as-card-shell {
+  border: 1px solid var(--brd);
+  border-radius: 18px;
+  background: linear-gradient(180deg, var(--card) 0%, var(--srf) 100%);
+  box-shadow: var(--shadow-soft);
+  padding: 14px;
+}
+
+.as-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.as-section-title {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  color: var(--txt);
+}
+
+.as-section-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--txt3);
+  line-height: 1.45;
+}
+
+.as-type-picker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.as-type-card {
+  border: 1px solid var(--brd);
+  border-radius: 14px;
+  background: var(--srf);
+  color: var(--txt);
+  padding: 10px 8px;
+  min-height: 78px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.as-type-card:hover { transform: translateY(-1px); border-color: var(--accent); box-shadow: var(--shadow-sm); }
+.as-type-card.selected { border: 2px solid var(--accent); box-shadow: 0 6px 18px rgba(124,58,237,0.06); background: linear-gradient(180deg, var(--srf) 0%, var(--srf2) 100%); }
+.as-type-icon { font-size: 20px; line-height: 1; }
+.as-type-label { font-size: 11px; font-weight: 700; text-align: center; }
+
+.as-form-container,
+.as-output-container,
+.as-chat-console,
+.as-compliance-footer,
+.as-section-card,
+.as-empty-output,
+.as-empty-chat,
+.as-generating-state,
+.as-error-state {
+  border: 1px solid var(--brd);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: var(--shadow-md);
+}
+
+.as-form-container {
+  padding: 14px;
+}
+
+.as-form-animate {
+  animation: asFadeUp 0.18s ease;
+}
+
+.as-form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.as-field { display: grid; gap: 6px; }
+.as-field-full { grid-column: 1 / -1; }
+.as-field label {
+  font-size: 12px;
+  color: var(--txt);
+  font-weight: 700;
+}
+.as-req { color: #fca5a5; }
+.as-field input,
+.as-field select,
+.as-field textarea {
+  width: 100%;
+  border: 1px solid var(--brd);
+  border-radius: 12px;
+  padding: 11px 12px;
+  background: var(--srf);
+  color: var(--txt);
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.as-field textarea { resize: vertical; min-height: 86px; }
+.as-field input:focus,
+.as-field select:focus,
+.as-field textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(124,58,237,0.06); }
+.as-field input::placeholder,
+.as-field textarea::placeholder { color: var(--txt3); }
+
+.as-stepper {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  gap: 8px;
+  align-items: center;
+}
+.as-stepper button {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+.as-stepper input { text-align: center; }
+
+.as-generate-bar,
+.as-chat-toolbar,
+.as-footer-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.as-generate-bar { justify-content: space-between; }
+
+.as-output-container { padding: 14px; flex: 1; min-height: 280px; }
+.as-output-scroll {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.as-section-card { padding: 14px; }
+.as-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.as-section-title-text { margin: 0; font-size: 15px; color: var(--txt); }
+.as-section-edit { border: 1px solid var(--brd); background: var(--srf2); color: var(--txt); border-radius: 10px; width: 34px; height: 34px; cursor: pointer; }
+.as-section-content { color: var(--txt); line-height: 1.75; font-size: 14px; }
+.as-section-content h1,
+.as-section-content h2,
+.as-section-content h3 { color: #f8fbff; margin-top: 14px; }
+.as-section-content p { margin: 0 0 10px; }
+.as-section-content ul,
+.as-section-content ol { margin: 0 0 10px 20px; }
+.as-section-content li { margin-bottom: 6px; }
+.as-section-content blockquote { margin: 12px 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--srf); color: var(--txt3); }
+.as-section-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+.as-section-content table th,
+.as-section-content table td {
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 8px 10px;
+}
+.as-section-content table th { background: rgba(255,255,255,0.05); }
+
+.as-empty-output,
+.as-empty-chat,
+.as-generating-state,
+.as-error-state { padding: 18px; color: var(--txt3); }
+.as-empty-output a, .as-empty-chat a { color: var(--accent); text-decoration: none; font-weight: 700; }
+
+.as-generate-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.as-generate-prompt h3 { margin: 0; font-size: 14px; color: var(--txt); }
+.as-generate-prompt p { margin: 0; color: var(--muted); font-size: 12px; }
+
+.as-compliance-footer {
+  padding: 14px;
+}
+.as-compliance-meter {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.as-meter { width: 100%; height: 10px; border-radius: 999px; overflow: hidden; background: var(--srf); margin-top: 12px; }
+.as-meter > span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--warning), var(--accent));
+  transition: width .25s ease, background .25s ease;
+}
+.meter-green > span { background: linear-gradient(90deg, #22c55e, #34d399); }
+.meter-amber > span { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.meter-red > span { background: linear-gradient(90deg, #ef4444, #f97316); }
+
+.as-chat-console { padding: 14px; }
+.as-chat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.as-chip { border: 1px solid var(--brd); background: var(--srf2); color: var(--txt); border-radius: 999px; padding: 7px 10px; font-size: 12px; cursor: pointer; }
+.as-chat-list {
+  display: grid;
+  gap: 10px;
+  max-height: 240px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.as-chat-item { padding: 10px 12px; border-radius: 12px; line-height: 1.5; font-size: 13px; border: 1px solid var(--brd); }
+.as-chat-item.user { background: var(--srf2); color: var(--txt); }
+.as-chat-item.assistant { background: var(--srf); color: var(--txt); }
+.as-chat-input-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 12px;
+}
+.as-chat-input-row input { width: 100%; border: 1px solid var(--brd); border-radius: 12px; padding: 12px 14px; background: var(--srf); color: var(--txt); }
+.as-chat-input-row input:focus {
+  outline: none;
+  border-color: rgba(99,102,241,0.75);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.14);
+}
+
+.as-mobile-preview-fab {
+  display: none;
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 40;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #fff;
+  box-shadow: 0 18px 36px rgba(99,102,241,0.28);
+  font-weight: 800;
+}
+
+.as-rewrite-overlay { display: none; position: fixed; inset: 0; z-index: 60; background: rgba(15,17,25,0.04); backdrop-filter: blur(6px); align-items: flex-end; justify-content: center; padding: 18px; }
+.as-rewrite-card { width: min(920px, 100%); border: 1px solid var(--brd); border-radius: 18px; background: var(--card); box-shadow: var(--shadow-lg); padding: 14px; }
+.as-rewrite-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.as-rewrite-head h3 { margin: 0; font-size: 16px; color: var(--txt); }
+.as-rewrite-head button { border: 0; background: transparent; color: var(--txt3); font-size: 18px; cursor: pointer; }
+.as-rewrite-card textarea { width: 100%; min-height: 110px; resize: vertical; border-radius: 14px; border: 1px solid var(--brd); background: var(--srf); color: var(--txt); padding: 12px 14px; }
+.as-rewrite-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@keyframes asFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1200px) {
+  .as-studio-body { grid-template-columns: 1fr; }
+  .as-divider { display: none; }
+}
+
+@media (max-width: 900px) {
+  .as-type-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .as-form-grid { grid-template-columns: 1fr; }
+  .as-mobile-preview-fab { display: inline-flex; }
+}
+
+/* Final polish: slider, divider marker, meter fill, hover lifts */
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 10px;
+  background: var(--srf);
+  border-radius: 999px;
+  outline: none;
+  margin: 8px 0;
+}
+input[type=range]::-webkit-slider-runnable-track { height:10px; border-radius:999px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px; border-radius: 50%; background: var(--color-white);
+  border: 4px solid var(--accent);
+  margin-top: -5px; box-shadow: var(--shadow-sm); cursor: pointer;
+}
+input[type=range]::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:var(--color-white); border:4px solid var(--accent); box-shadow: var(--shadow-sm); }
+
+.as-divider { background: transparent; display:flex; align-items:center; justify-content:center; }
+.as-divider::after { content: ''; position: relative; width: 8px; height: 68px; border-radius: 10px; background: linear-gradient(180deg, var(--srf) 0%, var(--card) 100%); box-shadow: var(--shadow-sm); }
+
+.as-meter > span { background: linear-gradient(90deg, var(--success), var(--accent)); }
+
+.as-status-badge { padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; color: var(--color-white); background: var(--accent-2); }
+
+.as-card-shell { transition: transform .12s ease, box-shadow .12s ease; }
+.as-card-shell:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); }
+
+.as-mobile-preview-fab { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%); box-shadow: var(--shadow-lg); }
+</style>
+
+</head>
+<body>
+
+     
+
+
+
+<style>
+#nav {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(calc(100% - 32px), var(--content-max, 1160px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 1.1rem;
+  border-radius: 14px;
+  z-index: 900;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(15,15,30,0.72);
+  transition:
+    top 0.42s ease,
+    width 0.42s ease,
+    height 0.42s ease,
+    border-radius 0.42s ease,
+    padding 0.42s ease,
+    background 0.42s ease,
+    border-color 0.42s ease,
+    box-shadow 0.42s ease;
+  will-change: top, width, border-radius, padding, background, box-shadow;
+}
+
+#nav.scrolled {
+  top: 0;
+  width: 100%;
+  border-radius: 0;
+  padding: 0.65rem 2rem;
+  border: 1px solid rgba(157,181,255,0.24);
+  border-bottom-color: transparent;
+  background: linear-gradient(90deg,rgba(30,35,69,0.92),rgba(36,33,78,0.92));
+  box-shadow: 0 16px 42px rgba(4,10,32,0.55), 0 0 0 1px rgba(120,146,255,0.1) inset;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--display, 'Playfair Display', serif);
+  font-size: clamp(0.9rem, 2vw, 1.15rem);
+  font-weight: 800;
+  color: var(--white, #fff);
+  text-decoration: none;
+}
+
+.nav-logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--blue2, #2563eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(37,99,235,0.5);
+}
+
+.nav-logo-mark svg { fill: white; }
+
+#nav.scrolled .nav-logo-mark { box-shadow: none; }
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-links a {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.45);
+  text-decoration: none;
+  transition: color 0.2s;
+  letter-spacing: 0.02em;
+  padding: 4px 10px;
+}
+
+.nav-links a:hover,
+.nav-links a.active { color: white; }
+
+#nav.scrolled .nav-links a { color: rgba(255,255,255,0.62); }
+#nav.scrolled .nav-links a:hover { color: #ffffff; }
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.nav-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--body, 'DM Sans', sans-serif);
+  text-decoration: none;
+  border: 1.5px solid rgba(59,123,255,0.4);
+  color: var(--blue3, #3b7bff);
+  background: transparent;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.nav-cta-btn:hover {
+  background: rgba(59,123,255,0.1);
+  border-color: var(--blue3, #3b7bff);
+  box-shadow: 0 0 20px rgba(59,123,255,0.2);
+}
+
+#nav.scrolled .nav-cta-btn {
+  color: rgba(255,255,255,0.9);
+  border-color: rgba(157,181,255,0.28);
+  background: rgba(255,255,255,0.03);
+}
+
+#nav.scrolled .nav-cta-btn:hover {
+  color: #ffffff;
+  border-color: rgba(157,181,255,0.48);
+  background: rgba(255,255,255,0.08);
+}
+
+.nav-menu-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  z-index: 910;
+  flex-shrink: 0;
+  min-width: 32px;
+  min-height: 32px;
+  justify-content: center;
+  align-items: center;
+}
+
+.nav-menu-toggle span {
+  width: 18px;
+  height: 2px;
+  background: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  display: block;
+}
+
+.nav-menu-toggle.active span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+.nav-menu-toggle.active span:nth-child(2) { opacity: 0; }
+.nav-menu-toggle.active span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+.nav-menu-drawer {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  max-height: 0;
+  overflow: hidden;
+  background: rgba(10,15,30,0.95);
+  backdrop-filter: blur(24px);
+  transition: max-height 0.3s ease;
+  z-index: 899;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.nav-menu-drawer.active {
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.nav-menu-links {
+  list-style: none;
+  margin: 0;
+  padding: 1rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.nav-menu-link,
+.nav-menu-cta {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  transition: color 0.2s;
+  display: block;
+  padding: 0.5rem 0;
+}
+
+.nav-menu-link:hover { color: white; }
+.nav-menu-cta { color: var(--blue3, #3b7bff); font-weight: 600; }
+.nav-menu-cta:hover { color: #93c5fd; }
+
+#progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--blue2,#2563eb), var(--blue3,#3b7bff), #93c5fd);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  z-index: 9999;
+  box-shadow: 0 0 12px rgba(37,99,235,0.5);
+  pointer-events: none;
+}
+
+#cursor {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--blue3, #3b7bff);
+  z-index: 9999;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+#cursor-ring {
+  position: fixed;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(59,123,255,0.45);
+  z-index: 9998;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  will-change: transform;
+  transition: scale 0.18s ease, opacity 0.18s ease, border-color 0.18s ease;
+}
+
+#cursor-ring.hovered {
+  scale: 1.6;
+  opacity: 0.6;
+  border-color: var(--blue3, #3b7bff);
+}
+
+@media (max-width: 768px) {
+  .nav-links  { display: none; }
+  .nav-actions { display: none; }
+  .nav-menu-toggle { display: flex; }
+
+  #nav.scrolled {
+    padding: 0.65rem 1rem;
+  }
+
+  #cursor,
+  #cursor-ring { display: none; }
+}
+</style>
+
+<div id="progress"></div>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<nav id="nav">
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-mark">
+      <svg viewBox="0 0 16 16" width="11" height="11">
+        <path d="M3 2h10v1H3zM3 5h7v1H3zM3 8h10v1H3zM3 11h5v1H3z" fill="white"/>
+      </svg>
+    </div>
+    ReportGen
+  </a>
+
+  <ul class="nav-links" id="navLinks"></ul>
+  <div class="nav-actions" id="navUserActions"></div>
+
+  <button id="nav-menu-toggle" class="nav-menu-toggle" aria-label="Toggle menu">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+</nav>
+
+<div id="nav-menu-drawer" class="nav-menu-drawer">
+  <ul class="nav-menu-links" id="navMenuLinks"></ul>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const IS_LANDING = window.location.pathname === '/';
+  const CURRENT_PATH = window.location.pathname;
+  const CURRENT_HASH = window.location.hash || '';
+
+  const LANDING_DESKTOP_LINKS = [
+    { href: '/#how', label: 'How it works' },
+    { href: '/#preview', label: 'Preview' },
+    { href: '/#testimonials', label: 'Reviews' },
+    { href: '/#pricing', label: 'Pricing' },
+    { href: '/about', label: 'About' },
+    { href: '/faq', label: 'FAQ' },
+    { href: '/contact', label: 'Contact' },
+    { href: '/legal', label: 'Support' },
+  ];
+
+  const LANDING_MOBILE_LINKS = [
+    { href: '/#how', label: 'How it works', className: 'nav-menu-link' },
+    { href: '/#preview', label: 'Preview', className: 'nav-menu-link' },
+    { href: '/#testimonials', label: 'Reviews', className: 'nav-menu-link' },
+    { href: '/#pricing', label: 'Pricing', className: 'nav-menu-link' },
+    { href: '/about', label: 'About', className: 'nav-menu-link' },
+    { href: '/faq', label: 'FAQ', className: 'nav-menu-link' },
+    { href: '/contact', label: 'Contact', className: 'nav-menu-link' },
+    { href: '/legal', label: 'Support', className: 'nav-menu-link' },
+    { href: '/privacy', label: 'Privacy', className: 'nav-menu-link' },
+    { href: '/terms', label: 'Terms', className: 'nav-menu-link' },
+    { href: '/refund', label: 'Refund', className: 'nav-menu-link' },
+  ];
+
+  const PUBLIC_DESKTOP_LINKS = [
+    { href: '/', label: 'Home' },
+    { href: '/about', label: 'About' },
+    { href: '/faq', label: 'FAQ' },
+    { href: '/contact', label: 'Contact' },
+    { href: '/legal', label: 'Support' },
+    { href: '/privacy', label: 'Privacy' },
+    { href: '/terms', label: 'Terms' },
+    { href: '/refund', label: 'Refund' },
+  ];
+
+  const PUBLIC_MOBILE_LINKS = [
+    { href: '/', label: 'Home', className: 'nav-menu-link' },
+    { href: '/about', label: 'About', className: 'nav-menu-link' },
+    { href: '/faq', label: 'FAQ', className: 'nav-menu-link' },
+    { href: '/contact', label: 'Contact', className: 'nav-menu-link' },
+    { href: '/legal', label: 'Support', className: 'nav-menu-link' },
+    { href: '/privacy', label: 'Privacy', className: 'nav-menu-link' },
+    { href: '/terms', label: 'Terms', className: 'nav-menu-link' },
+    { href: '/refund', label: 'Refund', className: 'nav-menu-link' },
+  ];
+
+  const navEl = document.getElementById('nav');
+  const navLinks = document.getElementById('navLinks');
+  const navUserActions = document.getElementById('navUserActions');
+  const navMenuLinks = document.getElementById('navMenuLinks');
+  const menuToggle = document.getElementById('nav-menu-toggle');
+  const menuDrawer = document.getElementById('nav-menu-drawer');
+  const progressBar = document.getElementById('progress');
+  const cursor = document.getElementById('cursor');
+  const cursorRing = document.getElementById('cursor-ring');
+
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return String(name).trim().split(/\s+/).slice(0, 2)
+      .map((p) => p.charAt(0).toUpperCase()).join('') || 'U';
+  };
+
+  const buildLinkList = (items, itemClass = '') => items.map((item) => {
+    const classes = itemClass ? ` class="${itemClass}"` : '';
+    return `<li><a href="${item.href}"${classes}>${item.label}</a></li>`;
+  }).join('');
+
+  const markActiveLinks = (scope) => {
+    if (!scope) return;
+    scope.querySelectorAll('a').forEach((a) => {
+      const href = a.getAttribute('href') || '';
+      if (!href) return;
+
+      const isHashLink = href.startsWith('/#');
+      const isActive = href === '/'
+        ? CURRENT_PATH === '/'
+        : (isHashLink
+          ? (CURRENT_PATH === '/' && CURRENT_HASH === href.slice(1))
+          : (CURRENT_PATH === href || CURRENT_PATH.startsWith(href + '/')));
+
+      if (isActive) a.classList.add('active');
+    });
+  };
+
+  const wireCursorHover = () => {
+    if (!cursor || !cursorRing) return;
+    document.querySelectorAll('a, button, input, textarea, select, [role="button"]')
+      .forEach((el) => {
+        el.addEventListener('mouseenter', () => cursorRing.classList.add('hovered'));
+        el.addEventListener('mouseleave', () => cursorRing.classList.remove('hovered'));
+      });
+  };
+
+  const renderGuestNav = () => {
+    if (navLinks) {
+      navLinks.innerHTML = IS_LANDING
+        ? buildLinkList(LANDING_DESKTOP_LINKS)
+        : buildLinkList(PUBLIC_DESKTOP_LINKS);
+      markActiveLinks(navLinks);
+    }
+
+    if (navUserActions) {
+      navUserActions.innerHTML = `
+        <a href="/login" class="nav-cta-btn" style="border-color:rgba(59,123,255,0.4);">Login</a>
+        <a href="/register" class="nav-cta-btn"
+           style="background:var(--blue2,#2563eb);border-color:var(--blue2,#2563eb);color:#fff;">
+          Generate Free ->
+        </a>
+      `;
+    }
+
+    if (navMenuLinks) {
+      navMenuLinks.innerHTML = `${buildLinkList(IS_LANDING ? LANDING_MOBILE_LINKS : PUBLIC_MOBILE_LINKS, (IS_LANDING ? 'nav-menu-link' : 'nav-menu-link'))}
+        <li style="border-top:1px solid rgba(255,255,255,0.1);padding-top:0.75rem;margin-top:0.75rem;">
+          <a href="/login" class="nav-menu-link">Login</a>
+        </li>
+        <li>
+          <a href="/register" class="nav-menu-cta">Generate Free -></a>
+        </li>
+      `;
+      markActiveLinks(navMenuLinks);
+    }
+
+    if (IS_LANDING) {
+      document.querySelectorAll('[data-generate-link="1"]').forEach((el) => {
+        el.setAttribute('href', '/register');
+      });
+      document.querySelectorAll('[data-generate-link-resume="1"]').forEach((el) => {
+        el.setAttribute('href', '/register');
+      });
+    }
+
+    wireCursorHover();
+  };
+
+  const renderUserNav = (user) => {
+    let desktopLinks = '';
+    let mobileLinks = '';
+
+    if (user.role === 'admin') {
+      desktopLinks = `<li><a href="/admin/dashboard">Admin Panel -></a></li>`;
+      mobileLinks = `<li><a href="/admin/dashboard" class="nav-menu-link">Admin Panel -></a></li>`;
+    } else {
+      desktopLinks = `
+        <li><a href="/student/dashboard">My Reports</a></li>
+        <li><a href="/student/profile">My Profile</a></li>
+        <li><a href="/student/create">Create Report</a></li>
+        <li><a href="/student/resumes">My Resumes</a></li>
+        <li><a href="/student/assignments">Assignments</a></li>
+      `;
+      mobileLinks = `
+        <li><a href="/student/dashboard" class="nav-menu-link">My Reports</a></li>
+        <li><a href="/student/profile" class="nav-menu-link">My Profile</a></li>
+        <li><a href="/student/create" class="nav-menu-cta">Create Report -></a></li>
+        <li><a href="/student/resumes" class="nav-menu-cta">My Resumes -></a></li>
+        <li><a href="/student/assignments" class="nav-menu-cta">Assignments -></a></li>
+      `;
+    }
+
+    if (navLinks) {
+      navLinks.innerHTML = desktopLinks;
+      markActiveLinks(navLinks);
+    }
+
+    if (navUserActions) {
+      navUserActions.innerHTML = `
+        <div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
+          <button class="nav-cta-btn"
+            style="background:rgba(255,255,255,0.08);border-color:rgba(152,177,255,0.42);"
+            id="userMenuBtn">
+            ${getInitials(user.name)} • ${user.name || 'User'}
+          </button>
+          <button class="nav-cta-btn"
+            style="border-color:rgba(248,113,113,0.55);color:#fecaca;background:rgba(127,29,29,0.24);"
+            id="logoutBtn" type="button">
+            Logout
+          </button>
+        </div>
+      `;
+    }
+
+    mobileLinks += `
+      <li style="border-top:1px solid rgba(255,255,255,0.1);padding-top:0.75rem;margin-top:0.75rem;">
+        <a href="#" class="nav-menu-link" style="color:rgba(255,150,150,0.9);"
+           onclick="window.__navLogout && window.__navLogout(); return false;">Logout</a>
+      </li>
+    `;
+
+    if (navMenuLinks) navMenuLinks.innerHTML = mobileLinks;
+    if (navMenuLinks) markActiveLinks(navMenuLinks);
+
+    document.querySelectorAll('[data-generate-link="1"]').forEach((el) => {
+      el.setAttribute('href', '/student/create');
+    });
+    document.querySelectorAll('[data-generate-link-resume="1"]').forEach((el) => {
+      el.setAttribute('href', '/student/resume/builder');
+    });
+
+    const userBtn = document.getElementById('userMenuBtn');
+    if (userBtn) {
+      userBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (window.showToast) showToast(`Welcome back, ${user.name}!`, 'info', 2000);
+      });
+    }
+
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        if (window.__navLogout) window.__navLogout();
+      });
+    }
+
+    wireCursorHover();
+  };
+
+  const initAuth = async () => {
+    const token = localStorage.getItem('token');
+    const userJson = localStorage.getItem('user');
+
+    let serverUser = null;
+    let serverCheckOk = false;
+
+    try {
+      const meRes = await fetch('/api/auth/me', {
+        method: 'GET',
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      serverCheckOk = true;
+      if (meRes.ok) serverUser = await meRes.json();
+    } catch (_) {
+      serverCheckOk = false;
+    }
+
+    if (serverUser && serverUser.role) {
+      localStorage.setItem('user', JSON.stringify(serverUser));
+      renderUserNav(serverUser);
+      return;
+    }
+
+    if (serverCheckOk) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      renderGuestNav();
+      return;
+    }
+
+    if (token && userJson) {
+      try {
+        const localUser = JSON.parse(userJson);
+        if (localUser && localUser.role) {
+          renderUserNav(localUser);
+          return;
+        }
+      } catch (_) {}
+    }
+
+    renderGuestNav();
+  };
+
+  const MORPH_IN = 88;
+  const MORPH_OUT = 56;
+  let rafPending = false;
+
+  const handleScroll = () => {
+    if (!navEl) return;
+    const y = window.scrollY;
+    if (y > MORPH_IN && !navEl.classList.contains('scrolled')) navEl.classList.add('scrolled');
+    if (y < MORPH_OUT && navEl.classList.contains('scrolled')) navEl.classList.remove('scrolled');
+
+    if (progressBar) {
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      progressBar.style.transform = `scaleX(${total > 0 ? y / total : 0})`;
+    }
+  };
+
+  window.addEventListener('scroll', () => {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => { rafPending = false; handleScroll(); });
+  }, { passive: true });
+
+  handleScroll();
+
+  let menuOpen = false;
+
+  const openMenu = () => {
+    menuOpen = true;
+    menuToggle && menuToggle.classList.add('active');
+    menuDrawer && menuDrawer.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeMenu = () => {
+    menuOpen = false;
+    menuToggle && menuToggle.classList.remove('active');
+    menuDrawer && menuDrawer.classList.remove('active');
+    document.body.style.overflow = '';
+  };
+
+  if (menuToggle) menuToggle.addEventListener('click', () => menuOpen ? closeMenu() : openMenu());
+
+  document.addEventListener('click', (e) => {
+    if (menuOpen && menuDrawer && !menuDrawer.contains(e.target) && !menuToggle.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#nav-menu-drawer a')) closeMenu();
+  });
+
+  if (cursor && cursorRing && window.matchMedia('(pointer: fine)').matches) {
+    let cx = 0;
+    let cy = 0;
+    let crPending = false;
+
+    window.addEventListener('mousemove', (e) => {
+      cx = e.clientX;
+      cy = e.clientY;
+      if (crPending) return;
+      crPending = true;
+      requestAnimationFrame(() => {
+        crPending = false;
+        cursor.style.transform = `translate(${cx - 5}px, ${cy - 5}px)`;
+        cursorRing.style.transform = `translate(${cx - 18}px, ${cy - 18}px)`;
+      });
+    });
+
+    document.addEventListener('touchstart', () => {
+      cursor.style.display = 'none';
+      cursorRing.style.display = 'none';
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAuth);
+  } else {
+    initAuth();
+  }
+})();
+</script>
+
+
+     
+
+    <!-- Impersonation Banner - shown only when admin is viewing as a student -->
+    <div id="impersonation-banner" style="
+        display: none;
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+        color: #fff;
+        padding: 10px 20px;
+        text-align: center;
+        font-size: 13px;
+        font-weight: 600;
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1025;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    ">
+        ⚠️ Admin View - You are browsing as a student. Changes affect the real account.
+        <a href="/admin/dashboard" style="color:#fff; margin-left:24px; text-decoration:underline;">
+            ← Back to Admin Dashboard
+        </a>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="container main-content">
+        
+
+<main class="as-studio-shell">
+  <section class="as-studio-header">
+    <div class="as-title-wrap">
+      <p class="as-kicker">Assignment Studio</p>
+      <div class="as-title-row">
+        <h1 class="as-title" id="studioTitle">Assignment Workspace</h1>
+        <span class="as-save-pill" id="saveStatus">Draft saved locally</span>
+      </div>
+      <p class="as-section-subtitle" id="studioSubtitle">Build, generate, refine, and download academic assignments from one workspace.</p>
+    </div>
+    <div class="as-header-actions">
+      <span class="as-status-pill" id="statusPill">Status: draft</span>
+      <span class="as-word-pill" id="wordPill">0 / 0 words</span>
+      <button type="button" class="as-btn as-btn-secondary" id="downloadPdfBtn">PDF</button>
+      <button type="button" class="as-btn as-btn-secondary" id="downloadDocxBtn">DOCX</button>
+      <button type="button" class="as-btn as-btn-primary" id="generateBtn">Generate</button>
+    </div>
+  </section>
+
+  <section class="as-studio-body" id="studioBody" data-left-width="42">
+    <div class="as-left-panel" id="leftPanel">
+      <div class="as-card-shell">
+        <div class="as-section-head">
+          <div>
+            <h2 class="as-section-title">Choose Assignment Type</h2>
+            <p class="as-section-subtitle">Select the document style before filling the context form.</p>
+          </div>
+        </div>
+        <div class="as-type-picker" id="typePicker">
+          <button class="as-type-card selected" data-type="essay" onclick="selectType('essay')" type="button"><span class="as-type-icon">📝</span><span class="as-type-label">Essay</span></button>
+          <button class="as-type-card" data-type="research_paper" onclick="selectType('research_paper')" type="button"><span class="as-type-icon">📚</span><span class="as-type-label">Research</span></button>
+          <button class="as-type-card" data-type="lab_report" onclick="selectType('lab_report')" type="button"><span class="as-type-icon">🔬</span><span class="as-type-label">Lab Report</span></button>
+          <button class="as-type-card" data-type="case_study" onclick="selectType('case_study')" type="button"><span class="as-type-icon">📊</span><span class="as-type-label">Case Study</span></button>
+          <button class="as-type-card" data-type="presentation_script" onclick="selectType('presentation_script')" type="button"><span class="as-type-icon">🎤</span><span class="as-type-label">Presentation</span></button>
+        </div>
+      </div>
+
+      <div class="as-card-shell as-form-container as-form-animate" id="assignmentFormContainer"></div>
+
+      <div class="as-card-shell">
+        <div class="as-generate-bar">
+          <div class="as-generate-prompt">
+            <h3>Generate your draft</h3>
+            <p>We save changes automatically as you type.</p>
+          </div>
+          <div class="as-footer-actions">
+            <button type="button" class="as-btn as-btn-secondary" id="saveBtn">Save Draft</button>
+            <button type="button" class="as-btn as-btn-primary" id="generateBtn2">Generate / Regenerate</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="as-divider" id="dragDivider" aria-hidden="true"></div>
+
+    <div class="as-right-panel" id="rightPanel">
+      <div class="as-output-container">
+        <div class="as-section-head">
+          <div>
+            <h2 class="as-section-title">Document Output</h2>
+            <p class="as-section-subtitle">Generated sections, rewrite tools, and live status appear here.</p>
+          </div>
+        </div>
+        <div class="as-output-scroll" id="outputContainer">
+          <div class="as-empty-output" id="outputEmptyState">No sections generated yet. Generate your assignment to begin.</div>
+          <div class="as-generating-state" id="generatingState" style="display:none;">Generating your draft... we will poll for updates automatically.</div>
+          <div class="as-error-state" id="errorState" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="as-compliance-footer">
+        <div class="as-compliance-meter meter-green" id="wordCountMeter">
+          <span>Words: <b id="wordCountCurrent">0</b> / <b id="wordCountTarget">0</b> <span id="wordCountFlag">✓</span></span>
+          <span>Sections: <b id="sectionCount">0</b> generated</span>
+        </div>
+        <div class="as-meter"><span id="meterFill"></span></div>
+      </div>
+
+      <div class="as-chat-console">
+        <div class="as-section-head">
+          <div>
+            <h2 class="as-section-title">Chat Refinement</h2>
+            <p class="as-section-subtitle">Use quick chips or free text to refine the generated document.</p>
+          </div>
+        </div>
+        <div class="as-chat-chips" id="chatChips"></div>
+        <div class="as-chat-list" id="chatList">
+          <div class="as-empty-chat">No chat yet. Generate the draft first, then refine it here.</div>
+        </div>
+        <div class="as-chat-input-row">
+          <input type="text" id="chatInput" placeholder="Refine the document, add examples, shorten a section...">
+          <button type="button" class="as-btn as-btn-primary" id="sendChatBtn">Send</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<button class="as-mobile-preview-fab" type="button" id="previewFab">👁 Preview</button>
+
+<div class="as-rewrite-overlay" id="sectionRewriteOverlay" aria-hidden="true">
+  <div class="as-rewrite-card">
+    <div class="as-rewrite-head">
+      <h3 id="rewriteSectionTitle">Rewrite section</h3>
+      <button type="button" id="closeRewriteOverlay">✕</button>
+    </div>
+    <textarea id="rewriteInput" placeholder="Describe how you want this section refined..."></textarea>
+    <div class="as-rewrite-footer">
+      <button type="button" class="as-btn as-btn-secondary" id="cancelRewriteBtn">Cancel</button>
+      <button type="button" class="as-btn as-btn-primary" id="applyRewriteBtn">Apply</button>
+    </div>
+  </div>
+</div>
+
+    </main>
+
+    <div id="toastContainer" style="
+        position: fixed; bottom: 24px; right: 24px;
+        display: flex; flex-direction: column; gap: 10px;
+        z-index: 9999; pointer-events: none;
+    "></div>
+    
+    <style>
+  .foot-legal-links { display: flex; gap: 1rem; }
+  .foot-legal-links a { font-size: 12px; color: var(--foot-muted, #94a3b8); text-decoration: none; }
+  .foot-legal-links a:hover { color: #fff; }
+  .foot-bottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+  .foot-meta a { color: inherit; text-decoration: none; }
+  .foot-meta a:hover { color: #fff; }
+</style>
+
+<footer id="footer">
+  <div class="foot-top">
+    <div class="foot-brand">
+      <a href="/" class="foot-logo">
+        <div class="nav-logo-mark" style="width:24px;height:24px;border-radius:6px">
+          <svg viewBox="0 0 16 16" width="11" height="11"><path d="M3 2h10v1H3zM3 5h7v1H3zM3 8h10v1H3zM3 11h5v1H3z" fill="white"/></svg>
+        </div>
+        ReportGen
+      </a>
+      <p class="foot-tagline">AI-powered platform for internship reports and professional resumes.</p>
+    </div>
+    <div class="foot-grid">
+      <div>
+        <div class="foot-col-title">Product</div>
+        <ul class="foot-links">
+          <li><a href="/#how">How it works</a></li>
+          <li><a href="/#preview">Sample output</a></li>
+          <li><a href="/student/resume/builder">Resume Builder</a></li>
+          <li><a href="/student/assignments">Assignment Studio</a></li>
+          <li><a href="/#pricing">Pricing plans</a></li>
+          <li><a href="/#testimonials">Student reviews</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="foot-col-title">Resources</div>
+        <ul class="foot-links">
+          <li><a href="/blog">Blog &amp; Guides</a></li>
+          <li><a href="/faq">FAQs</a></li>
+          <li><a href="/about">About Us</a></li>
+          <li><a href="/contact">Contact Support</a></li>
+          <li><a href="/legal">Support & Legal</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="foot-col-title">Support</div>
+        <div class="foot-meta"><a href="mailto:support@reportgen.in">support@reportgen.in</a></div>
+        <div class="foot-meta">Response within 24 hours</div>
+        <div class="foot-meta">Mon-Sat, 10:00 AM - 7:00 PM IST</div>
+        <div class="foot-meta" style="margin-top:6px;">Demo Tech Park, SG Highway<br>Ahmedabad, Gujarat 380015</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span class="foot-copy">© 2026 ReportGen. All rights reserved.</span>
+    <div class="foot-legal-links">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms of Service</a>
+      <a href="/legal">Support & Legal</a>
+      <a href="/refund">Refund Policy</a>
+    </div>
+  </div>
+</footer>
+
+    <!-- Bootstrap Bundle JS (kept for form compatibility) -->
+    <script src="/static/lib/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/lib/js/jquery.min.js"></script>
+    <script src="/static/lib/js/select2.min.js"></script>
+    
+    <!-- ANIMATIONS SCRIPT -->
+    <script src="/static/js/animations.js"></script>
+    <script src="/static/js/select-search-init.js"></script>
+    
+    <!-- Global utility functions used by all pages -->
+    <script>
+        window.__navLogout = async function logout() {
+            try {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (e) {}
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/logout';
+        };
+
+        (function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const impFlag = urlParams.get('impersonate');
+            const impToken = urlParams.get('token');
+
+            if (impFlag === '1' && impToken) {
+                localStorage.setItem('token', impToken);
+                const banner = document.getElementById('impersonation-banner');
+                if (banner) {
+                    banner.style.display = 'block';
+                    const mainContent = document.querySelector('.container.main-content');
+                    const h = Math.round(banner.getBoundingClientRect().height || 40);
+                    if (mainContent) mainContent.style.paddingBottom = `${24 + h + 8}px`;
+                    window.addEventListener('resize', () => {
+                        const h2 = Math.round(banner.getBoundingClientRect().height || 40);
+                        if (mainContent) mainContent.style.paddingBottom = `${24 + h2 + 8}px`;
+                    });
+                }
+            }
+        })();
+
+        window.showToast = function (message, type = 'success', duration = 3500) {
+            const colors = {
+                success: { bg: '#ecfdf5', border: '#a7f3d0', text: '#065f46', icon: '\u2713' },
+                error:   { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', icon: '\u2715' },
+                danger:  { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', icon: '\u2715' },
+                warning: { bg: '#fffbeb', border: '#fde68a', text: '#92400e', icon: '!' },
+                info:    { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af', icon: 'i' },
+            };
+            const c = colors[type] || colors.info;
+            const toast = document.createElement('div');
+            toast.style.cssText = `background:${c.bg};border:1px solid ${c.border};color:${c.text};
+                padding:12px 16px;border-radius:12px;font-size:13px;font-weight:500;
+                display:flex;align-items:center;gap:10px;pointer-events:all;
+                min-width:240px;max-width:360px;font-family:'DM Sans',sans-serif;
+                box-shadow:0 4px 16px rgba(0,0,0,0.08);
+                opacity:0;transform:translateX(20px);
+                transition:opacity 0.25s ease,transform 0.25s ease;`;
+            toast.innerHTML = `
+                <span style="width:20px;height:20px;border-radius:50%;background:${c.border};
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:11px;font-weight:700;flex-shrink:0;">${c.icon}</span>
+                <span style="flex:1;">${message}</span>
+                <span style="cursor:pointer;opacity:0.5;font-size:16px;line-height:1;">\u00d7</span>`;
+            toast.lastElementChild.addEventListener('click', () => toast.remove());
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateX(0)';
+            });
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        };
+
+        window.showConfirm = function (message, onConfirm) {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `position:fixed;inset:0;background:rgba(15,15,30,0.5);
+                z-index:10000;display:flex;align-items:center;justify-content:center;`;
+            overlay.innerHTML = `
+                <div style="background:#fff;border-radius:16px;padding:24px;
+                    max-width:360px;width:90%;font-family:'DM Sans',sans-serif;">
+                    <div style="font-size:15px;font-weight:500;color:#1a1a2e;margin-bottom:8px;">
+                        Are you sure?</div>
+                    <div style="font-size:13px;color:#6b6783;margin-bottom:20px;">
+                        ${message}</div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;">
+                        <button type="button" class="confirm-cancel"
+                            style="padding:8px 18px;border-radius:8px;border:1px solid #e8e4f0;
+                            background:#fff;color:#6b6783;cursor:pointer;font-size:13px;">
+                            Cancel</button>
+                        <button type="button" id="confirmYes"
+                            style="padding:8px 18px;border-radius:8px;border:none;
+                            background:linear-gradient(135deg,#7c3aed,#e84393);
+                            color:#fff;cursor:pointer;font-size:13px;font-weight:500;">
+                            Confirm</button>
+                    </div>
+                </div>`;
+            overlay.querySelector('.confirm-cancel').onclick = () => overlay.remove();
+            overlay.querySelector('#confirmYes').onclick = () => { overlay.remove(); onConfirm(); };
+            document.body.appendChild(overlay);
+        };
+    </script>
+    
+    
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+<script>
+marked.setOptions({ breaks: true, gfm: true });
+
+const token = localStorage.getItem('token');
+const sessionIdFromRoute = null;
+let sessionId = sessionIdFromRoute || null;
+let currentSession = null;
+let currentType = 'essay';
+let _pollTimer = null;
+let _pollCount = 0;
+let _isSaving = false;
+let _autoSaveTimer = null;
+let _activeChips = [];
+const MAX_POLLS = 60;
+
+const TYPE_LABELS = {
+  essay: 'Essay',
+  research_paper: 'Research Paper',
+  lab_report: 'Lab Report',
+  case_study: 'Case Study',
+  presentation_script: 'Presentation Script',
+};
+
+const STATUS_LABELS = {
+  draft: 'Draft',
+  generating: 'Generating',
+  generated: 'Generated',
+  error: 'Error',
+};
+
+const CHAT_CHIPS = {
+  essay: ['Make More Formal', 'Add India Context', 'Make Shorter', 'Add Examples', 'Improve Flow'],
+  research_paper: ['Add More Citations', 'Strengthen Abstract', 'Add India Statistics', 'Improve Flow'],
+  lab_report: ['Add Error Analysis', 'Improve Data Tables', 'Expand Procedure', 'Add Precautions'],
+  case_study: ['Strengthen Recommendation', 'Add SWOT Analysis', 'Add India Examples', 'Improve Analysis'],
+  presentation_script: ['Shorten Speaker Notes', 'Add Transitions', 'Make it More Engaging', 'Add CTA'],
+};
+
+const FORM_TEMPLATES = {
+  essay: `
+    <div class="as-form-grid">
+      <div class="as-field as-field-full">
+        <label for="fTopic">Topic / Title <span class="as-req">*</span></label>
+        <input type="text" id="fTopic" placeholder="e.g. Impact of Social Media on Mental Health" autocomplete="off">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fThesis">Core Thesis / Argument</label>
+        <textarea id="fThesis" rows="2" placeholder="Optional: what is the central argument?"></textarea>
+      </div>
+      <div class="as-field">
+        <label for="fAcademicLevel">Academic Level <span class="as-req">*</span></label>
+        <select id="fAcademicLevel">
+          <option value="Undergraduate">Undergraduate</option>
+          <option value="Postgraduate">Postgraduate</option>
+          <option value="High School">High School</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fTone">Tone Profile <span class="as-req">*</span></label>
+        <select id="fTone">
+          <option value="Academic">Academic</option>
+          <option value="Semi-Formal">Semi-Formal</option>
+          <option value="Reflective">Reflective</option>
+          <option value="Persuasive">Persuasive</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fCitation">Citation Style</label>
+        <select id="fCitation">
+          <option value="None">None</option>
+          <option value="APA-7">APA-7</option>
+          <option value="MLA-9">MLA-9</option>
+          <option value="Harvard">Harvard</option>
+          <option value="Chicago">Chicago</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fSubject">Subject / Course</label>
+        <input type="text" id="fSubject" placeholder="e.g. Environmental Science">
+      </div>
+      <div class="as-field as-field-full">
+        <label>Word Count Target: <b id="wordCountLabel">800</b> words</label>
+        <input type="range" id="fWordCount" min="300" max="5000" step="50" value="800" oninput="document.getElementById('wordCountLabel').textContent=this.value">
+      </div>
+      <div class="as-field">
+        <label>Body Paragraphs</label>
+        <div class="as-stepper">
+          <button type="button" onclick="stepperChange('fBodyParagraphs',-1)">−</button>
+          <input type="number" id="fBodyParagraphs" value="3" min="2" max="8" readonly>
+          <button type="button" onclick="stepperChange('fBodyParagraphs',1)">+</button>
+        </div>
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fInstructions">Additional Instructions</label>
+        <textarea id="fInstructions" rows="2" placeholder="Optional: any specific requirements"></textarea>
+      </div>
+    </div>
+  `,
+  research_paper: `
+    <div class="as-form-grid">
+      <div class="as-field as-field-full">
+        <label for="fResearchTopic">Research Topic <span class="as-req">*</span></label>
+        <input type="text" id="fResearchTopic" placeholder="e.g. Renewable energy adoption in India" autocomplete="off">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fResearchQuestion">Research Question</label>
+        <textarea id="fResearchQuestion" rows="2" placeholder="Optional: what is the primary question?"></textarea>
+      </div>
+      <div class="as-field">
+        <label for="fMethodology">Methodology Focus</label>
+        <select id="fMethodology">
+          <option value="Review">Literature Review</option>
+          <option value="Qualitative">Qualitative</option>
+          <option value="Quantitative">Quantitative</option>
+          <option value="Mixed Methods">Mixed Methods</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fResearchLevel">Academic Level <span class="as-req">*</span></label>
+        <select id="fResearchLevel">
+          <option value="Undergraduate">Undergraduate</option>
+          <option value="Postgraduate">Postgraduate</option>
+          <option value="Doctorate">Doctorate</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fResearchCitation">Citation Style</label>
+        <select id="fResearchCitation">
+          <option value="APA-7">APA-7</option>
+          <option value="MLA-9">MLA-9</option>
+          <option value="Harvard">Harvard</option>
+          <option value="Chicago">Chicago</option>
+          <option value="IEEE">IEEE</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fResearchSubject">Subject / Discipline</label>
+        <input type="text" id="fResearchSubject" placeholder="e.g. Computer Science">
+      </div>
+      <div class="as-field as-field-full">
+        <label>Word Count Target: <b id="wordCountLabel">1500</b> words</label>
+        <input type="range" id="fResearchWordCount" min="500" max="10000" step="100" value="1500" oninput="document.getElementById('wordCountLabel').textContent=this.value">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fResearchInstructions">Additional Instructions</label>
+        <textarea id="fResearchInstructions" rows="2" placeholder="Optional: journal style, scope, or emphasis"></textarea>
+      </div>
+    </div>
+  `,
+  lab_report: `
+    <div class="as-form-grid">
+      <div class="as-field as-field-full">
+        <label for="fExperimentTitle">Experiment Title <span class="as-req">*</span></label>
+        <input type="text" id="fExperimentTitle" placeholder="e.g. Analysis of Osmosis in Potato Cells" autocomplete="off">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fObjective">Objective / Aim</label>
+        <textarea id="fObjective" rows="2" placeholder="What was the goal of the experiment?"></textarea>
+      </div>
+      <div class="as-field">
+        <label for="fMethod">Method Summary</label>
+        <select id="fMethod">
+          <option value="Standard">Standard</option>
+          <option value="Detailed">Detailed</option>
+          <option value="Concise">Concise</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fVariables">Variables / Setup</label>
+        <input type="text" id="fVariables" placeholder="e.g. independent and dependent variables">
+      </div>
+      <div class="as-field">
+        <label for="fLabTone">Tone Profile</label>
+        <select id="fLabTone">
+          <option value="Formal">Formal</option>
+          <option value="Technical">Technical</option>
+          <option value="Simple">Simple</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fLabSubject">Subject / Course</label>
+        <input type="text" id="fLabSubject" placeholder="e.g. Biology">
+      </div>
+      <div class="as-field as-field-full">
+        <label>Word Count Target: <b id="wordCountLabel">1200</b> words</label>
+        <input type="range" id="fLabWordCount" min="400" max="6000" step="50" value="1200" oninput="document.getElementById('wordCountLabel').textContent=this.value">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fLabInstructions">Additional Instructions</label>
+        <textarea id="fLabInstructions" rows="2" placeholder="Optional: mention tables, charts, or formatting"></textarea>
+      </div>
+    </div>
+  `,
+  case_study: `
+    <div class="as-form-grid">
+      <div class="as-field as-field-full">
+        <label for="fCaseTitle">Case Study Title <span class="as-req">*</span></label>
+        <input type="text" id="fCaseTitle" placeholder="e.g. Tata Steel digital transformation case study" autocomplete="off">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fCaseProblem">Problem Statement</label>
+        <textarea id="fCaseProblem" rows="2" placeholder="Summarise the core business / social problem"></textarea>
+      </div>
+      <div class="as-field">
+        <label for="fOrganization">Organization / Brand</label>
+        <input type="text" id="fOrganization" placeholder="e.g. Tata Steel">
+      </div>
+      <div class="as-field">
+        <label for="fIndustry">Industry</label>
+        <input type="text" id="fIndustry" placeholder="e.g. Manufacturing">
+      </div>
+      <div class="as-field">
+        <label for="fFramework">Analysis Framework</label>
+        <select id="fFramework">
+          <option value="SWOT">SWOT</option>
+          <option value="PESTLE">PESTLE</option>
+          <option value="Porter Five Forces">Porter Five Forces</option>
+          <option value="Root Cause">Root Cause</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fCaseTone">Tone Profile</label>
+        <select id="fCaseTone">
+          <option value="Analytical">Analytical</option>
+          <option value="Formal">Formal</option>
+          <option value="Consulting">Consulting</option>
+        </select>
+      </div>
+      <div class="as-field as-field-full">
+        <label>Word Count Target: <b id="wordCountLabel">1000</b> words</label>
+        <input type="range" id="fCaseWordCount" min="400" max="6000" step="50" value="1000" oninput="document.getElementById('wordCountLabel').textContent=this.value">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fCaseInstructions">Additional Instructions</label>
+        <textarea id="fCaseInstructions" rows="2" placeholder="Optional: mention recommendation style, region, or scope"></textarea>
+      </div>
+    </div>
+  `,
+  presentation_script: `
+    <div class="as-form-grid">
+      <div class="as-field as-field-full">
+        <label for="fPresentationTitle">Presentation Title <span class="as-req">*</span></label>
+        <input type="text" id="fPresentationTitle" placeholder="e.g. Climate Change and Urban Planning" autocomplete="off">
+      </div>
+      <div class="as-field">
+        <label for="fAudience">Audience</label>
+        <input type="text" id="fAudience" placeholder="e.g. Undergraduate classmates">
+      </div>
+      <div class="as-field">
+        <label for="fDuration">Duration (minutes)</label>
+        <input type="number" id="fDuration" min="3" max="45" value="8">
+      </div>
+      <div class="as-field">
+        <label for="fSlides">Slide Count</label>
+        <input type="number" id="fSlides" min="5" max="30" value="10">
+      </div>
+      <div class="as-field">
+        <label for="fPresentationTone">Tone Profile</label>
+        <select id="fPresentationTone">
+          <option value="Engaging">Engaging</option>
+          <option value="Formal">Formal</option>
+          <option value="Persuasive">Persuasive</option>
+          <option value="Academic">Academic</option>
+        </select>
+      </div>
+      <div class="as-field">
+        <label for="fPresentationStyle">Speaker Style</label>
+        <select id="fPresentationStyle">
+          <option value="Confident">Confident</option>
+          <option value="Conversational">Conversational</option>
+          <option value="Professional">Professional</option>
+        </select>
+      </div>
+      <div class="as-field as-field-full">
+        <label>Word Count Target: <b id="wordCountLabel">900</b> words</label>
+        <input type="range" id="fPresentationWordCount" min="300" max="4000" step="50" value="900" oninput="document.getElementById('wordCountLabel').textContent=this.value">
+      </div>
+      <div class="as-field as-field-full">
+        <label for="fPresentationInstructions">Additional Instructions</label>
+        <textarea id="fPresentationInstructions" rows="2" placeholder="Optional: mention transitions, call to action, or delivery style"></textarea>
+      </div>
+    </div>
+  `,
+};
+
+const authHeaders = (extra = {}) => ({
+  ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+  ...extra,
+});
+
+const jsonHeaders = (extra = {}) => ({
+  ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+  'Content-Type': 'application/json',
+  ...extra,
+});
+
+const escapeHtml = (value) => String(value == null ? '' : value)
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#39;');
+
+const formatDate = (value) => {
+  if (!value) return '';
+  try {
+    return new Date(value).toLocaleDateString(undefined, {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+    });
+  } catch {
+    return String(value);
+  }
+};
+
+const apiGet = async (url) => {
+  const response = await fetch(url, { headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || 'Request failed');
+  return data;
+};
+
+const apiPost = async (url, payload) => {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(payload || {}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || 'Request failed');
+  return data;
+};
+
+const apiPut = async (url, payload) => {
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: jsonHeaders(),
+    body: JSON.stringify(payload || {}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || 'Request failed');
+  return data;
+};
+
+const apiDelete = async (url) => {
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.message || 'Request failed');
+  return data;
+};
+
+const statusClass = (status) => `as-status-${status || 'draft'}`;
+
+const showToast = (message, kind = 'info') => {
+  let host = document.getElementById('toastHost');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'toastHost';
+    host.style.position = 'fixed';
+    host.style.right = '16px';
+    host.style.top = '16px';
+    host.style.zIndex = '80';
+    host.style.display = 'grid';
+    host.style.gap = '10px';
+    document.body.appendChild(host);
+  }
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.maxWidth = '360px';
+  toast.style.padding = '12px 14px';
+  toast.style.borderRadius = '12px';
+  toast.style.border = '1px solid rgba(255,255,255,0.10)';
+  toast.style.boxShadow = '0 14px 26px rgba(0,0,0,0.30)';
+  toast.style.color = '#f8fbff';
+  toast.style.background = kind === 'error' ? 'rgba(239,68,68,0.96)' : kind === 'success' ? 'rgba(34,197,94,0.96)' : 'rgba(15,23,42,0.96)';
+  host.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+};
+
+const setSaveStatus = (state, text) => {
+  const el = document.getElementById('saveStatus');
+  if (!el) return;
+  el.className = `as-save-pill ${state || ''}`.trim();
+  el.textContent = text || 'Saved';
+};
+
+const setStatusPill = (status) => {
+  const el = document.getElementById('statusPill');
+  if (!el) return;
+  el.textContent = `Status: ${STATUS_LABELS[status] || status || 'Draft'}`;
+};
+
+const setWordPill = (current, target) => {
+  const el = document.getElementById('wordPill');
+  const currentNum = Number(current || 0);
+  const targetNum = Number(target || 0);
+  if (!el) return;
+  el.textContent = `${currentNum.toLocaleString('en-IN')} / ${targetNum.toLocaleString('en-IN')} words`;
+};
+
+const setMeter = (current, target) => {
+  const currentNum = Number(current || 0);
+  const targetNum = Number(target || 0);
+  const ratio = targetNum > 0 ? (currentNum / targetNum) * 100 : 0;
+  const meter = document.getElementById('wordCountMeter');
+  const fill = document.getElementById('meterFill');
+  const currentEl = document.getElementById('wordCountCurrent');
+  const targetEl = document.getElementById('wordCountTarget');
+  const flagEl = document.getElementById('wordCountFlag');
+  const sectionEl = document.getElementById('sectionCount');
+  if (currentEl) currentEl.textContent = currentNum.toLocaleString('en-IN');
+  if (targetEl) targetEl.textContent = targetNum.toLocaleString('en-IN');
+  if (sectionEl) sectionEl.textContent = String((currentSession && currentSession.documentSections && currentSession.documentSections.length) || 0);
+  if (meter) meter.className = 'as-compliance-meter';
+  if (fill) fill.style.width = `${Math.min(ratio, 100)}%`;
+  if (ratio >= 0 && ratio < 90) {
+    if (meter) meter.classList.add('meter-amber');
+    if (flagEl) flagEl.textContent = 'under';
+  } else if (ratio > 125) {
+    if (meter) meter.classList.add('meter-red');
+    if (flagEl) flagEl.textContent = 'over';
+  } else {
+    if (meter) meter.classList.add('meter-green');
+    if (flagEl) flagEl.textContent = '✓';
+  }
+};
+
+const renderChatHistory = () => {
+  const chatList = document.getElementById('chatList');
+  if (!chatList) return;
+  const history = (currentSession && Array.isArray(currentSession.chatHistory)) ? currentSession.chatHistory : [];
+  if (!history.length) {
+    chatList.innerHTML = '<div class="as-empty-chat">No chat yet. Generate the draft first, then refine it here.</div>';
+    return;
+  }
+  chatList.innerHTML = history.map((item) => {
+    const role = item.role === 'assistant' ? 'assistant' : 'user';
+    const message = escapeHtml(item.message || '');
+    return `<div class="as-chat-item ${role}"><b>${role === 'assistant' ? 'Assistant' : 'You'}:</b> ${message}</div>`;
+  }).join('');
+  chatList.scrollTop = chatList.scrollHeight;
+};
+
+const addChatMessage = (role, message) => {
+  const chatList = document.getElementById('chatList');
+  if (!chatList) return null;
+  const empty = chatList.querySelector('.as-empty-chat');
+  if (empty) empty.remove();
+  const item = document.createElement('div');
+  item.className = `as-chat-item ${role}`;
+  item.dataset.role = role;
+  item.innerHTML = `<b>${role === 'assistant' ? 'Assistant' : 'You'}:</b> ${escapeHtml(message)}`;
+  chatList.appendChild(item);
+  chatList.scrollTop = chatList.scrollHeight;
+  return item;
+};
+
+const updateChatMessage = (node, message) => {
+  if (node) node.innerHTML = `<b>Assistant:</b> ${escapeHtml(message)}`;
+};
+
+const renderAssignmentForm = (type) => {
+  const container = document.getElementById('assignmentFormContainer');
+  if (!container) return;
+  currentType = type || 'essay';
+  document.querySelectorAll('.as-type-card').forEach((card) => {
+    card.classList.toggle('selected', card.dataset.type === currentType);
+  });
+  container.classList.remove('as-form-animate');
+  container.innerHTML = FORM_TEMPLATES[currentType] || FORM_TEMPLATES.essay;
+  container.offsetHeight;
+  container.classList.add('as-form-animate');
+  renderChatChips(currentType);
+  bindFormInputs();
+  fillFormFromContext();
+  syncHeaderFromSession();
+};
+
+const selectType = (type) => {
+  currentType = type;
+  document.querySelectorAll('.as-type-card').forEach((card) => {
+    card.classList.toggle('selected', card.dataset.type === type);
+  });
+  renderAssignmentForm(type);
+  scheduleAutoSave();
+};
+
+const stepperChange = (fieldId, delta) => {
+  const input = document.getElementById(fieldId);
+  if (!input) return;
+  const min = Number(input.min || 0);
+  const max = Number(input.max || 999999);
+  const current = Number(input.value || min);
+  const next = Math.min(max, Math.max(min, current + Number(delta || 0)));
+  input.value = String(next);
+  scheduleAutoSave();
+  updateCurrentContextTitle();
+};
+
+const getFieldValue = (id) => {
+  const el = document.getElementById(id);
+  return el ? String(el.value || '').trim() : '';
+};
+
+const getNumberValue = (id, fallback) => {
+  const el = document.getElementById(id);
+  const parsed = Number.parseInt(el ? el.value : '', 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const buildContextPayload = (type) => {
+  if (type === 'essay') {
+    return {
+      topic: getFieldValue('fTopic'),
+      thesis: getFieldValue('fThesis'),
+      academicLevel: getFieldValue('fAcademicLevel'),
+      toneProfile: getFieldValue('fTone'),
+      citationStyle: getFieldValue('fCitation'),
+      subject: getFieldValue('fSubject'),
+      wordCountTarget: getNumberValue('fWordCount', 800),
+      bodyParagraphs: getNumberValue('fBodyParagraphs', 3),
+      additionalInstructions: getFieldValue('fInstructions'),
+    };
+  }
+  if (type === 'research_paper') {
+    return {
+      researchTopic: getFieldValue('fResearchTopic'),
+      researchQuestion: getFieldValue('fResearchQuestion'),
+      methodology: getFieldValue('fMethodology'),
+      academicLevel: getFieldValue('fResearchLevel'),
+      citationStyle: getFieldValue('fResearchCitation'),
+      subject: getFieldValue('fResearchSubject'),
+      wordCountTarget: getNumberValue('fResearchWordCount', 1500),
+      additionalInstructions: getFieldValue('fResearchInstructions'),
+    };
+  }
+  if (type === 'lab_report') {
+    return {
+      experimentTitle: getFieldValue('fExperimentTitle'),
+      objective: getFieldValue('fObjective'),
+      method: getFieldValue('fMethod'),
+      variables: getFieldValue('fVariables'),
+      toneProfile: getFieldValue('fLabTone'),
+      subject: getFieldValue('fLabSubject'),
+      wordCountTarget: getNumberValue('fLabWordCount', 1200),
+      additionalInstructions: getFieldValue('fLabInstructions'),
+    };
+  }
+  if (type === 'case_study') {
+    return {
+      caseTitle: getFieldValue('fCaseTitle'),
+      problemStatement: getFieldValue('fCaseProblem'),
+      organization: getFieldValue('fOrganization'),
+      industry: getFieldValue('fIndustry'),
+      analysisFramework: getFieldValue('fFramework'),
+      toneProfile: getFieldValue('fCaseTone'),
+      wordCountTarget: getNumberValue('fCaseWordCount', 1000),
+      additionalInstructions: getFieldValue('fCaseInstructions'),
+    };
+  }
+  return {
+    presentationTitle: getFieldValue('fPresentationTitle'),
+    audience: getFieldValue('fAudience'),
+    durationMinutes: getNumberValue('fDuration', 8),
+    slideCount: getNumberValue('fSlides', 10),
+    toneProfile: getFieldValue('fPresentationTone'),
+    speakerStyle: getFieldValue('fPresentationStyle'),
+    wordCountTarget: getNumberValue('fPresentationWordCount', 900),
+    additionalInstructions: getFieldValue('fPresentationInstructions'),
+  };
+};
+
+const deriveTitle = (type) => {
+  const ctx = buildContextPayload(type);
+  return ctx.topic || ctx.researchTopic || ctx.experimentTitle || ctx.caseTitle || ctx.presentationTitle || 'Untitled Assignment';
+};
+
+const updateCurrentContextTitle = () => {
+  const title = deriveTitle(currentType);
+  const studioTitle = document.getElementById('studioTitle');
+  if (studioTitle && title) studioTitle.textContent = title;
+};
+
+const syncHeaderFromSession = () => {
+  const title = (currentSession && currentSession.title) || deriveTitle(currentType) || 'Assignment Workspace';
+  const studioTitle = document.getElementById('studioTitle');
+  const studioSubtitle = document.getElementById('studioSubtitle');
+  if (studioTitle) studioTitle.textContent = title;
+  if (studioSubtitle) {
+    studioSubtitle.textContent = currentSession
+      ? `Working on ${TYPE_LABELS[currentType] || currentType}. Session ${currentSession._id}.`
+      : 'Build, generate, refine, and download academic assignments from one workspace.';
+  }
+  setStatusPill(currentSession ? currentSession.status : 'draft');
+  setWordPill(currentSession ? currentSession.wordCountCurrent : 0, currentSession ? currentSession.wordCountTarget : 0);
+  setMeter(currentSession ? currentSession.wordCountCurrent : 0, currentSession ? currentSession.wordCountTarget : 0);
+};
+
+const fillFormFromContext = () => {
+  const ctx = (currentSession && currentSession.contextInputs) || {};
+  const setValue = (id, value) => {
+    const el = document.getElementById(id);
+    if (el && value != null) el.value = String(value);
+  };
+  if (currentType === 'essay') {
+    setValue('fTopic', ctx.topic || currentSession?.title || '');
+    setValue('fThesis', ctx.thesis || '');
+    setValue('fAcademicLevel', ctx.academicLevel || 'Undergraduate');
+    setValue('fTone', ctx.toneProfile || 'Academic');
+    setValue('fCitation', ctx.citationStyle || 'None');
+    setValue('fSubject', ctx.subject || '');
+    setValue('fWordCount', ctx.wordCountTarget || 800);
+    setValue('fBodyParagraphs', ctx.bodyParagraphs || 3);
+    setValue('fInstructions', ctx.additionalInstructions || '');
+  } else if (currentType === 'research_paper') {
+    setValue('fResearchTopic', ctx.researchTopic || currentSession?.title || '');
+    setValue('fResearchQuestion', ctx.researchQuestion || '');
+    setValue('fMethodology', ctx.methodology || 'Review');
+    setValue('fResearchLevel', ctx.academicLevel || 'Undergraduate');
+    setValue('fResearchCitation', ctx.citationStyle || 'APA-7');
+    setValue('fResearchSubject', ctx.subject || '');
+    setValue('fResearchWordCount', ctx.wordCountTarget || 1500);
+    setValue('fResearchInstructions', ctx.additionalInstructions || '');
+  } else if (currentType === 'lab_report') {
+    setValue('fExperimentTitle', ctx.experimentTitle || currentSession?.title || '');
+    setValue('fObjective', ctx.objective || '');
+    setValue('fMethod', ctx.method || 'Standard');
+    setValue('fVariables', ctx.variables || '');
+    setValue('fLabTone', ctx.toneProfile || 'Formal');
+    setValue('fLabSubject', ctx.subject || '');
+    setValue('fLabWordCount', ctx.wordCountTarget || 1200);
+    setValue('fLabInstructions', ctx.additionalInstructions || '');
+  } else if (currentType === 'case_study') {
+    setValue('fCaseTitle', ctx.caseTitle || currentSession?.title || '');
+    setValue('fCaseProblem', ctx.problemStatement || '');
+    setValue('fOrganization', ctx.organization || '');
+    setValue('fIndustry', ctx.industry || '');
+    setValue('fFramework', ctx.analysisFramework || 'SWOT');
+    setValue('fCaseTone', ctx.toneProfile || 'Analytical');
+    setValue('fCaseWordCount', ctx.wordCountTarget || 1000);
+    setValue('fCaseInstructions', ctx.additionalInstructions || '');
+  } else {
+    setValue('fPresentationTitle', ctx.presentationTitle || currentSession?.title || '');
+    setValue('fAudience', ctx.audience || '');
+    setValue('fDuration', ctx.durationMinutes || 8);
+    setValue('fSlides', ctx.slideCount || 10);
+    setValue('fPresentationTone', ctx.toneProfile || 'Engaging');
+    setValue('fPresentationStyle', ctx.speakerStyle || 'Confident');
+    setValue('fPresentationWordCount', ctx.wordCountTarget || 900);
+    setValue('fPresentationInstructions', ctx.additionalInstructions || '');
+  }
+};
+
+const renderDocumentSections = (sections) => {
+  const container = document.getElementById('outputContainer');
+  if (!container) return;
+  const outputEmptyState = document.getElementById('outputEmptyState');
+  const generatingState = document.getElementById('generatingState');
+  const errorState = document.getElementById('errorState');
+  if (outputEmptyState) outputEmptyState.style.display = 'none';
+  if (generatingState) generatingState.style.display = 'none';
+  if (errorState) errorState.style.display = 'none';
+
+  const sorted = Array.isArray(sections) ? [...sections].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)) : [];
+  if (!sorted.length) {
+    container.innerHTML = '<div class="as-empty-output" id="outputEmptyState">No sections generated yet. Generate your assignment to begin.</div>';
+    setMeter(currentSession ? currentSession.wordCountCurrent : 0, currentSession ? currentSession.wordCountTarget : 0);
+    return;
+  }
+
+  container.innerHTML = sorted.map((section) => {
+    const key = String(section.section_key || section.key || 'section');
+    const title = escapeHtml(section.title || 'Section');
+    const body = DOMPurify.sanitize(marked.parse(String(section.content_markdown || '')));
+    const keyLiteral = JSON.stringify(key);
+    const titleLiteral = JSON.stringify(String(section.title || 'Section'));
+    return `
+      <article class="as-section-card" data-key="${escapeHtml(key)}">
+        <div class="as-section-header">
+          <div>
+            <h3 class="as-section-title-text">${title}</h3>
+          </div>
+          <button type="button" class="as-section-edit" onclick='openSectionRewrite(${keyLiteral}, ${titleLiteral})'>✎</button>
+        </div>
+        <div class="as-section-content" id="content_${escapeHtml(key)}">${body}</div>
+      </article>
+    `;
+  }).join('');
+  const sectionCount = document.getElementById('sectionCount');
+  if (sectionCount) sectionCount.textContent = String(sorted.length);
+  setMeter(currentSession ? currentSession.wordCountCurrent : 0, currentSession ? currentSession.wordCountTarget : 0);
+};
+
+const showGeneratingState = () => {
+  const container = document.getElementById('outputContainer');
+  if (container) container.innerHTML = '<div class="as-generating-state" id="generatingState">Generating your draft... we will poll for updates automatically.</div>';
+  setSaveStatus('saving', 'Generating');
+};
+
+const showErrorState = (message) => {
+  const container = document.getElementById('outputContainer');
+  if (container) container.innerHTML = `<div class="as-error-state" id="errorState">${escapeHtml(message || 'Generation failed.')}</div>`;
+  setSaveStatus('error', 'Error');
+  if (currentSession) {
+    currentSession.status = 'error';
+    currentSession.errorMessage = message || 'Generation failed.';
+  }
+  setStatusPill('error');
+};
+
+const showGeneratedState = () => {
+  setSaveStatus('saved', 'Generated');
+  setStatusPill('generated');
+};
+
+const renderChatChips = (type) => {
+  const container = document.getElementById('chatChips');
+  if (!container) return;
+  _activeChips = CHAT_CHIPS[type] || [];
+  container.innerHTML = _activeChips.map((chip) => `<button type="button" class="as-chip" onclick='sendChat(${JSON.stringify(chip)})'>${escapeHtml(chip)}</button>`).join('');
+};
+
+const saveCurrentDraft = async () => {
+  if (!sessionId || _isSaving) return null;
+  _isSaving = true;
+  setSaveStatus('saving', 'Saving');
+  try {
+    const ctx = buildContextPayload(currentType);
+    const payload = {
+      contextInputs: ctx,
+      title: deriveTitle(currentType),
+    };
+    const result = await apiPut(`/api/student/assignments/${sessionId}`, payload);
+    setSaveStatus('saved', `Saved ${result.updatedAt || ''}`.trim());
+    if (currentSession) {
+      currentSession.contextInputs = ctx;
+      currentSession.title = payload.title;
+      currentSession.wordCountTarget = ctx.wordCountTarget || currentSession.wordCountTarget || 0;
+    }
+    syncHeaderFromSession();
+    return result;
+  } catch (error) {
+    setSaveStatus('error', 'Save failed');
+    showToast(error.message || 'Could not save draft', 'error');
+    throw error;
+  } finally {
+    _isSaving = false;
+  }
+};
+
+const scheduleAutoSave = () => {
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(() => {
+    saveCurrentDraft().catch(() => {});
+  }, 1500);
+};
+
+const bindFormInputs = () => {
+  const container = document.getElementById('assignmentFormContainer');
+  if (!container) return;
+  container.querySelectorAll('input, select, textarea').forEach((el) => {
+    el.addEventListener('input', () => {
+      updateCurrentContextTitle();
+      scheduleAutoSave();
+    });
+    el.addEventListener('change', () => {
+      updateCurrentContextTitle();
+      scheduleAutoSave();
+    });
+  });
+};
+
+const loadSession = async (sid) => {
+  if (!sid) {
+    renderAssignmentForm(currentType);
+    syncHeaderFromSession();
+    renderChatChips(currentType);
+    return;
+  }
+  try {
+    const data = await apiGet(`/api/student/assignments/${sid}`);
+    currentSession = data;
+    currentType = data.assignmentType || 'essay';
+    sessionId = data._id || sid;
+    renderAssignmentForm(currentType);
+    fillFormFromContext();
+    syncHeaderFromSession();
+    renderChatHistory();
+    renderChatChips(currentType);
+    if (data.status === 'generated') {
+      renderDocumentSections(data.documentSections || []);
+      showGeneratedState();
+    } else if (data.status === 'generating') {
+      showGeneratingState();
+      startPolling();
+    } else if (data.status === 'error') {
+      showErrorState(data.errorMessage || 'Generation failed.');
+    } else {
+      renderDocumentSections(data.documentSections || []);
+    }
+  } catch (error) {
+    showToast(error.message || 'Could not load assignment session', 'error');
+    renderAssignmentForm(currentType);
+    syncHeaderFromSession();
+  }
+};
+
+const createOrUpdateSession = async () => {
+  const ctx = buildContextPayload(currentType);
+  const title = deriveTitle(currentType);
+  if (!sessionId) {
+    const created = await apiPost('/api/student/assignments', {
+      assignmentType: currentType,
+      contextInputs: ctx,
+    });
+    sessionId = created.session._id;
+    currentSession = created.session;
+    currentSession.contextInputs = ctx;
+    currentSession.title = title;
+    history.replaceState({}, '', `/student/assignments/${sessionId}`);
+  } else {
+    await apiPut(`/api/student/assignments/${sessionId}`, {
+      title,
+      contextInputs: ctx,
+    });
+    if (currentSession) {
+      currentSession.title = title;
+      currentSession.contextInputs = ctx;
+    }
+  }
+  syncHeaderFromSession();
+  return { ctx, title };
+};
+
+const startPolling = () => {
+  clearInterval(_pollTimer);
+  _pollCount = 0;
+  _pollTimer = setInterval(pollStatus, 5000);
+};
+
+const pollStatus = async () => {
+  _pollCount += 1;
+  if (_pollCount > MAX_POLLS) {
+    clearInterval(_pollTimer);
+    showErrorState('Generation timed out. Please try again.');
+    return;
+  }
+  if (!sessionId) return;
+  try {
+    const status = await apiGet(`/api/student/assignments/${sessionId}/status`);
+    if (status.status === 'generated') {
+      clearInterval(_pollTimer);
+      const fresh = await apiGet(`/api/student/assignments/${sessionId}`);
+      currentSession = fresh;
+      renderDocumentSections(fresh.documentSections || []);
+      syncHeaderFromSession();
+      showGeneratedState();
+      renderChatHistory();
+    } else if (status.status === 'error') {
+      clearInterval(_pollTimer);
+      showErrorState(status.errorMessage || 'Generation failed. Please try again.');
+    }
+  } catch (error) {
+    // keep polling on transient network errors
+  }
+};
+
+const startGeneration = async () => {
+  try {
+    setSaveStatus('saving', 'Preparing');
+    await createOrUpdateSession();
+    showGeneratingState();
+    await apiPost(`/api/student/assignments/${sessionId}/generate`, {});
+    currentSession.status = 'generating';
+    setStatusPill('generating');
+    startPolling();
+    showToast('Generation started', 'success');
+  } catch (error) {
+    showErrorState(error.message || 'Could not start generation');
+    showToast(error.message || 'Could not start generation', 'error');
+  }
+};
+
+const openSectionRewrite = (sectionKey, sectionTitle) => {
+  const overlay = document.getElementById('sectionRewriteOverlay');
+  const title = document.getElementById('rewriteSectionTitle');
+  const input = document.getElementById('rewriteInput');
+  if (!overlay || !title || !input) return;
+  overlay.dataset.sectionKey = sectionKey;
+  title.textContent = sectionTitle;
+  input.value = '';
+  overlay.style.display = 'flex';
+  input.focus();
+};
+
+const closeSectionRewrite = () => {
+  const overlay = document.getElementById('sectionRewriteOverlay');
+  if (overlay) overlay.style.display = 'none';
+};
+
+const applyRewrite = async () => {
+  const overlay = document.getElementById('sectionRewriteOverlay');
+  if (!overlay || !sessionId) return;
+  const sectionKey = overlay.dataset.sectionKey;
+  const instruction = String(document.getElementById('rewriteInput')?.value || '').trim();
+  if (!instruction) return;
+  const btn = document.getElementById('applyRewriteBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Rewriting...';
+  }
+  try {
+    const result = await apiPost(`/api/student/assignments/${sessionId}/sections/${sectionKey}/rewrite`, {
+      refinementInstruction: instruction,
+    });
+    if (!currentSession) currentSession = {};
+    currentSession.documentSections = (currentSession.documentSections || []).map((section) => (
+      String(section.section_key || section.key || '') === String(sectionKey)
+        ? { ...section, content_markdown: result.updatedContentMarkdown || section.content_markdown || '' }
+        : section
+    ));
+    currentSession.wordCountCurrent = result.wordCountCurrent || currentSession.wordCountCurrent || 0;
+    const contentEl = document.getElementById(`content_${sectionKey}`);
+    if (contentEl) {
+      contentEl.innerHTML = DOMPurify.sanitize(marked.parse(result.updatedContentMarkdown || ''));
+    }
+    syncHeaderFromSession();
+    showToast('Section updated', 'success');
+    closeSectionRewrite();
+  } catch (error) {
+    showToast(error.message || 'Rewrite failed', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Apply';
+    }
+  }
+};
+
+const sendChat = async (message) => {
+  const text = String(message || document.getElementById('chatInput')?.value || '').trim();
+  if (!text || !sessionId) return;
+  const input = document.getElementById('chatInput');
+  if (input) input.value = '';
+  addChatMessage('user', text);
+  const loadingNode = addChatMessage('assistant', 'Refining document...');
+  try {
+    const result = await apiPost(`/api/student/assignments/${sessionId}/chat`, { message: text });
+    if (!currentSession) currentSession = {};
+    currentSession.documentSections = result.documentSections || [];
+    currentSession.wordCountCurrent = result.wordCountCurrent || currentSession.wordCountCurrent || 0;
+    currentSession.chatHistory = currentSession.chatHistory || [];
+    currentSession.chatHistory.push({ role: 'user', message: text });
+    currentSession.chatHistory.push({ role: 'assistant', message: result.assistantMessage || 'Document updated.' });
+    updateChatMessage(loadingNode, result.assistantMessage || 'Document updated.');
+    renderDocumentSections(result.documentSections || []);
+    renderChatHistory();
+    syncHeaderFromSession();
+    showToast('Document refined', 'success');
+  } catch (error) {
+    updateChatMessage(loadingNode, error.message || 'Refinement failed');
+    showToast(error.message || 'Chat refinement failed', 'error');
+  }
+};
+
+const downloadFile = async (url, filename) => {
+  const response = await fetch(url, { headers: authHeaders() });
+  if (!response.ok) {
+    let message = 'Download failed';
+    try {
+      const data = await response.json();
+      message = data.message || message;
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+  const blob = await response.blob();
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(link.href);
+    link.remove();
+  }, 0);
+};
+
+const downloadPdf = async () => {
+  if (!sessionId) return showToast('Create or load an assignment first', 'error');
+  try {
+    const title = currentSession?.title || deriveTitle(currentType) || 'assignment';
+    await downloadFile(`/api/student/assignments/${sessionId}/pdf`, `${title.replace(/[^a-z0-9_-]+/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '') || 'assignment'}.pdf`);
+  } catch (error) {
+    showToast(error.message || 'PDF download failed', 'error');
+  }
+};
+
+const downloadDocx = async () => {
+  if (!sessionId) return showToast('Create or load an assignment first', 'error');
+  try {
+    const title = currentSession?.title || deriveTitle(currentType) || 'assignment';
+    await downloadFile(`/api/student/assignments/${sessionId}/docx`, `${title.replace(/[^a-z0-9_-]+/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '') || 'assignment'}.docx`);
+  } catch (error) {
+    showToast(error.message || 'DOCX download failed', 'error');
+  }
+};
+
+const initResize = () => {
+  const body = document.getElementById('studioBody');
+  const divider = document.getElementById('dragDivider');
+  if (!body || !divider) return;
+  let dragging = false;
+  const onMove = (event) => {
+    if (!dragging) return;
+    const rect = body.getBoundingClientRect();
+    const x = Math.max(320, Math.min(event.clientX - rect.left, rect.width - 420));
+    const leftPercent = Math.max(30, Math.min(60, (x / rect.width) * 100));
+    body.style.gridTemplateColumns = `${leftPercent}% 8px ${100 - leftPercent}%`;
+  };
+  divider.addEventListener('mousedown', () => {
+    dragging = true;
+    document.body.style.userSelect = 'none';
+  });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', () => {
+    dragging = false;
+    document.body.style.userSelect = '';
+  });
+};
+
+const initEvents = () => {
+  document.getElementById('saveBtn')?.addEventListener('click', () => saveCurrentDraft().catch(() => {}));
+  document.getElementById('generateBtn')?.addEventListener('click', startGeneration);
+  document.getElementById('generateBtn2')?.addEventListener('click', startGeneration);
+  document.getElementById('downloadPdfBtn')?.addEventListener('click', downloadPdf);
+  document.getElementById('downloadDocxBtn')?.addEventListener('click', downloadDocx);
+  document.getElementById('sendChatBtn')?.addEventListener('click', () => sendChat());
+  document.getElementById('chatInput')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      sendChat();
+    }
+  });
+  document.getElementById('closeRewriteOverlay')?.addEventListener('click', closeSectionRewrite);
+  document.getElementById('cancelRewriteBtn')?.addEventListener('click', closeSectionRewrite);
+  document.getElementById('applyRewriteBtn')?.addEventListener('click', applyRewrite);
+  document.getElementById('sectionRewriteOverlay')?.addEventListener('click', (event) => {
+    if (event.target && event.target.id === 'sectionRewriteOverlay') closeSectionRewrite();
+  });
+  document.getElementById('previewFab')?.addEventListener('click', () => {
+    document.getElementById('rightPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+};
+
+const init = async () => {
+  if (!token) {
+    window.location.href = '/login';
+    return;
+  }
+  initEvents();
+  initResize();
+  renderAssignmentForm(currentType);
+  setStatusPill('draft');
+  setWordPill(0, 0);
+  setMeter(0, 0);
+  renderChatChips(currentType);
+  if (sessionId) {
+    await loadSession(sessionId);
+  } else {
+    renderDocumentSections([]);
+    syncHeaderFromSession();
+  }
+};
+
+document.addEventListener('DOMContentLoaded', init);
+window.selectType = selectType;
+window.stepperChange = stepperChange;
+window.openSectionRewrite = openSectionRewrite;
+window.sendChat = sendChat;
+</script>
+
+</body>
+</html>

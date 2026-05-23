@@ -5,29 +5,31 @@
 
 {% block admin_content %}
 <section class="dashboard-grid">
-  <div>
-    <h1 class="page-title">Project Titles</h1>
-    <p class="page-subtitle">View, add, and edit all project titles in one place. Titles are linked to majors and degrees.</p>
-  </div>
-
-  <div class="stats-inline">
-    <button class="btn-primary" type="button" onclick="openProjectTitleModal()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Project Title</button>
-    <button class="btn-outline-secondary" type="button" onclick="loadProjectTitles()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
-  </div>
-
-  <article class="panel-card panel-body" style="display:grid;gap:12px;">
-    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filters</h3>
-    <div class="toolbar" style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) minmax(220px,1fr) 140px;gap:12px;">
-      <input id="filterSearch" class="small-input" placeholder="Search titles...">
-      <select id="filterDegree" class="small-input">
-        <option value="">All Degrees</option>
-      </select>
-      <select id="filterMajor" class="small-input">
-        <option value="">All Majors</option>
-      </select>
-      <button class="btn-ghost" type="button" onclick="applyFilters()">Apply</button>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Project Titles</h1>
+      <p class="page-subtitle">View, add, and edit all project titles in one place. Titles are linked to majors and degrees.</p>
     </div>
-  </article>
+    <div class="page-header-actions">
+      <button class="btn-ghost" type="button" onclick="loadProjectTitles()">
+        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+      </button>
+      <button class="btn-primary" type="button" onclick="openProjectTitleModal()">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Project Title
+      </button>
+    </div>
+  </div>
+
+  <div class="admin-filter-bar">
+    <input id="filterSearch" class="small-input search-input" placeholder="Search titles...">
+    <select id="filterDegree" class="small-input">
+      <option value="">All Degrees</option>
+    </select>
+    <select id="filterMajor" class="small-input">
+      <option value="">All Majors</option>
+    </select>
+    <button class="btn-ghost" type="button" onclick="applyFilters()">Apply</button>
+  </div>
 
   <article class="panel-card panel-body table-card">
     <div class="data-table-wrap">

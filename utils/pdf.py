@@ -369,9 +369,9 @@ def generate_pdf_from_html(html_content, base_url=None, student_name='Student'):
 
             footer_student_name = (student_name or 'Student').strip() or 'Student'
 
-            # Printable width = 210mm - 8mm (left) - 8mm (right) = 194mm = ~734px at 96dpi
+            # Printable width = 210mm - 12mm (left) - 12mm (right) = 186mm = ~704px at 96dpi
             # Printable height = 297mm - 8mm (top) - 8mm (bottom) = 281mm = ~1062px at 96dpi
-            page.set_viewport_size({"width": 734, "height": 1062})
+            page.set_viewport_size({"width": 704, "height": 1062})
 
             # Use load instead of networkidle so a slow or hanging asset doesn't
             # block the preview request and reset the connection.
@@ -388,7 +388,7 @@ def generate_pdf_from_html(html_content, base_url=None, student_name='Student'):
                 format="A4",
                 print_background=True,
                 display_header_footer=False,
-                margin={"top": "8mm", "bottom": "8mm", "left": "8mm", "right": "8mm"}
+                margin={"top": "8mm", "bottom": "8mm", "left": "12mm", "right": "12mm"}
             )
 
             reader = PdfReader(io.BytesIO(pdf_bytes))

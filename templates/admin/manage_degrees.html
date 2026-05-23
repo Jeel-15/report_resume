@@ -5,19 +5,24 @@
 
 {% block admin_content %}
 <section class="dashboard-grid">
-  <div>
-    <h1 class="page-title">Manage Degrees</h1>
-    <p class="page-subtitle">Maintain degree master records used by major policies and student profiles.</p>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Degrees</h1>
+      <p class="page-subtitle">Maintain degree master records used by major policies and student profiles.</p>
+    </div>
+    <div class="page-header-actions">
+      <button class="btn-ghost" type="button" onclick="load()">
+        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+      </button>
+      <button class="btn-primary" type="button" onclick="addDegree()">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Degree
+      </button>
+    </div>
   </div>
 
-  <div class="stats-inline">
-    <div class="toolbar" style="display:grid;grid-template-columns:minmax(280px,420px) auto;gap:10px;align-items:start;">
-      <div>
-        <input id="degreeName" class="small-input" placeholder="New degree name">
-        <div id="addDegreeMsg" style="font-size:13px;margin-top:6px;display:none;"></div>
-      </div>
-      <button class="btn-primary" type="button" onclick="addDegree()">Add</button>
-    </div>
+  <div class="admin-filter-bar">
+    <input id="degreeName" class="small-input search-input" placeholder="New degree name">
+    <div id="addDegreeMsg" style="font-size:13px;display:none;"></div>
   </div>
 
   <article class="panel-card panel-body table-card">

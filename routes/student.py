@@ -39,6 +39,7 @@ from models.resume_keyword import ResumeKeyword
 # We'll need to fetch colleges/universities too
 from models.college import College
 from models.university import University
+from models import AssignmentSession, AssignmentPrompt
 
 student_bp = Blueprint('student', __name__)
 REPORT_IMAGE_UPLOAD_FOLDER = os.path.join('static', 'uploads', 'report_images')
@@ -1616,6 +1617,728 @@ def resume_html_preview(current_user, resume_id):
     response.headers['Content-Type'] = 'text/html; charset=utf-8'
     response.headers['Cache-Control'] = 'no-store'
     return response
+
+
+# ── Assignment Studio Helpers ─────────────────────────────────────────────
+
+def _serialize_assignment_session(s, include_sections=False, include_chat=False):
+    out = {
+        '_id':              str(getattr(s, 'id', '') or ''),
+        'title':            str(getattr(s, 'title', '') or 'Untitled Assignment'),
+        'assignmentType':   str(getattr(s, 'assignmentType', '') or ''),
+        'universityName':   str(getattr(s, 'universityName', '') or ''),
+        'degreeName':       str(getattr(s, 'degreeName', '') or ''),
+        'majorName':        str(getattr(s, 'majorName', '') or ''),
+        'status':           str(getattr(s, 'status', 'draft') or 'draft'),
+        'errorMessage':     str(getattr(s, 'errorMessage', '') or ''),
+        'wordCountCurrent': int(getattr(s, 'wordCountCurrent', 0) or 0),
+        'wordCountTarget':  int(getattr(s, 'wordCountTarget', 0) or 0),
+        'generationCount':  int(getattr(s, 'generationCount', 0) or 0),
+        'contextInputs':    dict(getattr(s, 'contextInputs', {}) or {}),
+        'createdAt':        s.createdAt.isoformat() if getattr(s, 'createdAt', None) else '',
+        'updatedAt':        s.updatedAt.isoformat() if getattr(s, 'updatedAt', None) else '',
+    }
+    if include_sections:
+        out['documentSections'] = list(getattr(s, 'documentSections', []) or [])
+        out['fullContentMarkdown'] = str(getattr(s, 'fullContentMarkdown', '') or '')
+    if include_chat:
+        out['chatHistory'] = list(getattr(s, 'chatHistory', []) or [])
+    return out
+
+
+def _get_user_sessions(current_user):
+    all_sessions = list(AssignmentSession.objects())
+    user_id = getattr(current_user, 'id', None)
+    sessions = [
+        s for s in all_sessions
+        if not bool(getattr(s, 'isDeleted', False))
+        and (
+            str(getattr(getattr(s, 'user', None), 'id', None)) == str(user_id)
+            or str(getattr(s, '_data', {}).get('user', '')) == str(user_id)
+        )
+    ]
+    sessions.sort(key=lambda s: getattr(s, 'createdAt', datetime.datetime.min), reverse=True)
+    return sessions
+
+
+def _get_applicable_prompts(university_name, assignment_type):
+    all_prompts = list(AssignmentPrompt.objects())
+    active = [p for p in all_prompts if bool(getattr(p, 'isActive', True))]
+    matched = []
+    uname_lower = str(university_name or '').lower()
+    for p in active:
+        atype = str(getattr(p, 'assignmentType', '*') or '*')
+        if atype not in ('*', assignment_type):
+            continue
+        keywords = list(getattr(p, 'triggerKeywords', []) or [])
+        if not keywords:
+            matched.append(p)
+        elif any(kw.lower() in uname_lower for kw in keywords if kw):
+            matched.append(p)
+    matched.sort(key=lambda p: int(getattr(p, 'sortOrder', 0) or 0))
+    return [str(getattr(p, 'injectedInstruction', '') or '') for p in matched]
+
+
+def _extract_markdown_from_llm_item(item):
+    """Extract markdown text from OpenAI/n8n response item shapes."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return ''
+
+    chunks = []
+
+    direct_md = item.get('content_markdown')
+    if isinstance(direct_md, str) and direct_md.strip():
+        return direct_md.strip()
+
+    content_parts = item.get('content')
+    if isinstance(content_parts, list):
+        for part in content_parts:
+            if not isinstance(part, dict):
+                continue
+            text_val = part.get('text')
+            if isinstance(text_val, str) and text_val.strip():
+                chunks.append(text_val.strip())
+
+    output_items = item.get('output')
+    if isinstance(output_items, dict):
+        output_items = [output_items]
+    if isinstance(output_items, list):
+        for out in output_items:
+            if not isinstance(out, dict):
+                continue
+            out_content = out.get('content')
+            if isinstance(out_content, list):
+                for part in out_content:
+                    if not isinstance(part, dict):
+                        continue
+                    text_val = part.get('text')
+                    if isinstance(text_val, str) and text_val.strip():
+                        chunks.append(text_val.strip())
+
+    for key in ('markdown', 'content', 'text'):
+        val = item.get(key)
+        if isinstance(val, str) and val.strip():
+            chunks.append(val.strip())
+
+    return '\n\n'.join([c for c in chunks if c]).strip()
+
+
+def _normalize_assignment_callback_sections(raw_sections):
+    """Normalize mixed n8n payload shapes into assignment section dicts."""
+    if not isinstance(raw_sections, list):
+        return []
+
+    normalized = []
+    used_keys = set()
+
+    for idx, sec in enumerate(raw_sections):
+        if not isinstance(sec, dict):
+            continue
+
+        markdown = str(_extract_markdown_from_llm_item(sec) or '').strip()
+
+        title = str(sec.get('title') or '').strip()
+        if not title and markdown:
+            match = re.search(r'^\s*##\s+(.+?)\s*$', markdown, flags=re.MULTILINE)
+            if match:
+                title = match.group(1).strip()
+        if not title:
+            title = f'Section {idx + 1}'
+
+        base_key = str(sec.get('section_key') or sec.get('key') or '').strip().lower()
+        if not base_key:
+            base_key = re.sub(r'[^a-z0-9]+', '_', title.lower()).strip('_') or f'section_{idx + 1}'
+
+        key = base_key
+        suffix = 2
+        while key in used_keys:
+            key = f'{base_key}_{suffix}'
+            suffix += 1
+        used_keys.add(key)
+
+        try:
+            sort_order = int(sec.get('sort_order', idx + 1) or (idx + 1))
+        except Exception:
+            sort_order = idx + 1
+
+        normalized.append({
+            'section_key': key,
+            'title': title,
+            'content_markdown': markdown,
+            'sort_order': sort_order,
+        })
+
+    normalized.sort(key=lambda x: int(x.get('sort_order', 0) or 0))
+    return normalized
+
+
+# ── Assignment Studio Routes ──────────────────────────────────────────────
+
+
+@student_bp.route('/assignments', methods=['GET'])
+@token_required
+def get_assignments(current_user):
+    try:
+        sessions = _get_user_sessions(current_user)
+
+        filter_type = request.args.get('type', '').strip()
+        filter_status = request.args.get('status', '').strip()
+        limit = int(request.args.get('limit', 20))
+        offset = int(request.args.get('offset', 0))
+
+        if filter_type:
+            sessions = [s for s in sessions if getattr(s, 'assignmentType', '') == filter_type]
+        if filter_status:
+            sessions = [s for s in sessions if getattr(s, 'status', '') == filter_status]
+
+        total = len(sessions)
+        page = sessions[offset: offset + limit]
+
+        return jsonify({
+            'items': [_serialize_assignment_session(s) for s in page],
+            'total': total,
+            'limit': limit,
+            'offset': offset,
+        }), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments', methods=['POST'])
+@token_required
+def create_assignment(current_user):
+    try:
+        data = request.get_json(silent=True) or {}
+        assignment_type = str(data.get('assignmentType', '') or '').strip()
+        valid_types = ('essay', 'research_paper', 'lab_report', 'case_study', 'presentation_script')
+        if assignment_type not in valid_types:
+            return jsonify({'message': f'Invalid assignmentType. Must be one of: {valid_types}'}), 400
+
+        context = dict(data.get('contextInputs', {}) or {})
+        word_target = int(context.get('wordCountTarget', 800) or 800)
+
+        uni_name = str(getattr(current_user, 'universityName', '') or '')
+        deg_name = str(getattr(current_user, 'degreeName', '') or '')
+        major_name = str(getattr(current_user, 'majorName', '') or '')
+
+        topic = (
+            context.get('topic') or
+            context.get('experimentTitle') or
+            context.get('caseTitle') or
+            context.get('researchTopic') or
+            context.get('presentationTitle') or
+            ''
+        )
+        title = str(topic).strip()[:120] or 'Untitled Assignment'
+
+        session = AssignmentSession(
+            user=current_user,
+            title=title,
+            assignmentType=assignment_type,
+            universityName=uni_name,
+            degreeName=deg_name,
+            majorName=major_name,
+            contextInputs=context,
+            wordCountTarget=word_target,
+            status='draft',
+        )
+        session.save()
+
+        return jsonify({
+            'success': True,
+            'session': _serialize_assignment_session(session),
+        }), 201
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>', methods=['GET'])
+@token_required
+def get_assignment(current_user, session_id):
+    try:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Not found'}), 404
+        if bool(getattr(s, 'isDeleted', False)):
+            return jsonify({'message': 'Not found'}), 404
+        user_id = getattr(current_user, 'id', None)
+        session_user_id = getattr(getattr(s, 'user', None), 'id', None) or getattr(s, '_data', {}).get('user', None)
+        if str(session_user_id) != str(user_id):
+            return jsonify({'message': 'Forbidden'}), 403
+        return jsonify(_serialize_assignment_session(s, include_sections=True, include_chat=True)), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>/clone', methods=['POST'])
+@token_required
+def clone_assignment(current_user, session_id):
+    try:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Not found'}), 404
+        user_id = getattr(current_user, 'id', None)
+        session_user_id = getattr(getattr(s, 'user', None), 'id', None) or getattr(s, '_data', {}).get('user', None)
+        if str(session_user_id) != str(user_id):
+            return jsonify({'message': 'Forbidden'}), 403
+
+        # Create a new draft prefilled from the snapshot (no generated content)
+        new_title = f"Copy of {str(getattr(s, 'title', '') or 'Untitled Assignment')}"
+        session = AssignmentSession(
+            user=current_user,
+            title=new_title,
+            assignmentType=str(getattr(s, 'assignmentType', '') or 'essay'),
+            universityName=str(getattr(s, 'universityName', '') or ''),
+            degreeName=str(getattr(s, 'degreeName', '') or ''),
+            majorName=str(getattr(s, 'majorName', '') or ''),
+            contextInputs=dict(getattr(s, 'contextInputs', {}) or {}),
+            wordCountTarget=int(getattr(s, 'wordCountTarget', 0) or 0),
+            status='draft',
+        )
+        session.save()
+
+        return jsonify({'success': True, 'session': _serialize_assignment_session(session)}), 201
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>', methods=['PUT'])
+@token_required
+def update_assignment(current_user, session_id):
+    try:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Not found'}), 404
+        user_id = getattr(current_user, 'id', None)
+        session_user_id = getattr(getattr(s, 'user', None), 'id', None) or getattr(s, '_data', {}).get('user', None)
+        if str(session_user_id) != str(user_id):
+            return jsonify({'message': 'Forbidden'}), 403
+
+        if str(getattr(s, 'status', '') or '') == 'generated':
+            return jsonify({'message': 'Generated assignments are locked. Create a new draft to edit.'}), 409
+
+        data = request.get_json(silent=True) or {}
+
+        if 'title' in data:
+            s.title = str(data['title'] or '').strip()[:120] or 'Untitled Assignment'
+        if 'assignmentType' in data:
+            next_type = str(data['assignmentType'] or '').strip()
+            valid_types = ('essay', 'research_paper', 'lab_report', 'case_study', 'presentation_script')
+            if next_type and next_type in valid_types and next_type != str(getattr(s, 'assignmentType', '') or ''):
+                s.assignmentType = next_type
+        if 'contextInputs' in data:
+            s.contextInputs = dict(data['contextInputs'] or {})
+            word_target = int(s.contextInputs.get('wordCountTarget', s.wordCountTarget) or s.wordCountTarget)
+            s.wordCountTarget = word_target
+
+        s.updatedAt = datetime.datetime.utcnow()
+        s.save()
+
+        return jsonify({
+            'success': True,
+            'updatedAt': s.updatedAt.isoformat(),
+            'title': str(s.title or ''),
+        }), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>', methods=['DELETE'])
+@token_required
+def delete_assignment(current_user, session_id):
+    try:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Not found'}), 404
+        user_id = getattr(current_user, 'id', None)
+        session_user_id = getattr(getattr(s, 'user', None), 'id', None) or getattr(s, '_data', {}).get('user', None)
+        if str(session_user_id) != str(user_id):
+            return jsonify({'message': 'Forbidden'}), 403
+        s.isDeleted = True
+        s.updatedAt = datetime.datetime.utcnow()
+        s.save()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>/generate', methods=['POST'])
+@token_required
+def generate_assignment(current_user, session_id):
+    import os
+    try:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Not found'}), 404
+        user_id = getattr(current_user, 'id', None)
+        session_user_id = getattr(getattr(s, 'user', None), 'id', None) or getattr(s, '_data', {}).get('user', None)
+        if str(session_user_id) != str(user_id):
+            return jsonify({'message': 'Forbidden'}), 403
+
+        s.status = 'generating'
+        s.errorMessage = ''
+        s.generationCount = int(getattr(s, 'generationCount', 0) or 0) + 1
+        s.updatedAt = datetime.datetime.utcnow()
+        s.save()
+
+        n8n_url = os.getenv('N8N_ASSIGNMENT_WEBHOOK_URL', '').strip()
+        backend_url = os.getenv('BACKEND_URL', '').strip()
+        callback_url = f'{backend_url}/api/student/assignments/{session_id}/callback'
+
+        uni_name = str(getattr(s, 'universityName', '') or '')
+        atype = str(getattr(s, 'assignmentType', '') or '')
+        injections = _get_applicable_prompts(uni_name, atype)
+
+        payload = {
+            'sessionId': str(s.id),
+            'assignmentType': atype,
+            'contextInputs': dict(getattr(s, 'contextInputs', {}) or {}),
+            'universityName': uni_name,
+            'degreeName': str(getattr(s, 'degreeName', '') or ''),
+            'majorName': str(getattr(s, 'majorName', '') or ''),
+            'promptInjections': injections,
+            'callbackUrl': callback_url,
+        }
+
+        if n8n_url:
+            try:
+                response = requests.post(n8n_url, json=payload, timeout=(3, 8))
+                if response.status_code >= 400:
+                    s.status = 'error'
+                    s.errorMessage = f'n8n returned {response.status_code}'
+                    s.save()
+                    return jsonify({'message': 'Generation service returned an error'}), 502
+            except requests.exceptions.ReadTimeout:
+                # n8n webhook can be configured to respond only after long-running generation.
+                # Treat read timeout as accepted and rely on callback + polling for completion.
+                pass
+            except Exception as n8n_err:
+                s.status = 'error'
+                s.errorMessage = f'n8n unreachable: {str(n8n_err)[:200]}'
+                s.save()
+                return jsonify({'message': 'Generation service unavailable', 'error': str(n8n_err)}), 502
+        else:
+            s.status = 'error'
+            s.errorMessage = 'N8N_ASSIGNMENT_WEBHOOK_URL not configured'
+            s.save()
+            return jsonify({'message': 'N8N_ASSIGNMENT_WEBHOOK_URL not set in .env'}), 500
+
+        return jsonify({'success': True, 'status': 'generating', 'message': 'Generation started. Poll /status for progress.'}), 202
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>/callback', methods=['POST'])
+def assignment_generation_callback(session_id):
+    try:
+        data = request.get_json(silent=True) or {}
+
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Session not found'}), 404
+
+        raw_sections = data.get('document_sections', []) or []
+        sections = _normalize_assignment_callback_sections(raw_sections)
+
+        full_markdown = str(data.get('full_content_markdown', '') or '')
+        word_count = int(data.get('word_count', 0) or 0)
+        tokens_used = int(data.get('api_tokens_consumed', 0) or 0)
+
+        full_without_separators = re.sub(r'\s*---\s*', '', full_markdown or '').strip()
+        if not full_without_separators:
+            full_markdown = '\n\n---\n\n'.join([
+                str(sec.get('content_markdown', '') or '').strip()
+                for sec in sections
+                if str(sec.get('content_markdown', '') or '').strip()
+            ]).strip()
+
+        if not word_count and full_markdown:
+            word_count = len([w for w in full_markdown.split() if w])
+
+        s.documentSections = sections
+        s.fullContentMarkdown = full_markdown
+        s.wordCountCurrent = word_count
+        s.apiTokensConsumed = int(getattr(s, 'apiTokensConsumed', 0) or 0) + tokens_used
+        s.status = 'generated'
+        s.errorMessage = ''
+        s.updatedAt = datetime.datetime.utcnow()
+        s.save()
+
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        try:
+            s = AssignmentSession.objects(id=session_id).first()
+            if s:
+                s.status = 'error'
+                s.errorMessage = str(e)[:500]
+                s.save()
+        except Exception:
+            pass
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>/status', methods=['GET'])
+@token_required
+def assignment_status(current_user, session_id):
+    try:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Not found'}), 404
+        user_id = getattr(current_user, 'id', None)
+        session_user_id = getattr(getattr(s, 'user', None), 'id', None) or getattr(s, '_data', {}).get('user', None)
+        if str(session_user_id) != str(user_id):
+            return jsonify({'message': 'Forbidden'}), 403
+        return jsonify({
+            'status': str(getattr(s, 'status', 'draft') or 'draft'),
+            'wordCountCurrent': int(getattr(s, 'wordCountCurrent', 0) or 0),
+            'errorMessage': str(getattr(s, 'errorMessage', '') or ''),
+        }), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>/chat', methods=['POST'])
+@token_required
+def assignment_chat(current_user, session_id):
+    import os
+    from openai import OpenAI
+    try:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Not found'}), 404
+        user_id = getattr(current_user, 'id', None)
+        session_user_id = getattr(getattr(s, 'user', None), 'id', None) or getattr(s, '_data', {}).get('user', None)
+        if str(session_user_id) != str(user_id):
+            return jsonify({'message': 'Forbidden'}), 403
+
+        data = request.get_json(silent=True) or {}
+        user_message = str(data.get('message', '') or '').strip()
+        if not user_message:
+            return jsonify({'message': 'message is required'}), 400
+
+        current_markdown = str(getattr(s, 'fullContentMarkdown', '') or '')
+        if not current_markdown:
+            return jsonify({'message': 'No generated content to refine. Generate first.'}), 400
+
+        ctx = dict(getattr(s, 'contextInputs', {}) or {})
+
+        system_prompt = f"""You are a document refinement engine for academic assignments.
+You receive a complete academic document and a student instruction.
+Revise the ENTIRE document according to the instruction while preserving:
+- All ## section headings (exactly as they appear)
+- Overall document structure
+- Academic quality and voice
+
+Document: {str(getattr(s, 'title', '') or '')}
+Type: {str(getattr(s, 'assignmentType', '') or '')}
+Current words: {int(getattr(s, 'wordCountCurrent', 0) or 0)}
+Target words: {int(getattr(s, 'wordCountTarget', 0) or 0)}
+Citation style: {ctx.get('citationStyle', 'None')}
+
+RULES:
+1. Apply the instruction to the full document, not just one section.
+2. Preserve all ## section headings exactly as written.
+3. Maintain total word count within ±15% of current count.
+4. Output ONLY the complete revised document in Markdown. Nothing else.
+5. No preamble like "Here is the revised document:" — start directly with content."""
+
+        openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY', ''))
+        model = os.getenv('OPENAI_MODEL', 'gpt-4.1')
+
+        response = openai_client.chat.completions.create(
+            model=model,
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': f'CURRENT DOCUMENT:\n"""\n{current_markdown}\n"""\n\nINSTRUCTION: {user_message}'},
+            ],
+            temperature=0.5,
+            max_tokens=4000,
+        )
+
+        revised_markdown = response.choices[0].message.content.strip()
+        new_word_count = len([w for w in revised_markdown.split() if w])
+
+        import re
+        section_parts = re.split(r'\n(?=## )', revised_markdown)
+        new_sections = []
+        existing_sections = list(getattr(s, 'documentSections', []) or [])
+
+        for i, part in enumerate(section_parts):
+            part = part.strip()
+            if not part:
+                continue
+            heading_match = re.match(r'^## (.+)', part)
+            title = heading_match.group(1).strip() if heading_match else f'Section {i+1}'
+            existing = next((sec for sec in existing_sections if sec.get('title', '').strip().lower() == title.lower()), None)
+            section_key = existing.get('section_key', f'sec_{i+1}') if existing else f'sec_{i+1}'
+            new_sections.append({
+                'section_key': section_key,
+                'title': title,
+                'content_markdown': part,
+                'sort_order': i + 1,
+            })
+
+        chat_history = list(getattr(s, 'chatHistory', []) or [])
+        chat_history.append({'role': 'user', 'message': user_message, 'timestamp': datetime.datetime.utcnow().isoformat()})
+        assistant_summary = f'Revised document. New word count: {new_word_count}.'
+        chat_history.append({'role': 'assistant', 'message': assistant_summary, 'timestamp': datetime.datetime.utcnow().isoformat()})
+
+        s.documentSections = new_sections
+        s.fullContentMarkdown = revised_markdown
+        s.wordCountCurrent = new_word_count
+        s.chatHistory = chat_history[-20:]
+        s.updatedAt = datetime.datetime.utcnow()
+        s.save()
+
+        return jsonify({'success': True, 'documentSections': new_sections, 'wordCountCurrent': new_word_count, 'assistantMessage': assistant_summary}), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>/sections/<section_key>/rewrite', methods=['POST'])
+@token_required
+def rewrite_section(current_user, session_id, section_key):
+    import os
+    from openai import OpenAI
+    try:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Not found'}), 404
+        user_id = getattr(current_user, 'id', None)
+        session_user_id = getattr(getattr(s, 'user', None), 'id', None) or getattr(s, '_data', {}).get('user', None)
+        if str(session_user_id) != str(user_id):
+            return jsonify({'message': 'Forbidden'}), 403
+
+        data = request.get_json(silent=True) or {}
+        instruction = str(data.get('refinementInstruction', '') or '').strip()
+        if not instruction:
+            return jsonify({'message': 'refinementInstruction is required'}), 400
+
+        sections = list(getattr(s, 'documentSections', []) or [])
+        target_section = next((sec for sec in sections if sec.get('section_key') == section_key), None)
+        if not target_section:
+            return jsonify({'message': f'Section {section_key} not found'}), 404
+
+        ctx = dict(getattr(s, 'contextInputs', {}) or {})
+        old_content = str(target_section.get('content_markdown', '') or '')
+        old_word_count = len([w for w in old_content.split() if w])
+
+        system_prompt = f"""You are an academic writing refinement engine.
+You will rewrite ONE section of an academic document based on a student's instruction.
+Preserve: the section heading (## {target_section.get('title', '')})
+Preserve: academic quality, formal tone, and citation style ({ctx.get('citationStyle', 'None')})
+Output ONLY the revised section in Markdown, starting with ## {target_section.get('title', '')}
+No preamble. No explanation."""
+
+        openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY', ''))
+        model = os.getenv('OPENAI_MODEL', 'gpt-4.1')
+
+        response = openai_client.chat.completions.create(
+            model=model,
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': f'CURRENT SECTION:\n"""\n{old_content}\n"""\n\nINSTRUCTION: {instruction}'},
+            ],
+            temperature=0.6,
+            max_tokens=1200,
+        )
+
+        revised_content = response.choices[0].message.content.strip()
+        new_word_count = len([w for w in revised_content.split() if w])
+        word_count_delta = new_word_count - old_word_count
+
+        updated_sections = []
+        for sec in sections:
+            if sec.get('section_key') == section_key:
+                updated_sections.append({**sec, 'content_markdown': revised_content})
+            else:
+                updated_sections.append(dict(sec))
+
+        updated_sections_sorted = sorted(updated_sections, key=lambda x: int(x.get('sort_order', 0) or 0))
+        full_markdown = '\n\n---\n\n'.join([sec.get('content_markdown', '') for sec in updated_sections_sorted])
+        new_total_words = len([w for w in full_markdown.split() if w])
+
+        s.documentSections = updated_sections
+        s.fullContentMarkdown = full_markdown
+        s.wordCountCurrent = new_total_words
+        s.updatedAt = datetime.datetime.utcnow()
+        s.save()
+
+        return jsonify({'success': True, 'sectionKey': section_key, 'updatedContentMarkdown': revised_content, 'wordCountDelta': word_count_delta, 'wordCountCurrent': new_total_words}), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>/pdf', methods=['GET'])
+@token_required
+def download_assignment_pdf(current_user, session_id):
+    import io
+    from flask import send_file, render_template
+    from utils.pdf import generate_pdf_from_html
+    try:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Not found'}), 404
+        user_id = getattr(current_user, 'id', None)
+        session_user_id = getattr(getattr(s, 'user', None), 'id', None) or getattr(s, '_data', {}).get('user', None)
+        if str(session_user_id) != str(user_id):
+            return jsonify({'message': 'Forbidden'}), 403
+
+        sections = list(getattr(s, 'documentSections', []) or [])
+        if not sections:
+            return jsonify({'message': 'Assignment not yet generated'}), 400
+
+        html_content = render_template('assignment_pdf_template.html', session=_serialize_assignment_session(s, include_sections=True), user=_serialize_profile(current_user))
+        pdf_bytes = generate_pdf_from_html(html_content)
+
+        safe_title = str(getattr(s, 'title', 'assignment') or 'assignment')
+        safe_title = ''.join(c for c in safe_title if c.isalnum() or c in ' _-')[:60].strip().replace(' ', '_')
+        filename = f'{safe_title}_assignment.pdf'
+
+        return send_file(io.BytesIO(pdf_bytes), mimetype='application/pdf', as_attachment=True, download_name=filename)
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>/docx', methods=['GET'])
+@token_required
+def download_assignment_docx(current_user, session_id):
+    import io
+    from flask import send_file
+    from utils.docx_generator import generate_docx_from_sections
+    try:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Not found'}), 404
+        user_id = getattr(current_user, 'id', None)
+        session_user_id = getattr(getattr(s, 'user', None), 'id', None) or getattr(s, '_data', {}).get('user', None)
+        if str(session_user_id) != str(user_id):
+            return jsonify({'message': 'Forbidden'}), 403
+
+        sections = list(getattr(s, 'documentSections', []) or [])
+        if not sections:
+            return jsonify({'message': 'Assignment not yet generated'}), 400
+        metadata = {
+            'title': str(getattr(s, 'title', '') or 'Assignment'),
+            'assignmentType': str(getattr(s, 'assignmentType', '') or ''),
+            'studentName': str(getattr(current_user, 'name', '') or ''),
+            'universityName': str(getattr(s, 'universityName', '') or ''),
+            'degreeName': str(getattr(s, 'degreeName', '') or ''),
+            'wordCount': int(getattr(s, 'wordCountCurrent', 0) or 0),
+        }
+
+        doc_io = generate_docx_from_sections(sections, metadata)
+
+        safe_title = str(getattr(s, 'title', 'assignment') or 'assignment')
+        safe_title = ''.join(c for c in safe_title if c.isalnum() or c in ' _-')[:60].strip().replace(' ', '_')
+        filename = f'{safe_title}_assignment.docx'
+
+        return send_file(doc_io, mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document', as_attachment=True, download_name=filename)
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
 
 
 

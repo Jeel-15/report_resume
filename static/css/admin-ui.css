@@ -52,3 +52,105 @@
   .col-actions{width:auto}
   .admin-filter-panel{flex-direction:column;align-items:stretch}
 }
+
+/* ------------------------------------------------------------------------
+   Phase 1 additions: shared admin UI classes (approval badges, tabs,
+   standard page header, filter panel, table actions, bulk toolbar,
+   stats chips, pager, pending badge, btn-danger)
+   Appended as part of admin UI consistency Phase 1.
+------------------------------------------------------------------------ */
+
+/* ── Approval status badges ─────────────────────────────────────── */
+.badge-approved {
+  background: rgba(5, 150, 105, 0.12);
+  color: #059669;
+  border: 1px solid rgba(5, 150, 105, 0.2);
+}
+.badge-pending {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+.badge-rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.approval-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── Status filter tab buttons ──────────────────────────────────── */
+.admin-tab-btn {
+  cursor: pointer;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  background: none;
+  color: #64748b;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.admin-tab-btn:hover { color: #1e40af; }
+.admin-tab-btn.active { border-bottom-color: var(--rg-primary); color: var(--rg-primary); }
+.admin-tab-strip { display:flex;align-items:center;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--rg-line);margin-bottom:16px; }
+
+/* ── Standard page header ───────────────────────────────────────── */
+.page-header { display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px; }
+.page-header-left { display:flex;flex-direction:column;gap:4px; }
+.page-header-actions { display:flex;align-items:center;gap:8px;flex-shrink:0; }
+
+/* ── Standard filter panel ──────────────────────────────────────── */
+.admin-filter-bar { display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;background:var(--rg-card);border:1px solid var(--rg-line-soft);border-radius:12px;margin-bottom:16px; }
+.admin-filter-bar .small-input, .admin-filter-bar select.small-input { height:36px; min-width:160px; flex:1 1 160px; max-width:280px; }
+.admin-filter-bar .search-input { min-width:220px; flex:2 1 220px; max-width:360px; }
+.admin-filter-bar-right { margin-left:auto; display:flex;align-items:center;gap:8px; }
+
+/* ── Table row icon action buttons ──────────────────────────────── */
+.toggle-action, .danger-action {
+  display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid transparent;background:transparent;cursor:pointer;transition:background .15s,color .15s,border-color .15s;color:var(--rg-muted);padding:0;
+}
+.toggle-action:hover { background:#f0fdf4;color:#059669;border-color:rgba(5,150,105,0.2); }
+.danger-action:hover { background:#fff1f2;color:#dc2626;border-color:rgba(239,68,68,0.2); }
+.icon-actions { display:inline-flex;align-items:center;gap:6px; }
+
+/* ── Bulk delete toolbar ────────────────────────────────────────── */
+.bulk-toolbar { display:none;align-items:center;gap:12px;padding:10px 16px;background:#fefce8;border:1px solid #fde047;border-radius:10px;margin-bottom:14px;font-size:13px;animation:bulkIn .15s ease; }
+.bulk-toolbar.show { display:flex; }
+@keyframes bulkIn { from{opacity:0;transform:translateY(-4px);} to{opacity:1;transform:translateY(0);} }
+.bulk-toolbar-count { font-weight:700;color:#854d0e; }
+.bulk-toolbar-delete { padding:6px 14px;background:#dc2626;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer; }
+.bulk-toolbar-delete:hover{ background:#b91c1c; }
+.bulk-toolbar-clear { padding:6px 12px;background:transparent;border:1px solid #94a3b8;border-radius:7px;font-size:13px;cursor:pointer;color:#475569; }
+.bulk-toolbar-clear:hover{ border-color:#475569 }
+
+/* ── Stats chips row ────────────────────────────────────────────── */
+.stats-chips { display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px; }
+.stats-chip { background:#fff;border:1px solid var(--rg-line);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:500;color:var(--rg-text);box-shadow:var(--rg-shadow);white-space:nowrap; }
+.stats-chip b { color:var(--rg-heading);font-weight:700 }
+.stats-chip.chip-pending b{ color:#d97706 }
+.stats-chip.chip-success b{ color:#059669 }
+.stats-chip.chip-error b{ color:#dc2626 }
+
+/* ── Table foot / pagination ────────────────────────────────────── */
+.table-foot-row { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;font-size:13px;color:var(--rg-muted);flex-wrap:wrap }
+.pager-simple { display:inline-flex;gap:6px;align-items:center }
+.pager-simple button { height:30px;min-width:30px;padding:0 8px;border:1px solid var(--rg-line);border-radius:8px;background:#fff;color:var(--rg-text);font-size:12px;cursor:pointer;transition:all .15s }
+.pager-simple button:hover:not(:disabled){ background:var(--rg-primary);color:#fff;border-color:var(--rg-primary) }
+.pager-simple button:disabled{ opacity:.4; cursor:not-allowed }
+
+/* ── Pending count badge inside tab buttons ─────────────────────── */
+.pending-count-badge { display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#fde047;color:#713f12;font-size:10px;font-weight:700;margin-left:5px;vertical-align:middle }
+
+/* ── btn-danger ─────────────────────────────────────────────────── */
+.btn-danger { height:36px;border-radius:8px;padding:8px 14px;font-size:13px;border:1px solid #fca5a5;background:#fff1f2;color:#dc2626;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:all .15s }
+.btn-danger:hover{ background:#dc2626;color:#fff;border-color:#dc2626 }
+

@@ -30,6 +30,7 @@ from models.career_objective import CareerObjective
 from models.resume_keyword import ResumeKeyword
 from models.blog_post import BlogPost
 from models.faq_item import FaqItem
+from models import AssignmentSession, AssignmentPrompt
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -222,6 +223,64 @@ def _serialize_resume_keyword(doc):
         'isActive': getattr(doc, 'isActive', True),
         'createdAt': getattr(doc, 'createdAt', None).isoformat() if getattr(doc, 'createdAt', None) else None,
     }
+
+
+def _serialize_resume(doc, include_full=False):
+    user_obj = getattr(doc, 'user', None)
+
+    def _serialize_embedded_list(items):
+        out = []
+        for item in items or []:
+            if hasattr(item, 'to_mongo'):
+                try:
+                    out.append(item.to_mongo().to_dict())
+                    continue
+                except Exception:
+                    pass
+            out.append(item)
+        return out
+
+    base = {
+        '_id': _obj_id(doc),
+        'title': _field(doc, 'title', ''),
+        'fullName': _field(doc, 'fullName', ''),
+        'email': _field(doc, 'email', ''),
+        'phone': _field(doc, 'phone', ''),
+        'status': _field(doc, 'status', 'draft'),
+        'downloadCount': int(_field(doc, 'downloadCount', 0) or 0),
+        'createdAt': _field(doc, 'createdAt', None).isoformat() if _field(doc, 'createdAt', None) else None,
+        'updatedAt': _field(doc, 'updatedAt', None).isoformat() if _field(doc, 'updatedAt', None) else None,
+        'user': _safe_ref(user_obj),
+        'userName': _field(user_obj, 'name', '') if user_obj else '',
+        'userEmail': _field(user_obj, 'email', '') if user_obj else '',
+        'major': _safe_ref(getattr(user_obj, 'major', None)),
+        'degree': _safe_ref(getattr(user_obj, 'degree', None)),
+        'college': _safe_ref(getattr(user_obj, 'college', None)),
+        'university': _safe_ref(getattr(user_obj, 'university', None)),
+    }
+
+    if include_full:
+        base.update({
+            'address': _field(doc, 'address', ''),
+            'photoUrl': _field(doc, 'photoUrl', ''),
+            'linkedinUrl': _field(doc, 'linkedinUrl', ''),
+            'githubUrl': _field(doc, 'githubUrl', ''),
+            'careerObjectiveRaw': _field(doc, 'careerObjectiveRaw', ''),
+            'careerObjectiveEnhanced': _field(doc, 'careerObjectiveEnhanced', ''),
+            'education': _serialize_embedded_list(_field(doc, 'education', []) or []),
+            'experience': _serialize_embedded_list(_field(doc, 'experience', []) or []),
+            'projects': _serialize_embedded_list(_field(doc, 'projects', []) or []),
+            'volunteering': _serialize_embedded_list(_field(doc, 'volunteering', []) or []),
+            'certifications': _serialize_embedded_list(_field(doc, 'certifications', []) or []),
+            'languages': _serialize_embedded_list(_field(doc, 'languages', []) or []),
+            'skills': list(_field(doc, 'skills', []) or []),
+            'technicalSkills': list(_field(doc, 'technicalSkills', []) or []),
+            'coursework': list(_field(doc, 'coursework', []) or []),
+            'personalSkills': list(_field(doc, 'personalSkills', []) or []),
+            'errorMessage': _field(doc, 'errorMessage', ''),
+        })
+
+    return base
 
 
 def _normalize_text(value):
@@ -2000,6 +2059,264 @@ def delete_service(current_user, service_id):
     return jsonify({'message': 'Deleted'})
 
 
+# ── Admin: Assignment Studio ──────────────────────────────────────────────
+
+@admin_bp.route('/assignments', methods=['GET'])
+@admin_required
+def admin_get_assignments(current_user=None):
+    """List all assignment sessions (admin view — no user filter)."""
+    try:
+        all_sessions = list(AssignmentSession.objects())
+        sessions = [s for s in all_sessions if not bool(getattr(s, 'isDeleted', False))]
+
+        # Filters
+        filter_type = request.args.get('type', '').strip()
+        filter_status = request.args.get('status', '').strip()
+        q = request.args.get('q', '').strip().lower()
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+
+        if filter_type:
+            sessions = [s for s in sessions if getattr(s, 'assignmentType', '') == filter_type]
+        if filter_status:
+            sessions = [s for s in sessions if getattr(s, 'status', '') == filter_status]
+        if q:
+            sessions = [s for s in sessions if q in str(getattr(s, 'title', '') or '').lower()]
+
+        sessions.sort(key=lambda s: getattr(s, 'createdAt', datetime.min), reverse=True)
+        total = len(sessions)
+        page = sessions[offset: offset + limit]
+
+        def _admin_serialize(s):
+            user_obj = getattr(s, 'user', None)
+            user_name = ''
+            user_email = ''
+            if user_obj:
+                try:
+                    user_name = str(getattr(user_obj, 'name', '') or '')
+                    user_email = str(getattr(user_obj, 'email', '') or '')
+                except Exception:
+                    pass
+            base = {
+                '_id': str(getattr(s, 'id', '') or ''),
+                'title': str(getattr(s, 'title', '') or ''),
+                'assignmentType': str(getattr(s, 'assignmentType', '') or ''),
+                'status': str(getattr(s, 'status', 'draft') or 'draft'),
+                'wordCountCurrent': int(getattr(s, 'wordCountCurrent', 0) or 0),
+                'wordCountTarget': int(getattr(s, 'wordCountTarget', 0) or 0),
+                'generationCount': int(getattr(s, 'generationCount', 0) or 0),
+                'universityName': str(getattr(s, 'universityName', '') or ''),
+                'userName': user_name,
+                'userEmail': user_email,
+                'createdAt': s.createdAt.isoformat() if getattr(s, 'createdAt', None) else '',
+            }
+            return base
+
+        return jsonify({
+            'items': [_admin_serialize(s) for s in page],
+            'total': total,
+            'limit': limit,
+            'offset': offset,
+        }), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/assignments/stats', methods=['GET'])
+@admin_required
+def admin_assignment_stats(current_user=None):
+    """Aggregate statistics for Assignment Studio dashboard."""
+    try:
+        all_sessions = list(AssignmentSession.objects())
+        sessions = [s for s in all_sessions if not bool(getattr(s, 'isDeleted', False))]
+
+        by_type = {}
+        by_status = {}
+        total = len(sessions)
+
+        for s in sessions:
+            t = str(getattr(s, 'assignmentType', 'other') or 'other')
+            st = str(getattr(s, 'status', 'draft') or 'draft')
+            by_type[t] = by_type.get(t, 0) + 1
+            by_status[st] = by_status.get(st, 0) + 1
+
+        return jsonify({
+            'total': total,
+            'byType': by_type,
+            'byStatus': by_status,
+        }), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/assignments/<session_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_assignment(current_user, session_id):
+    s = AssignmentSession.objects(id=session_id).first()
+    if not s:
+        return jsonify({'message': 'Not found'}), 404
+    try:
+        s.isDeleted = True
+        s.updatedAt = datetime.utcnow()
+        s.save()
+    except Exception:
+        pass
+    return jsonify({'message': 'Deleted'})
+
+
+@admin_bp.route('/assignments/bulk-delete', methods=['POST'])
+@admin_required
+def admin_bulk_delete_assignments(current_user):
+    data = request.get_json() or {}
+    ids = [str(i).strip() for i in (data.get('ids') or []) if str(i).strip()]
+    if not ids:
+        return jsonify({'message': 'No IDs provided'}), 400
+
+    deleted = 0
+    for session_id in ids:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            continue
+        try:
+            s.isDeleted = True
+            s.updatedAt = datetime.utcnow()
+            s.save()
+            deleted += 1
+        except Exception:
+            continue
+
+    return jsonify({'message': f'Deleted {deleted} assignments', 'deleted': deleted})
+
+
+@admin_bp.route('/assignments/<session_id>/pdf', methods=['GET'])
+@admin_required
+def admin_assignment_pdf(current_user, session_id):
+    from utils.pdf import generate_pdf_from_html
+    from routes.student import _serialize_assignment_session, _serialize_profile
+
+    s = AssignmentSession.objects(id=session_id).first()
+    if not s:
+        return jsonify({'message': 'Not found'}), 404
+
+    sections = list(getattr(s, 'documentSections', []) or [])
+    if not sections:
+        return jsonify({'message': 'Assignment not yet generated'}), 400
+
+    preview_mode = str(request.args.get('preview', '')).lower() in {'1', 'true', 'yes'}
+    html_content = render_template(
+        'assignment_pdf_template.html',
+        session=_serialize_assignment_session(s, include_sections=True),
+        user=_serialize_profile(current_user),
+    )
+    pdf_bytes = generate_pdf_from_html(html_content)
+
+    safe_title = str(getattr(s, 'title', 'assignment') or 'assignment')
+    safe_title = ''.join(c for c in safe_title if c.isalnum() or c in ' _-')[:60].strip().replace(' ', '_')
+    filename = f'{safe_title}_assignment.pdf'
+
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype='application/pdf',
+        as_attachment=not preview_mode,
+        download_name=filename if not preview_mode else 'preview.pdf',
+    )
+
+
+@admin_bp.route('/assignment-prompts', methods=['GET'])
+@admin_required
+def admin_get_prompts(current_user=None):
+    all_prompts = list(AssignmentPrompt.objects())
+    all_prompts.sort(key=lambda p: int(getattr(p, 'sortOrder', 0) or 0))
+
+    def _s(p):
+        return {
+            '_id': str(getattr(p, 'id', '') or ''),
+            'name': str(getattr(p, 'name', '') or ''),
+            'assignmentType': str(getattr(p, 'assignmentType', '*') or '*'),
+            'triggerKeywords': list(getattr(p, 'triggerKeywords', []) or []),
+            'injectedInstruction': str(getattr(p, 'injectedInstruction', '') or ''),
+            'sortOrder': int(getattr(p, 'sortOrder', 0) or 0),
+            'isActive': bool(getattr(p, 'isActive', True)),
+        }
+
+    return jsonify([_s(p) for p in all_prompts]), 200
+
+
+@admin_bp.route('/assignment-prompts', methods=['POST'])
+@admin_required
+def admin_create_prompt(current_user=None):
+    data = request.get_json(silent=True) or {}
+    if not data.get('name') or not data.get('injectedInstruction'):
+        return jsonify({'message': 'name and injectedInstruction are required'}), 400
+    p = AssignmentPrompt(
+        name=str(data['name'])[:200],
+        assignmentType=str(data.get('assignmentType', '*') or '*'),
+        triggerKeywords=list(data.get('triggerKeywords', []) or []),
+        injectedInstruction=str(data['injectedInstruction']),
+        sortOrder=int(data.get('sortOrder', 0) or 0),
+        isActive=bool(data.get('isActive', True)),
+    )
+    p.save()
+    return jsonify({'success': True, '_id': str(p.id)}), 201
+
+
+@admin_bp.route('/assignment-prompts/<prompt_id>', methods=['PUT'])
+@admin_required
+def admin_update_prompt(current_user=None, prompt_id=None):
+    p = AssignmentPrompt.objects(id=prompt_id).first()
+    if not p:
+        return jsonify({'message': 'Not found'}), 404
+    data = request.get_json(silent=True) or {}
+    if 'name' in data:
+        p.name = str(data['name'])[:200]
+    if 'assignmentType' in data:
+        p.assignmentType = str(data['assignmentType'])
+    if 'triggerKeywords' in data:
+        p.triggerKeywords = list(data['triggerKeywords'] or [])
+    if 'injectedInstruction' in data:
+        p.injectedInstruction = str(data['injectedInstruction'])
+    if 'sortOrder' in data:
+        p.sortOrder = int(data['sortOrder'] or 0)
+    if 'isActive' in data:
+        p.isActive = bool(data['isActive'])
+    p.updatedAt = datetime.utcnow()
+    p.save()
+    return jsonify({'success': True}), 200
+
+
+@admin_bp.route('/assignment-prompts/<prompt_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_prompt(current_user=None, prompt_id=None):
+    p = AssignmentPrompt.objects(id=prompt_id).first()
+    if not p:
+        return jsonify({'message': 'Not found'}), 404
+    p.delete()
+    return jsonify({'success': True}), 200
+
+
+@admin_bp.route('/assignment-prompts/bulk-delete', methods=['POST'])
+@admin_required
+def admin_bulk_delete_prompts(current_user=None):
+        data = request.get_json(silent=True) or {}
+        ids = [str(i).strip() for i in (data.get('ids') or []) if str(i).strip()]
+        if not ids:
+                return jsonify({'message': 'No IDs provided'}), 400
+
+        deleted = 0
+        for prompt_id in ids:
+            p = AssignmentPrompt.objects(id=prompt_id).first()
+            if not p:
+                continue
+            try:
+                p.delete()
+                deleted += 1
+            except Exception:
+                continue
+
+        return jsonify({'success': True, 'deleted': deleted}), 200
+
+
+
 @admin_bp.route('/payments', methods=['GET'])
 @admin_required
 def get_payments(current_user):
@@ -2040,6 +2357,11 @@ def get_payments(current_user):
 @admin_required
 def get_reports(current_user):
     q = str(request.args.get('q', '')).strip().lower()
+    status_filter = str(request.args.get('status', '')).strip().lower()
+    university_filter = str(request.args.get('university', '')).strip().lower()
+    template_filter = str(request.args.get('template', '')).strip().lower()
+    from_date = str(request.args.get('from', '')).strip()
+    to_date = str(request.args.get('to', '')).strip()
     limit_raw = request.args.get('limit')
     offset_raw = request.args.get('offset')
     limit = int(limit_raw) if str(limit_raw or '').strip().isdigit() else None
@@ -2049,6 +2371,25 @@ def get_reports(current_user):
     docs = list(Report.objects().order_by('-createdAt'))
     if q:
         docs = [doc for doc in docs if q in str(getattr(doc, 'projectTitle', '')).lower() or q in str(getattr(getattr(doc, 'user', None), 'name', '')).lower() or q in str(getattr(getattr(doc, 'user', None), 'email', '')).lower()]
+    if status_filter in ('generated', 'edited', 'final', 'pending', 'generating', 'error'):
+        docs = [doc for doc in docs if str(getattr(doc, 'status', '')).lower() == status_filter]
+    if university_filter:
+        docs = [doc for doc in docs if university_filter in str(getattr(getattr(doc, 'university', None), 'name', '')).lower() or university_filter in str(getattr(getattr(getattr(doc, 'user', None), 'university', None), 'name', '')).lower()]
+    if template_filter:
+        docs = [doc for doc in docs if template_filter in str(getattr(getattr(doc, 'major', None), 'name', '')).lower() or template_filter in str(getattr(getattr(doc, 'degree', None), 'name', '')).lower()]
+
+    if from_date:
+        try:
+            from_dt = datetime.fromisoformat(from_date)
+            docs = [doc for doc in docs if getattr(doc, 'createdAt', None) and doc.createdAt >= from_dt]
+        except ValueError:
+            pass
+    if to_date:
+        try:
+            to_dt = datetime.fromisoformat(to_date)
+            docs = [doc for doc in docs if getattr(doc, 'createdAt', None) and doc.createdAt <= to_dt]
+        except ValueError:
+            pass
 
     total = len(docs)
     if limit is not None:
@@ -2077,6 +2418,7 @@ def get_work_keywords(current_user):
     job_profile = str(request.args.get('jobProfile', '')).strip().lower()
     query = str(request.args.get('q', '')).strip().lower()
     major_id = str(request.args.get('major', '')).strip()
+    is_active_raw = str(request.args.get('isActive', '')).strip().lower()
     limit_raw = request.args.get('limit')
     offset_raw = request.args.get('offset')
     limit = int(limit_raw) if str(limit_raw or '').strip().isdigit() else None
@@ -2104,9 +2446,12 @@ def get_work_keywords(current_user):
         ]
         print(f"[DEBUG ADMIN /work-keywords] After major filter: {len(docs)}", file=sys.stderr)
     
-    # Filter by isActive
-    docs = [doc for doc in docs if getattr(doc, 'isActive', True)]
-    print(f"[DEBUG ADMIN /work-keywords] After isActive filter: {len(docs)}", file=sys.stderr)
+    if is_active_raw in ('true', '1', 'yes', 'on'):
+        docs = [doc for doc in docs if bool(getattr(doc, 'isActive', True))]
+        print(f"[DEBUG ADMIN /work-keywords] After isActive=true filter: {len(docs)}", file=sys.stderr)
+    elif is_active_raw in ('false', '0', 'no', 'off'):
+        docs = [doc for doc in docs if not bool(getattr(doc, 'isActive', True))]
+        print(f"[DEBUG ADMIN /work-keywords] After isActive=false filter: {len(docs)}", file=sys.stderr)
 
     total = len(docs)
     if limit is not None:
@@ -2469,8 +2814,10 @@ def get_resume_keywords(current_user):
     major_id = str(request.args.get('major', '')).strip()
     industry_type = str(request.args.get('industryType', '')).strip().lower()
     q = str(request.args.get('q', '')).strip().lower()
-    limit = min(int(request.args.get('limit', 200) or 200), 500)
+    limit_raw = request.args.get('limit')
+    limit = min(int(limit_raw) if str(limit_raw or '').strip().isdigit() else 200, 500)
     offset = max(int(request.args.get('offset', 0) or 0), 0)
+    pagination_requested = limit_raw is not None or request.args.get('offset') is not None
     
     docs = list(ResumeKeyword.objects().order_by('sortOrder', 'keyword'))
     if category:
@@ -2487,12 +2834,15 @@ def get_resume_keywords(current_user):
 
     total = len(docs)
     docs = docs[offset: offset + limit]
-    return jsonify({
+    payload = {
         'items': [_serialize_resume_keyword(d) for d in docs],
         'total': total,
         'limit': limit,
         'offset': offset,
-    })
+    }
+    if pagination_requested:
+        return jsonify(payload)
+    return jsonify(payload['items'])
 
 
 @admin_bp.route('/resume-keywords', methods=['POST'])
@@ -2545,6 +2895,190 @@ def update_resume_keyword(current_user, kw_id):
 def delete_resume_keyword(current_user, kw_id):
     ResumeKeyword.objects(id=kw_id).delete()
     return jsonify({'message': 'Deleted'})
+
+
+# ── RESUME TRACKING ───────────────────────────────────────────────────────
+
+@admin_bp.route('/resumes', methods=['GET'])
+@admin_required
+def admin_get_resumes(current_user):
+    q = str(request.args.get('q', '') or '').strip().lower()
+    status_filter = str(request.args.get('status', '') or '').strip().lower()
+    from_raw = str(request.args.get('from', '') or '').strip()
+    to_raw = str(request.args.get('to', '') or '').strip()
+
+    limit_raw = request.args.get('limit')
+    offset_raw = request.args.get('offset')
+    try:
+        limit = min(int(limit_raw) if str(limit_raw or '').strip().isdigit() else 50, 200)
+    except Exception:
+        limit = 50
+    try:
+        offset = max(int(offset_raw) if str(offset_raw or '').strip().lstrip('-').isdigit() else 0, 0)
+    except Exception:
+        offset = 0
+
+    from_dt = None
+    to_dt = None
+    try:
+        if from_raw:
+            from_dt = datetime.strptime(from_raw, '%Y-%m-%d').date()
+    except Exception:
+        from_dt = None
+    try:
+        if to_raw:
+            to_dt = datetime.strptime(to_raw, '%Y-%m-%d').date()
+    except Exception:
+        to_dt = None
+
+    docs = list(Resume.objects())
+    docs.sort(key=lambda d: getattr(d, 'updatedAt', datetime.min), reverse=True)
+
+    if q:
+        def _matches_search(doc):
+            user_obj = getattr(doc, 'user', None)
+            haystack = ' '.join([
+                str(getattr(doc, 'title', '') or ''),
+                str(getattr(doc, 'fullName', '') or ''),
+                str(getattr(doc, 'email', '') or ''),
+                str(getattr(user_obj, 'name', '') or ''),
+                str(getattr(user_obj, 'email', '') or ''),
+            ]).lower()
+            return q in haystack
+        docs = [d for d in docs if _matches_search(d)]
+
+    if status_filter:
+        docs = [d for d in docs if str(getattr(d, 'status', 'draft') or 'draft').lower() == status_filter]
+
+    if from_dt or to_dt:
+        filtered = []
+        for doc in docs:
+            updated_at = getattr(doc, 'updatedAt', None) or getattr(doc, 'createdAt', None)
+            if not updated_at:
+                continue
+            updated_date = updated_at.date() if hasattr(updated_at, 'date') else None
+            if not updated_date:
+                continue
+            if from_dt and updated_date < from_dt:
+                continue
+            if to_dt and updated_date > to_dt:
+                continue
+            filtered.append(doc)
+        docs = filtered
+
+    total = len(docs)
+    page = docs[offset: offset + limit]
+
+    return jsonify({
+        'items': [_serialize_resume(doc) for doc in page],
+        'total': total,
+        'limit': limit,
+        'offset': offset,
+    }), 200
+
+
+@admin_bp.route('/resumes/stats', methods=['GET'])
+@admin_required
+def admin_resume_stats(current_user):
+    docs = list(Resume.objects())
+    stats = {
+        'total': len(docs),
+        'draft': 0,
+        'generating': 0,
+        'generated': 0,
+        'downloaded': 0,
+    }
+    total_downloads = 0
+
+    for doc in docs:
+        status = str(getattr(doc, 'status', 'draft') or 'draft').lower()
+        if status not in stats:
+            stats[status] = 0
+        stats[status] += 1
+        total_downloads += int(getattr(doc, 'downloadCount', 0) or 0)
+
+    stats['totalDownloads'] = total_downloads
+    return jsonify(stats), 200
+
+
+@admin_bp.route('/resumes/<resume_id>', methods=['GET'])
+@admin_required
+def admin_get_resume(current_user, resume_id):
+    doc = Resume.objects(id=resume_id).first()
+    if not doc:
+        return jsonify({'message': 'Not found'}), 404
+    return jsonify(_serialize_resume(doc, include_full=True)), 200
+
+
+@admin_bp.route('/resumes/<resume_id>/pdf', methods=['GET'])
+@admin_required
+def admin_resume_pdf(current_user, resume_id):
+    from utils.pdf import generate_pdf_from_html
+    from routes.student import _serialize_resume_full, _serialize_profile
+
+    doc = Resume.objects(id=resume_id).first()
+    if not doc:
+        return jsonify({'message': 'Not found'}), 404
+
+    preview_mode = str(request.args.get('preview', '')).lower() in {'1', 'true', 'yes'}
+    html_string = render_template(
+        'resume_pdf_template.html',
+        resume=_serialize_resume_full(doc),
+        profile=_serialize_profile(current_user),
+        user=_serialize_profile(current_user),
+    )
+    base_url = request.host_url.rstrip('/')
+    if '<head>' in html_string:
+        html_string = html_string.replace('<head>', f'<head><base href="{base_url}/">', 1)
+
+    pdf_bytes = generate_pdf_from_html(
+        html_string,
+        base_url=base_url,
+        student_name=current_user.name if getattr(current_user, 'name', None) else 'Student',
+    )
+
+    filename = f'resume_{_obj_id(doc) or resume_id}.pdf'
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype='application/pdf',
+        as_attachment=not preview_mode,
+        download_name=filename if not preview_mode else 'preview.pdf',
+    )
+
+
+@admin_bp.route('/resumes/<resume_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_resume(current_user, resume_id):
+    doc = Resume.objects(id=resume_id).first()
+    if not doc:
+        return jsonify({'message': 'Not found'}), 404
+    try:
+        doc.delete()
+    except Exception:
+        pass
+    return jsonify({'message': 'Deleted'})
+
+
+@admin_bp.route('/resumes/bulk-delete', methods=['POST'])
+@admin_required
+def admin_bulk_delete_resumes(current_user):
+    data = request.get_json() or {}
+    ids = [str(i).strip() for i in (data.get('ids') or []) if str(i).strip()]
+    if not ids:
+        return jsonify({'message': 'No IDs provided'}), 400
+
+    deleted = 0
+    for resume_id in ids:
+        doc = Resume.objects(id=resume_id).first()
+        if not doc:
+            continue
+        try:
+            doc.delete()
+            deleted += 1
+        except Exception:
+            continue
+
+    return jsonify({'message': f'Deleted {deleted} resumes', 'deleted': deleted})
 
 
 @admin_bp.route('/resume-keywords/bulk-delete', methods=['POST'])

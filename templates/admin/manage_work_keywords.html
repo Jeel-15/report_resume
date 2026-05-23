@@ -5,37 +5,43 @@
 
 {% block admin_content %}
 <section class="dashboard-grid">
-  <div>
-    <h1 class="page-title">Manage Work Keywords</h1>
-    <p class="page-subtitle">Define industry/job-profile keyword libraries used in report generation.</p>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Work Keywords</h1>
+      <p class="page-subtitle">Industry and job-profile keyword library used in report generation.</p>
+    </div>
+    <div class="page-header-actions">
+      <a href="/admin/bulk-import" class="btn-ghost">
+        <i data-lucide="upload" style="width:14px;height:14px;"></i> Bulk Import
+      </a>
+      <button class="btn-ghost" type="button" onclick="loadKeywords()">
+        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+      </button>
+      <button class="btn-primary" type="button" onclick="openCreate()">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Keyword
+      </button>
+    </div>
+  </div>
+  <div class="stats-chips">
+    <span class="stats-chip">Total: <b id="keywordsCount">0</b></span>
   </div>
 
-  <div class="stats-inline">
-    <a href="/admin/bulk-import" class="btn-ghost"><i data-lucide="upload" style="width:14px;height:14px;"></i>Bulk Import</a>
-    <button class="btn-ghost" type="button" onclick="downloadTemplate()"><i data-lucide="download" style="width:14px;height:14px;"></i>Template</button>
-    <button class="btn-ghost" type="button" onclick="loadKeywords()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
-    <button class="btn-primary" type="button" onclick="openCreate()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Keyword</button>
-  </div>
-
-  <article class="panel-card panel-body" style="display:grid;gap:12px;">
-    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filters</h3>
-    <div class="toolbar" style="display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) minmax(220px,1fr) 160px;gap:12px;">
+  <div class="admin-filter-bar">
       <input id="filterIndustryType" class="small-input" placeholder="Industry type (e.g. Sales)">
       <input id="filterJobProfile" class="small-input" placeholder="Job profile (e.g. Sales Executive)">
-      <input id="filterSearch" class="small-input" placeholder="Search keyword text...">
+      <input id="filterSearch" class="small-input search-input" placeholder="Search keyword text...">
       <select id="filterActive" class="small-input">
         <option value="">All</option>
         <option value="true">Active only</option>
         <option value="false">Inactive only</option>
       </select>
-    </div>
-  </article>
+  </div>
 
   <article class="panel-card panel-body table-card">
-    <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
-      <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
-      <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
-      <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+    <div class="bulk-toolbar" id="bulkToolbar">
+      <span class="bulk-toolbar-count" id="selectedCount">0 selected</span>
+      <button class="bulk-toolbar-delete" onclick="bulkDelete()">Delete Selected</button>
+      <button class="bulk-toolbar-clear" onclick="clearSelection()">Clear</button>
     </div>
     <div class="data-table-wrap">
       <table class="data-table stagger-table">
@@ -54,11 +60,11 @@
         <tbody id="rows"><tr><td colspan="8" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
     </div>
-    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
-      <div id="keywordsFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 keywords</div>
-      <div class="pager">
-        <button id="keywordsPrev">&lt;</button>
-        <button id="keywordsNext">&gt;</button>
+    <div class="table-foot-row">
+      <span id="keywordsFoot">Showing 0 keywords</span>
+      <div class="pager-simple">
+        <button id="keywordsPrev">‹ Prev</button>
+        <button id="keywordsNext">Next ›</button>
       </div>
     </div>
   </article>
@@ -120,34 +126,17 @@ const ENTITY_ENDPOINT = 'work-keywords';
 const PAGE_SIZE = 25;
 let currentPage = 1;
 let totalItems = 0;
+let clearSelection = function () {};
+let updateBulkToolbar = function () {};
+let pager = null;
 
-function updateBulkToolbar() {
-  const checked = document.querySelectorAll('.row-checkbox:checked');
-  const toolbar = document.getElementById('bulkToolbar');
-  const count = document.getElementById('selectedCount');
-  if (checked.length > 0) {
-    toolbar.style.display = 'flex';
-    count.textContent = `${checked.length} selected`;
-  } else {
-    toolbar.style.display = 'none';
-  }
-  const all = document.querySelectorAll('.row-checkbox');
-  document.getElementById('selectAll').checked = all.length > 0 && checked.length === all.length;
-  document.getElementById('selectAll').indeterminate = checked.length > 0 && checked.length < all.length;
-}
-
-function clearSelection() {
-  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
-  document.getElementById('selectAll').checked = false;
-  document.getElementById('selectAll').indeterminate = false;
-  document.getElementById('bulkToolbar').style.display = 'none';
-}
+// Shared by window.initBulkSelect
 
 async function bulkDelete() {
   const checked = document.querySelectorAll('.row-checkbox:checked');
   if (!checked.length) return;
   const ids = Array.from(checked).map(cb => cb.dataset.id);
-  const confirmed = await showBulkConfirm(ids.length);
+  const confirmed = await window.showBulkConfirm(ids.length, 'keywords');
   if (!confirmed) return;
   try {
     const res = await fetch(`/api/admin/${ENTITY_ENDPOINT}/bulk-delete`, {
@@ -157,30 +146,16 @@ async function bulkDelete() {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      alert(`✓ ${data.deleted || ids.length} items deleted`);
+      window.showToast(`Deleted ${data.deleted || ids.length} keywords`, 'success');
       clearSelection();
       currentPage = 1;
       loadKeywords();
     } else {
-      alert(data.message || 'Bulk delete failed');
+      window.showToast(data.message || 'Bulk delete failed', 'error');
     }
   } catch (err) {
-    alert('Network error during bulk delete');
+    window.showToast('Network error during bulk delete', 'error');
   }
-}
-
-function showBulkConfirm(count) {
-  return new Promise((resolve) => {
-    const existing = document.getElementById('bulkConfirmBar');
-    if (existing) existing.remove();
-    const bar = document.createElement('div');
-    bar.id = 'bulkConfirmBar';
-    bar.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);`;
-    bar.innerHTML = `<span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span><button id="bulkConfirmYes" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button><button id="bulkConfirmNo" style="padding:6px 12px;background:transparent;border:1px solid #aaa;color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">Cancel</button>`;
-    document.body.appendChild(bar);
-    document.getElementById('bulkConfirmYes').onclick = () => { bar.remove(); resolve(true); };
-    document.getElementById('bulkConfirmNo').onclick = () => { bar.remove(); resolve(false); };
-  });
 }
 
 async function loadKeywords() {
@@ -196,10 +171,11 @@ async function loadKeywords() {
   params.set('limit', PAGE_SIZE);
   params.set('offset', (currentPage - 1) * PAGE_SIZE);
 
-  const res = await fetch(`/api/admin/work-keywords?${params.toString()}`, { headers });
-  const data = await res.json();
-  const items = Array.isArray(data) ? data : (data.items || []);
-  totalItems = Array.isArray(data) ? data.length : (data.total || items.length);
+  const data = await window.AdminUI.apiPaged('/api/admin/work-keywords', { params }) || {};
+  const normalized = window.AdminUI.normalizeListResponse(data);
+  const items = normalized.items || [];
+  totalItems = normalized.total || 0;
+  document.getElementById('keywordsCount').textContent = String(totalItems);
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
   currentPage = Math.min(currentPage, totalPages);
 
@@ -227,11 +203,8 @@ async function loadKeywords() {
   if (window.lucide) lucide.createIcons();
   window.AdminUI?.staggerRows();
   clearSelection();
-  const start = totalItems ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
-  const end = Math.min((currentPage - 1) * PAGE_SIZE + items.length, totalItems);
-  document.getElementById('keywordsFoot').textContent = totalItems ? `Showing ${start}-${end} of ${totalItems} keywords` : 'Showing 0-0 of 0 keywords';
-  document.getElementById('keywordsPrev').disabled = currentPage <= 1;
-  document.getElementById('keywordsNext').disabled = currentPage >= totalPages;
+  window.AdminUI.setPagerState(pager, totalItems, currentPage);
+  window.AdminUI.setListFoot(document.getElementById('keywordsFoot'), totalItems, currentPage, PAGE_SIZE, 'Showing 0 keywords');
 }
 
 function jumpToKeywordsPage(nextPage) {
@@ -276,7 +249,7 @@ async function saveKeyword() {
   };
 
   if (!payload.keyword) {
-    alert('Keyword is required');
+    window.showToast('Keyword is required', 'error');
     return;
   }
 
@@ -285,25 +258,28 @@ async function saveKeyword() {
   const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
   const data = await res.json();
   if (!res.ok) {
-    alert(data.message || 'Save failed');
+    window.showToast(data.message || 'Save failed', 'error');
     return;
   }
 
   modal.hide();
+  window.showToast(id ? 'Keyword updated' : 'Keyword created', 'success');
   loadKeywords();
 }
 
 async function deleteKeyword(id) {
-  if (!confirm('Delete this keyword?')) return;
+  const confirmed = await window.showBulkConfirm(1, 'keyword');
+  if (!confirmed) return;
   await fetch(`/api/admin/work-keywords/${id}`, { method: 'DELETE', headers });
   currentPage = 1;
+  window.showToast('Keyword deleted', 'success');
   loadKeywords();
 }
 
 async function downloadTemplate() {
   const res = await fetch('/api/admin/bulk-import/template/work-keywords', { headers: { 'Authorization': `Bearer ${token}` } });
   if (!res.ok) {
-    alert('Unable to download template');
+    window.showToast('Unable to download template', 'error');
     return;
   }
   const blob = await res.blob();
@@ -338,17 +314,21 @@ async function loadMajorsForDropdown() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   modal = new bootstrap.Modal(document.getElementById('keywordModal'));
+  const bulkSelect = window.initBulkSelect({
+    selectAllId: 'selectAll',
+    tbodyId: 'rows',
+    toolbarId: 'bulkToolbar',
+    countId: 'selectedCount',
+    checkboxClass: 'row-checkbox'
+  });
+  updateBulkToolbar = bulkSelect.updateToolbar;
+  clearSelection = bulkSelect.clearSelection;
+  updateBulkToolbar();
+
   ['filterIndustryType', 'filterJobProfile', 'filterSearch', 'filterActive'].forEach(id => {
     const el = document.getElementById(id);
     const eventName = id === 'filterActive' ? 'change' : 'input';
     el.addEventListener(eventName, () => { currentPage = 1; loadKeywords(); });
-  });
-  document.getElementById('selectAll').addEventListener('change', (e) => {
-    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
-    updateBulkToolbar();
-  });
-  document.getElementById('rows').addEventListener('change', (e) => {
-    if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
   });
   // Delegated click handler for edit buttons
   document.getElementById('rows').addEventListener('click', (e) => {
@@ -358,8 +338,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const item = (window.allItems && window.allItems[id]) || null;
     if (item) openEdit(item);
   });
-  document.getElementById('keywordsPrev').addEventListener('click', () => jumpToKeywordsPage(currentPage - 1));
-  document.getElementById('keywordsNext').addEventListener('click', () => jumpToKeywordsPage(currentPage + 1));
+  pager = window.initPager({
+    prevId: 'keywordsPrev',
+    nextId: 'keywordsNext',
+    footId: 'keywordsFoot',
+    pageSize: PAGE_SIZE,
+    onPage: function (page) { currentPage = page; loadKeywords(); }
+  });
   await loadMajorsForDropdown();
   await loadKeywords();
 });

@@ -5,19 +5,26 @@
 
 {% block admin_content %}
 <section class="dashboard-grid">
-  <div>
-    <h1 class="page-title">Career Objectives</h1>
-    <p class="page-subtitle">Manage resume career objective options for students</p>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Career Objectives</h1>
+      <p class="page-subtitle">Manage resume career objective options for students.</p>
+    </div>
+    <div class="page-header-actions">
+      <button class="btn-ghost" type="button" onclick="loadObjectives()">
+        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+      </button>
+      <button class="btn-primary" type="button" onclick="openObjectiveModal()">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Objective
+      </button>
+    </div>
   </div>
 
-  <div class="stats-inline">
-    <button class="btn-primary" type="button" onclick="openObjectiveModal()"><i data-lucide="plus" style="width:14px;height:14px;"></i>+ Add Objective</button>
-    <button class="btn-outline-secondary" type="button" onclick="loadObjectives()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
+  <div class="stats-chips">
+    <span class="stats-chip">Total: <b id="objectivesCount">0</b></span>
   </div>
 
-  <article class="panel-card panel-body" style="display:grid;gap:12px;">
-    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filters</h3>
-    <div class="toolbar" style="display:grid;grid-template-columns:minmax(220px,1fr) 140px 160px;gap:12px;">
+  <div class="admin-filter-bar">
       <input id="filterSearch" class="small-input" placeholder="Search objectives...">
       <select id="filterMajor" class="small-input">
         <option value="">All Majors</option>
@@ -28,14 +35,19 @@
         <option value="pending">Pending</option>
         <option value="rejected">Rejected</option>
       </select>
-    </div>
-  </article>
+  </div>
 
   <article class="panel-card panel-body table-card">
+    <div class="bulk-toolbar" id="bulkToolbar">
+      <span class="bulk-toolbar-count" id="selectedCount">0 selected</span>
+      <button class="bulk-toolbar-delete" onclick="bulkDelete()">Delete Selected</button>
+      <button class="bulk-toolbar-clear" onclick="clearSelection()">Clear</button>
+    </div>
     <div class="data-table-wrap">
       <table class="data-table stagger-table">
         <thead>
           <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
             <th>Text</th>
             <th>Major</th>
             <th>Status</th>
@@ -43,14 +55,14 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody id="rows"><tr><td colspan="5" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+        <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
     </div>
-    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
-      <div id="objectivesFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 objectives</div>
-      <div class="pager">
-        <button id="objectivesPrev">&lt;</button>
-        <button id="objectivesNext">&gt;</button>
+    <div class="table-foot-row">
+      <span id="objectivesFoot">Showing 0 objectives</span>
+      <div class="pager-simple">
+        <button id="objectivesPrev">‹ Prev</button>
+        <button id="objectivesNext">Next ›</button>
       </div>
     </div>
   </article>
@@ -97,8 +109,35 @@ const PAGE_SIZE = 25;
 let currentPage = 1;
 let totalItems = 0;
 let allObjectives = [];
+let clearSelection = function () {};
+let updateBulkToolbar = function () {};
+let pager = null;
 
-function showToast(msg){ if(window.AdminUI?.showToast) return window.AdminUI.showToast(msg); alert(msg); }
+async function bulkDelete() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  if (!checked.length) return;
+  const ids = Array.from(checked).map(cb => cb.dataset.id);
+  const confirmed = await window.showBulkConfirm(ids.length, 'objectives');
+  if (!confirmed) return;
+  try {
+    const res = await fetch('/api/admin/career-objectives/bulk-delete', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      window.showToast(`Deleted ${data.deleted || ids.length} objectives`, 'success');
+      clearSelection();
+      currentPage = 1;
+      loadObjectives();
+    } else {
+      window.showToast(data.message || 'Bulk delete failed', 'error');
+    }
+  } catch (e) {
+    window.showToast('Network error during bulk delete', 'error');
+  }
+}
 
 async function loadMajorsForDropdown(){
   try{
@@ -130,6 +169,7 @@ async function loadObjectives(){
   window.allObjectives = window.allObjectives || {};
   pageItems.forEach(d => { if (d && d._id) window.allObjectives[d._id] = d; });
   const rowsHtml = pageItems.map(d=>`<tr>
+    <td><input type="checkbox" class="row-checkbox" data-id="${d._id}" style="width:16px;height:16px;cursor:pointer;"></td>
     <td>${d.text || '-'}</td>
     <td>${d.major? d.major.name : '<span style="color:#94a3b8;">All Majors</span>'}</td>
     <td>${d.approvalStatus || ''}</td>
@@ -140,15 +180,21 @@ async function loadObjectives(){
         <button onclick='deleteObjective("${d._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
       </div>
     </td>
-  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">No objectives found</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No objectives found</td></tr>';
   document.getElementById('rows').innerHTML = rowsHtml;
   requestAnimationFrame(()=>{
     document.querySelectorAll('#rows tr').forEach(row => row.classList.add('show'));
   });
   if(window.lucide) lucide.createIcons();
-  document.getElementById('objectivesFoot').textContent = totalItems ? `Showing ${start + 1}-${Math.min(start + pageItems.length, totalItems)} of ${totalItems} objectives` : 'Showing 0-0 of 0 objectives';
-  document.getElementById('objectivesPrev').disabled = currentPage <= 1;
-  document.getElementById('objectivesNext').disabled = currentPage >= totalPages;
+  document.getElementById('objectivesCount').textContent = String(totalItems);
+  clearSelection();
+  if (pager) {
+    pager.setTotal(totalItems, currentPage);
+  } else {
+    document.getElementById('objectivesFoot').textContent = totalItems ? `Showing ${start + 1}-${Math.min(start + pageItems.length, totalItems)} of ${totalItems} objectives` : 'Showing 0 objectives';
+    document.getElementById('objectivesPrev').disabled = currentPage <= 1;
+    document.getElementById('objectivesNext').disabled = currentPage >= totalPages;
+  }
 }
 
 function jumpToObjectivesPage(nextPage) {
@@ -169,23 +215,38 @@ function openObjectiveModal(obj=null){
 async function saveObjective(){
   const id = document.getElementById('objectiveId').value;
   const payload = { text: document.getElementById('objectiveText').value.trim(), major: document.getElementById('objectiveMajor').value || '', isActive: document.getElementById('objectiveActive').checked };
-  if(!payload.text){ showToast('Text is required'); return; }
+  if(!payload.text){ window.showToast('Text is required', 'error'); return; }
   const url = id? `/api/admin/career-objectives/${id}` : '/api/admin/career-objectives';
   const method = id? 'PUT':'POST';
   const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
-  if(!res.ok){ const d = await res.json().catch(()=>({})); showToast(d.message||'Save failed'); return; }
-  objectiveModal.hide(); showToast('Saved'); currentPage = 1; loadObjectives();
+  if(!res.ok){ const d = await res.json().catch(()=>({})); window.showToast(d.message||'Save failed', 'error'); return; }
+  objectiveModal.hide(); window.showToast(id ? 'Objective updated' : 'Objective created', 'success'); currentPage = 1; loadObjectives();
 }
 
-async function deleteObjective(id){ if(!confirm('Delete this objective?')) return; await fetch(`/api/admin/career-objectives/${id}`, { method: 'DELETE', headers }); currentPage = 1; loadObjectives(); }
+async function deleteObjective(id){ const confirmed = await window.showBulkConfirm(1, 'objective'); if(!confirmed) return; await fetch(`/api/admin/career-objectives/${id}`, { method: 'DELETE', headers }); currentPage = 1; window.showToast('Objective deleted', 'success'); loadObjectives(); }
 
 document.addEventListener('DOMContentLoaded', async ()=>{
   objectiveModal = new bootstrap.Modal(document.getElementById('objectiveModal'));
+  const bulkSelect = window.initBulkSelect({
+    selectAllId: 'selectAll',
+    tbodyId: 'rows',
+    toolbarId: 'bulkToolbar',
+    countId: 'selectedCount',
+    checkboxClass: 'row-checkbox'
+  });
+  updateBulkToolbar = bulkSelect.updateToolbar;
+  clearSelection = bulkSelect.clearSelection;
+  updateBulkToolbar();
   document.getElementById('filterSearch').addEventListener('input', () => { currentPage = 1; loadObjectives(); });
   document.getElementById('filterMajor').addEventListener('change', () => { currentPage = 1; loadObjectives(); });
   document.getElementById('filterStatus').addEventListener('change', () => { currentPage = 1; loadObjectives(); });
-  document.getElementById('objectivesPrev').addEventListener('click', () => jumpToObjectivesPage(currentPage - 1));
-  document.getElementById('objectivesNext').addEventListener('click', () => jumpToObjectivesPage(currentPage + 1));
+  pager = window.initPager({
+    prevId: 'objectivesPrev',
+    nextId: 'objectivesNext',
+    footId: 'objectivesFoot',
+    pageSize: PAGE_SIZE,
+    onPage: function (page) { currentPage = page; loadObjectives(); }
+  });
   await loadMajorsForDropdown();
   await loadObjectives();
   // delegated edit handler

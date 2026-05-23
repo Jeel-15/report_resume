@@ -66,8 +66,8 @@
 
         :root {
             --pri: #0f0f1e;
-            --acc: #e84393;
-            --acc2: #7c3aed;
+            --acc: #3b82f6; /* primary accent (lighter blue) */
+            --acc2: #1d4ed8; /* accent-2 (deep blue) */
             --page-bg: #f0f2f8;
             --card: #ffffff;
             --srf: #f6f4fc;
@@ -82,6 +82,20 @@
             --font-disp: 'DM Serif Display', serif;
             --font-body: 'DM Sans', sans-serif;
             --shadow-soft: 0 10px 28px rgba(26, 26, 46, 0.06);
+            /* Additional shadow size tokens used by pages */
+            --shadow-sm: 0 1px 3px rgba(26, 26, 46, 0.06);
+            --shadow-md: 0 4px 12px rgba(26, 26, 46, 0.07);
+            --shadow-lg: 0 10px 28px rgba(26, 26, 46, 0.09);
+            /* Common color aliases */
+            --color-white: #ffffff;
+            /* Backwards-compatible alias some pages expect */
+            --accent-2: var(--acc);
+            /* Dashboard / page-specific aliases to avoid per-page overrides */
+            --dash-card: var(--card);
+            --dash-card-soft: var(--srf);
+            --dash-border: var(--brd);
+            --dash-text: var(--txt);
+            --dash-muted: var(--txt2);
         }
 
         * {
@@ -91,8 +105,8 @@
         body {
             font-family: var(--font-body);
             background:
-                radial-gradient(950px 320px at -10% -20%, rgba(124, 58, 237, 0.10), transparent 60%),
-                radial-gradient(880px 280px at 110% -10%, rgba(232, 67, 147, 0.08), transparent 60%),
+                radial-gradient(950px 320px at -10% -20%, rgba(59, 130, 246, 0.10), transparent 60%),
+                radial-gradient(880px 280px at 110% -10%, rgba(59, 130, 246, 0.06), transparent 60%),
                 var(--page-bg);
             color: var(--txt);
         }
@@ -204,7 +218,7 @@
 
         #mainNavbar .dropdown-item.active,
         #mainNavbar .dropdown-item:active {
-            background: linear-gradient(135deg, #6e2ddc, #de2f85);
+            background: linear-gradient(135deg, var(--acc2), var(--acc));
             color: #fff;
         }
 
@@ -268,7 +282,7 @@
             border-radius: 999px;
             font-size: 0.75rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            background: linear-gradient(135deg, var(--acc), var(--acc2));
             color: #fff;
         }
 
@@ -336,7 +350,7 @@
 
         .btn-primary:hover,
         .btn-primary:focus {
-            background: linear-gradient(135deg, #6e2ddc, #de2f85);
+            background: linear-gradient(135deg, var(--acc2), var(--acc));
         }
 
         .btn-outline-primary {

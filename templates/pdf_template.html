@@ -64,10 +64,11 @@
         .cover-page {
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-            padding: 7mm 8mm 6mm 8mm;
-            min-height: calc(297mm - 55.4mm);
+            justify-content: center; /* vertically center the cover content */
+            align-items: center;     /* horizontally center children */
+            padding: 12mm 8mm;      /* balanced padding top/bottom for centered layout */
+            height: calc(297mm - 16mm);
+            min-height: calc(297mm - 16mm);
             page-break-after: always;
             overflow: hidden;
             border: 2px solid #000;
@@ -75,6 +76,7 @@
             width: 100%;
             box-sizing: border-box;
             line-height: 1.25;
+            text-align: center; /* ensure inline content centers by default */
         }
         .cover-instruction {
             width: 100%;
@@ -130,15 +132,16 @@
         .cover-logo-row {
             width: 100%;
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            gap: 12mm;
-            margin: 5mm 0 2.5mm 0;
+            gap: 18mm; /* reduced spacing by centering and using a controlled gap */
+            max-width: 160mm; /* limit row width so logos don't stretch to page edges */
+            margin: 5mm auto 2.5mm auto;
         }
         .cover-logo-box {
             width: 30mm;
             height: 30mm;
-            border: 1px solid #333;
+            border: none; /* removed border as requested */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -150,6 +153,7 @@
         .cover-logo-box img {
             width: 100%;
             height: 100%;
+            border: none;
             object-fit: contain;
         }
         .cover-logo-placeholder {

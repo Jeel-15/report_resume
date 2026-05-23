@@ -5,6 +5,7 @@ from flask import Blueprint, Response, render_template, request
 from flask import jsonify
 from models.user import User
 from models.report import Report
+from models.resume import Resume
 from models.video_guide import VideoGuide
 from models.contact_submission import ContactSubmission
 from models.blog_post import BlogPost
@@ -17,14 +18,17 @@ def get_sidebar_counts():
     try:
         student_count = User.objects(role='student').count()
         report_count = Report.objects().count()
+        resume_count = Resume.objects().count()
         return {
             'student_count': student_count,
-            'report_count': report_count
+            'report_count': report_count,
+            'resume_count': resume_count,
         }
     except:
         return {
             'student_count': 0,
-            'report_count': 0
+            'report_count': 0,
+            'resume_count': 0,
         }
 
 
@@ -191,6 +195,24 @@ def admin_report_view(report_id):
     counts = get_sidebar_counts()
     return render_template('admin/report_view.html', report_id=report_id, active_page='reports', **counts)
 
+
+@pages_bp.route('/admin/assignments')
+def admin_assignments():
+    counts = get_sidebar_counts()
+    return render_template('admin/manage_assignments.html', active_page='assignments', **counts)
+
+
+@pages_bp.route('/admin/assignment-prompts')
+def admin_assignment_prompts():
+    counts = get_sidebar_counts()
+    return render_template('admin/manage_assignment_prompts.html', active_page='assignment_prompts', **counts)
+
+
+@pages_bp.route('/admin/resumes')
+def admin_resumes():
+    counts = get_sidebar_counts()
+    return render_template('admin/manage_resumes.html', active_page='resume_tracking', **counts)
+
 @pages_bp.route('/admin/types')
 def admin_types():
     counts = get_sidebar_counts()
@@ -238,6 +260,24 @@ def student_resume_builder():
 @pages_bp.route('/student/resume/<resume_id>/builder')
 def student_resume_builder_edit(resume_id):
     return render_template('student/resume_builder.html', resume_id=resume_id)
+
+
+@pages_bp.route('/student/assignments')
+def student_assignments():
+    """My Assignments list page."""
+    return render_template('student/assignments.html')
+
+
+@pages_bp.route('/student/assignments/new')
+def student_assignment_new():
+    """Create new assignment — redirects to studio with type selection."""
+    return render_template('student/assignment_studio.html', session_id=None)
+
+
+@pages_bp.route('/student/assignments/<session_id>')
+def student_assignment_studio(session_id):
+    """Assignment Studio workspace for an existing session."""
+    return render_template('student/assignment_studio.html', session_id=session_id)
 
 @pages_bp.route('/student/report/<report_id>')
 def student_report_view(report_id):

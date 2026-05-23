@@ -1,0 +1,443 @@
+{% extends "admin/layout.html" %}
+{% set active_page = 'assignment_prompts' %}
+
+{% block title %}Prompt Library - ReportGen Admin{% endblock %}
+
+{% block admin_content %}
+<section class="dashboard-grid">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Prompt Library</h1>
+      <p class="page-subtitle">Manage assignment prompt injections for the generation workflow.</p>
+    </div>
+    <div class="page-header-actions">
+      <button class="btn-ghost" type="button" onclick="currentPage=1; loadPrompts();">
+        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+      </button>
+      <button class="btn-primary" type="button" onclick="openPromptModal()">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Prompt
+      </button>
+    </div>
+  </div>
+
+  <div class="stats-chips">
+    <span class="stats-chip">Total: <b id="promptsTotal">0</b></span>
+    <span class="stats-chip">Active: <b id="promptsActive">0</b></span>
+    <span class="stats-chip">Inactive: <b id="promptsInactive">0</b></span>
+  </div>
+
+  <div class="admin-filter-bar">
+    <input id="filterSearch" class="small-input search-input" placeholder="Search prompt name or keywords...">
+    <select id="filterType" class="small-input">
+      <option value="">All Types</option>
+      <option value="essay">Essay</option>
+      <option value="research_paper">Research Paper</option>
+      <option value="lab_report">Lab Report</option>
+      <option value="case_study">Case Study</option>
+      <option value="presentation_script">Presentation Script</option>
+    </select>
+    <select id="filterStatus" class="small-input">
+      <option value="">All Statuses</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+  </div>
+
+  <article class="panel-card panel-body table-card">
+    <div class="bulk-toolbar" id="bulkToolbar">
+      <span class="bulk-toolbar-count" id="selectedCount">0 selected</span>
+      <button class="bulk-toolbar-delete" type="button" onclick="bulkDeletePrompts()">Delete Selected</button>
+      <button class="bulk-toolbar-clear" type="button" onclick="clearSelection()">Clear</button>
+    </div>
+
+    <div class="data-table-wrap">
+      <table class="data-table stagger-table">
+        <thead>
+          <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Keywords</th>
+            <th>Active</th>
+            <th>Sort Order</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="promptsBody">
+          <tr class="show"><td colspan="7" style="text-align:center;color:#94a3b8;">Loading prompts...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-foot-row">
+      <span id="promptsFoot">Showing 0 prompts</span>
+      <div class="pager-simple">
+        <button type="button" id="promptsPrevPage">‹ Prev</button>
+        <button type="button" id="promptsNextPage">Next ›</button>
+      </div>
+    </div>
+  </article>
+</section>
+
+<div class="modal fade" id="promptModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="promptModalTitle">Add Prompt</h5>
+          <div class="text-muted small">Assignment prompt injections</div>
+        </div>
+        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="promptId">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Name *</label>
+            <input id="promptName" class="form-control" placeholder="Prompt name">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Assignment Type</label>
+            <select id="promptType" class="form-control">
+              <option value="*">All Types</option>
+              <option value="essay">Essay</option>
+              <option value="research_paper">Research Paper</option>
+              <option value="lab_report">Lab Report</option>
+              <option value="case_study">Case Study</option>
+              <option value="presentation_script">Presentation Script</option>
+            </select>
+          </div>
+          <div class="col-md-12">
+            <label class="form-label">Trigger Keywords</label>
+            <input id="promptKeywords" class="form-control" placeholder="comma-separated keywords">
+          </div>
+          <div class="col-md-12">
+            <label class="form-label">Instruction *</label>
+            <textarea id="promptInstruction" class="form-control" rows="6" placeholder="Instruction injected into the generation workflow"></textarea>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Sort Order</label>
+            <input id="promptSortOrder" class="form-control" type="number" value="0" min="0">
+          </div>
+          <div class="col-md-8 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="promptActive" checked>
+              <label class="form-check-label" for="promptActive">Active</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn-primary" type="button" id="savePromptBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+(() => {
+  const token = localStorage.getItem('token');
+  if (!token) location.href = '/login';
+
+  const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const bodyEl = document.getElementById('promptsBody');
+  const searchEl = document.getElementById('filterSearch');
+  const typeEl = document.getElementById('filterType');
+  const statusEl = document.getElementById('filterStatus');
+  const totalEl = document.getElementById('promptsTotal');
+  const activeEl = document.getElementById('promptsActive');
+  const inactiveEl = document.getElementById('promptsInactive');
+  const footEl = document.getElementById('promptsFoot');
+  const modalEl = document.getElementById('promptModal');
+  const promptModal = window.bootstrap ? new bootstrap.Modal(modalEl) : null;
+  const promptId = document.getElementById('promptId');
+  const promptName = document.getElementById('promptName');
+  const promptType = document.getElementById('promptType');
+  const promptKeywords = document.getElementById('promptKeywords');
+  const promptInstruction = document.getElementById('promptInstruction');
+  const promptSortOrder = document.getElementById('promptSortOrder');
+  const promptActive = document.getElementById('promptActive');
+  const promptModalTitle = document.getElementById('promptModalTitle');
+  const savePromptBtn = document.getElementById('savePromptBtn');
+
+  const PAGE_SIZE = 20;
+  let currentPage = 1;
+  let totalItems = 0;
+  let pager = null;
+  let currentRows = [];
+  let updateBulkToolbar = function () {};
+  let clearSelection = function () {};
+
+  const TYPE_LABELS = {
+    '*': 'All Types',
+    essay: 'Essay',
+    research_paper: 'Research Paper',
+    lab_report: 'Lab Report',
+    case_study: 'Case Study',
+    presentation_script: 'Presentation Script',
+  };
+
+  const escapeHtml = (value) => String(value == null ? '' : value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+  const fetchJson = async (url, options = {}) => {
+    const response = await fetch(url, {
+      headers,
+      ...options,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || 'Request failed');
+    return data;
+  };
+
+  const updateStats = (items = []) => {
+    totalEl.textContent = String(totalItems || items.length || 0);
+    activeEl.textContent = String(items.filter((item) => item.isActive !== false).length);
+    inactiveEl.textContent = String(items.filter((item) => item.isActive === false).length);
+  };
+
+  const updateFoot = () => {
+    const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+    const start = totalItems ? ((currentPage - 1) * PAGE_SIZE) + 1 : 0;
+    const end = Math.min(currentPage * PAGE_SIZE, totalItems || 0);
+    footEl.textContent = totalItems ? `Showing ${start}-${end} of ${totalItems.toLocaleString('en-IN')} prompts` : 'Showing 0 prompts';
+    if (pager) pager.setTotal(totalItems, currentPage);
+    document.getElementById('promptsPrevPage').disabled = currentPage <= 1;
+    document.getElementById('promptsNextPage').disabled = currentPage >= totalPages;
+  };
+
+  const STATUS_LABEL = (value) => value === false ? 'Inactive' : 'Active';
+  const STATUS_CLASS = (value) => value === false ? 'status-failed' : 'status-generated';
+
+  const renderRows = (items) => {
+    currentRows = items || [];
+    if (!currentRows.length) {
+      bodyEl.innerHTML = '<tr class="show"><td colspan="7" style="text-align:center;color:#94a3b8;">No prompts found.</td></tr>';
+      updateFoot();
+      return;
+    }
+
+    bodyEl.innerHTML = currentRows.map((item) => {
+      const keywords = Array.isArray(item.triggerKeywords) ? item.triggerKeywords.join(', ') : String(item.triggerKeywords || '');
+      return `
+        <tr class="show">
+          <td><input type="checkbox" class="row-checkbox" data-id="${escapeHtml(item._id || '')}" style="width:16px;height:16px;cursor:pointer;"></td>
+          <td>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <strong>${escapeHtml(item.name || 'Untitled Prompt')}</strong>
+              <span style="color:#94a3b8;font-size:12px;">${escapeHtml(item._id || '')}</span>
+            </div>
+          </td>
+          <td>${escapeHtml(TYPE_LABELS[item.assignmentType] || item.assignmentType || '*')}</td>
+          <td>${escapeHtml(keywords || '-')}</td>
+          <td><span class="status-badge ${STATUS_CLASS(item.isActive)}">${STATUS_LABEL(item.isActive)}</span></td>
+          <td>${Number(item.sortOrder || 0)}</td>
+          <td>
+            <div class="icon-actions">
+              <button type="button" class="edit-prompt-btn" data-id="${escapeHtml(item._id || '')}"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+              <button type="button" class="delete-prompt-btn" data-id="${escapeHtml(item._id || '')}"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+    bindRowActions();
+    updateStats(currentRows);
+    updateFoot();
+  };
+
+  async function bulkDeletePrompts() {
+    const checked = document.querySelectorAll('.row-checkbox:checked');
+    if (!checked.length) return;
+    const ids = Array.from(checked).map((cb) => cb.dataset.id);
+    const confirmed = await window.showBulkConfirm(ids.length, 'prompts');
+    if (!confirmed) return;
+    try {
+      const res = await fetch('/api/admin/assignment-prompts/bulk-delete', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Bulk delete failed');
+      window.showToast(`Deleted ${data.deleted || ids.length} prompts`, 'success');
+      clearSelection();
+      currentPage = 1;
+      await loadPrompts();
+    } catch (error) {
+      window.showToast(error.message || 'Bulk delete failed', 'error');
+    }
+  }
+
+  const bindRowActions = () => {
+    document.querySelectorAll('.edit-prompt-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const row = currentRows.find((item) => String(item._id) === String(btn.dataset.id));
+        if (row) openPromptModal(row);
+      });
+    });
+
+    document.querySelectorAll('.delete-prompt-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const confirmed = await window.showBulkConfirm(1, 'prompt');
+        if (!confirmed) return;
+        try {
+          await fetchJson(`/api/admin/assignment-prompts/${btn.dataset.id}`, { method: 'DELETE' });
+          window.showToast('Prompt deleted', 'success');
+          currentPage = 1;
+          await loadPrompts();
+        } catch (error) {
+          window.showToast(error.message || 'Delete failed', 'error');
+        }
+      });
+    });
+
+    if (window.lucide) lucide.createIcons();
+  };
+
+  const buildQuery = () => {
+    const params = new URLSearchParams();
+    params.set('limit', PAGE_SIZE);
+    params.set('offset', (currentPage - 1) * PAGE_SIZE);
+    if (searchEl.value.trim()) params.set('q', searchEl.value.trim());
+    if (typeEl.value) params.set('type', typeEl.value);
+    if (statusEl.value) params.set('status', statusEl.value);
+    return params;
+  };
+
+  const loadPrompts = async () => {
+    try {
+      const data = await fetchJson(`/api/admin/assignment-prompts?${buildQuery().toString()}`);
+      const items = Array.isArray(data) ? data : (data.items || []);
+      totalItems = Number(data.total ?? items.length ?? 0);
+      currentPage = Math.max(1, Math.min(currentPage, Math.max(1, Math.ceil(totalItems / PAGE_SIZE))));
+      renderRows(items);
+    } catch (error) {
+      bodyEl.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#fca5a5;">${escapeHtml(error.message || 'Failed to load prompts')}</td></tr>`;
+      window.showToast(error.message || 'Failed to load prompts', 'error');
+    }
+  };
+
+  const openPromptModal = (prompt = null) => {
+    promptId.value = prompt?._id || '';
+    promptModalTitle.textContent = prompt?._id ? 'Edit Prompt' : 'Add Prompt';
+    promptName.value = prompt?.name || '';
+    promptType.value = prompt?.assignmentType || '*';
+    promptKeywords.value = Array.isArray(prompt?.triggerKeywords) ? prompt.triggerKeywords.join(', ') : (prompt?.triggerKeywords || '');
+    promptInstruction.value = prompt?.injectedInstruction || '';
+    promptSortOrder.value = Number(prompt?.sortOrder || 0);
+    promptActive.checked = prompt?.isActive !== false;
+    if (promptModal) promptModal.show();
+  };
+
+  const savePrompt = async () => {
+    const id = promptId.value;
+    const payload = {
+      name: promptName.value.trim(),
+      assignmentType: promptType.value || '*',
+      triggerKeywords: promptKeywords.value.split(',').map((item) => item.trim()).filter(Boolean),
+      injectedInstruction: promptInstruction.value.trim(),
+      sortOrder: Number.parseInt(promptSortOrder.value || '0', 10) || 0,
+      isActive: promptActive.checked,
+    };
+    if (!payload.name) {
+      window.showToast('Name is required', 'error');
+      return;
+    }
+    if (!payload.injectedInstruction) {
+      window.showToast('Instruction is required', 'error');
+      return;
+    }
+    savePromptBtn.disabled = true;
+    savePromptBtn.textContent = 'Saving...';
+    try {
+      await fetchJson(id ? `/api/admin/assignment-prompts/${id}` : '/api/admin/assignment-prompts', {
+        method: id ? 'PUT' : 'POST',
+        body: JSON.stringify(payload),
+      });
+      if (promptModal) promptModal.hide();
+      window.showToast(id ? 'Prompt updated' : 'Prompt created', 'success');
+      currentPage = 1;
+      await loadPrompts();
+    } catch (error) {
+      window.showToast(error.message || 'Save failed', 'error');
+    } finally {
+      savePromptBtn.disabled = false;
+      savePromptBtn.textContent = 'Save';
+    }
+  };
+
+  const applyFilters = () => {
+    currentPage = 1;
+    loadPrompts();
+  };
+
+  [searchEl, typeEl, statusEl].forEach((el) => {
+    el.addEventListener('input', applyFilters);
+    el.addEventListener('change', applyFilters);
+  });
+
+  document.getElementById('promptsPrevPage').addEventListener('click', () => {
+    if (currentPage <= 1) return;
+    currentPage -= 1;
+    loadPrompts();
+  });
+
+  document.getElementById('promptsNextPage').addEventListener('click', () => {
+    const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+    if (currentPage >= totalPages) return;
+    currentPage += 1;
+    loadPrompts();
+  });
+
+  savePromptBtn.addEventListener('click', savePrompt);
+
+  pager = window.initPager({
+    prevId: 'promptsPrevPage',
+    nextId: 'promptsNextPage',
+    footId: 'promptsFoot',
+    pageSize: PAGE_SIZE,
+    onPage: function (page) {
+      currentPage = page;
+      loadPrompts();
+    }
+  });
+
+  const bulkSelect = window.initBulkSelect({
+    selectAllId: 'selectAll',
+    tbodyId: 'promptsBody',
+    toolbarId: 'bulkToolbar',
+    countId: 'selectedCount',
+    checkboxClass: 'row-checkbox'
+  });
+  updateBulkToolbar = bulkSelect.updateToolbar;
+  clearSelection = bulkSelect.clearSelection;
+  window.bulkDeletePrompts = bulkDeletePrompts;
+  window.clearSelection = clearSelection;
+  updateBulkToolbar();
+
+  const resetBulkState = () => {
+    clearSelection();
+    updateBulkToolbar();
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadPrompts();
+  });
+
+  window.resetPromptBulkState = resetBulkState;
+
+  window.openPromptModal = openPromptModal;
+  window.loadPrompts = loadPrompts;
+})();
+</script>
+{% endblock %}

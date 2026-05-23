@@ -267,6 +267,154 @@
         border-top: 1px solid #dbe7ff;
     }
 
+    .dash-tabs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin: 0 0 14px;
+    }
+
+    .dash-tab {
+        border: 1px solid #dbe7ff;
+        background: #fff;
+        color: #475569;
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.16s ease;
+    }
+
+    .dash-tab:hover {
+        border-color: #93c5fd;
+        color: #1d4ed8;
+        background: #f8fbff;
+    }
+
+    .dash-tab.active {
+        border-color: #93c5fd;
+        color: #1d4ed8;
+        background: #eff6ff;
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+    }
+
+    .tab-pane {
+        display: none;
+    }
+
+    .tab-pane.active {
+        display: block;
+    }
+
+    .dash-mini-list {
+        display: grid;
+        gap: 10px;
+    }
+
+    .dash-mini-item {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid #dbe7ff;
+        background: #fff;
+        text-decoration: none;
+        box-shadow: 0 8px 22px rgba(37, 99, 235, 0.06);
+        transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+    }
+
+    .dash-mini-item:hover {
+        transform: translateY(-2px);
+        border-color: #93c5fd;
+        box-shadow: 0 14px 28px rgba(37, 99, 235, 0.12);
+    }
+
+    .dash-mini-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .dash-mini-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.25;
+        margin-bottom: 3px;
+    }
+
+    .dash-mini-meta {
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .dash-mini-status {
+        font-size: 11px;
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 5px 10px;
+        text-transform: capitalize;
+        white-space: nowrap;
+    }
+
+    .dash-mini-status.status-draft { background: #fef3c7; color: #92400e; }
+    .dash-mini-status.status-generating { background: #eff6ff; color: #1e40af; animation: pulseBadge 1.5s ease-in-out infinite; }
+    .dash-mini-status.status-generated { background: #dcfce7; color: #166534; }
+    .dash-mini-status.status-error { background: #fee2e2; color: #991b1b; }
+
+    .dash-empty {
+        margin: 0;
+        color: #64748b;
+    }
+
+    .dash-empty a {
+        color: #1d4ed8;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .dash-resume-cta {
+        display: flex;
+        justify-content: flex-start;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+
+    .dash-resume-card {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 18px;
+        border-radius: 14px;
+        border: 1px solid #dbe7ff;
+        background: linear-gradient(135deg, #ffffff, #f8fbff);
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
+    }
+
+    .dash-resume-card h3 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 16px;
+    }
+
+    .dash-resume-card p {
+        margin: 0;
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
     .page-btn {
         min-width: 34px;
         height: 34px;
@@ -803,58 +951,100 @@
         </div>
     </div>
 
-    <div id="profileReminder" class="mb-3"></div>
+    <div class="dash-tabs" role="tablist" aria-label="Dashboard sections">
+        <button class="dash-tab active" type="button" data-tab="reports" onclick="switchTab('reports')">📄 Reports</button>
+        <button class="dash-tab" type="button" data-tab="resumes" onclick="switchTab('resumes')">👤 Resumes</button>
+        <button class="dash-tab" type="button" data-tab="assignments" onclick="switchTab('assignments')">📚 Assignments</button>
+    </div>
 
-    <div class="reports-toolbar">
-        <div class="toolbar-left">
-            <div class="search-wrap">
-                <i class="bi bi-search search-icon"></i>
-                <input type="text" id="reportSearch" class="search-input"
-                    placeholder="Search reports by title or department...">
-                <button class="search-clear" id="searchClear" style="display:none;" title="Clear search">
-                    <i class="bi bi-x"></i>
-                </button>
+    <div class="tab-pane active" id="tab-reports">
+        <div id="profileReminder" class="mb-3"></div>
+
+        <div class="reports-toolbar">
+            <div class="toolbar-left">
+                <div class="search-wrap">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" id="reportSearch" class="search-input"
+                        placeholder="Search reports by title or department...">
+                    <button class="search-clear" id="searchClear" style="display:none;" title="Clear search">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="toolbar-right">
+                <select id="reportSort" class="sort-select" title="Sort reports">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="az">A → Z</option>
+                    <option value="za">Z → A</option>
+                </select>
+                <div class="reports-count" id="reportsCountInfo">0 reports</div>
             </div>
         </div>
-        <div class="toolbar-right">
-            <select id="reportSort" class="sort-select" title="Sort reports">
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="az">A → Z</option>
-                <option value="za">Z → A</option>
-            </select>
-            <div class="reports-count" id="reportsCountInfo">0 reports</div>
+
+        <div id="reportsList" class="report-feed">
+            <div class="skeleton-card">
+                <div class="shimmer" style="width:44px; height:44px; border-radius:10px;"></div>
+                <div style="flex:1;">
+                    <div class="shimmer" style="height:14px; width:60%; border-radius:6px; margin-bottom:8px;"></div>
+                    <div class="shimmer" style="height:11px; width:40%; border-radius:6px;"></div>
+                </div>
+                <div class="shimmer" style="width:80px; height:28px; border-radius:20px;"></div>
+            </div>
+            <div class="skeleton-card">
+                <div class="shimmer" style="width:44px; height:44px; border-radius:10px;"></div>
+                <div style="flex:1;">
+                    <div class="shimmer" style="height:14px; width:60%; border-radius:6px; margin-bottom:8px;"></div>
+                    <div class="shimmer" style="height:11px; width:40%; border-radius:6px;"></div>
+                </div>
+                <div class="shimmer" style="width:80px; height:28px; border-radius:20px;"></div>
+            </div>
+            <div class="skeleton-card">
+                <div class="shimmer" style="width:44px; height:44px; border-radius:10px;"></div>
+                <div style="flex:1;">
+                    <div class="shimmer" style="height:14px; width:60%; border-radius:6px; margin-bottom:8px;"></div>
+                    <div class="shimmer" style="height:11px; width:40%; border-radius:6px;"></div>
+                </div>
+                <div class="shimmer" style="width:80px; height:28px; border-radius:20px;"></div>
+            </div>
+        </div>
+
+        <div id="reportsPagination" class="reports-pagination"></div>
+    </div>
+
+    <div class="tab-pane" id="tab-resumes">
+        <div class="dash-resume-card">
+            <h3>My Resumes</h3>
+            <p>Build and manage polished resumes from the resume builder.</p>
+            <div class="dash-resume-cta">
+                <a href="/student/resumes" class="welcome-cta" style="background:linear-gradient(135deg,#0f766e,#14b8a6);box-shadow:0 10px 20px rgba(15,118,110,0.24);">
+                    <i class="bi bi-person-vcard"></i> Open Resumes
+                </a>
+                <a href="/student/resume/builder" class="welcome-cta" style="background:linear-gradient(135deg,#2563eb,#3b82f6);box-shadow:0 10px 20px rgba(37,99,235,0.24);">
+                    <i class="bi bi-magic"></i> Resume Builder
+                </a>
+            </div>
         </div>
     </div>
 
-    <div id="reportsList" class="report-feed">
-        <div class="skeleton-card">
-            <div class="shimmer" style="width:44px; height:44px; border-radius:10px;"></div>
-            <div style="flex:1;">
-                <div class="shimmer" style="height:14px; width:60%; border-radius:6px; margin-bottom:8px;"></div>
-                <div class="shimmer" style="height:11px; width:40%; border-radius:6px;"></div>
+    <div class="tab-pane" id="tab-assignments">
+        <div class="dash-resume-card" style="margin-bottom:14px;">
+            <h3>My Assignments</h3>
+            <p>Recent assignment sessions, generation status, and quick access to the studio.</p>
+            <div class="dash-resume-cta">
+                <a href="/student/assignments" class="welcome-cta" style="background:linear-gradient(135deg,#4f46e5,#6366f1);box-shadow:0 10px 20px rgba(79,70,229,0.22);">
+                    <i class="bi bi-journal-text"></i> View All Assignments
+                </a>
+                <a href="/student/assignments/new" class="welcome-cta" style="background:linear-gradient(135deg,#0f766e,#14b8a6);box-shadow:0 10px 20px rgba(15,118,110,0.22);">
+                    <i class="bi bi-plus-circle"></i> New Assignment
+                </a>
             </div>
-            <div class="shimmer" style="width:80px; height:28px; border-radius:20px;"></div>
         </div>
-        <div class="skeleton-card">
-            <div class="shimmer" style="width:44px; height:44px; border-radius:10px;"></div>
-            <div style="flex:1;">
-                <div class="shimmer" style="height:14px; width:60%; border-radius:6px; margin-bottom:8px;"></div>
-                <div class="shimmer" style="height:11px; width:40%; border-radius:6px;"></div>
-            </div>
-            <div class="shimmer" style="width:80px; height:28px; border-radius:20px;"></div>
-        </div>
-        <div class="skeleton-card">
-            <div class="shimmer" style="width:44px; height:44px; border-radius:10px;"></div>
-            <div style="flex:1;">
-                <div class="shimmer" style="height:14px; width:60%; border-radius:6px; margin-bottom:8px;"></div>
-                <div class="shimmer" style="height:11px; width:40%; border-radius:6px;"></div>
-            </div>
-            <div class="shimmer" style="width:80px; height:28px; border-radius:20px;"></div>
+
+        <div class="dash-mini-list" id="recentAssignments">
+            <p class="dash-empty">Loading recent assignments...</p>
         </div>
     </div>
-
-    <div id="reportsPagination" class="reports-pagination"></div>
 
     <section id="videoGuidesSection" class="video-guides-section" style="display:none;">
         <h3 class="video-guides-title">How-To Videos 🎬</h3>
@@ -864,6 +1054,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="/static/js/student-ui.js"></script>
 <script>
     // Support impersonation: if ?token=... is in the URL, use it directly
     // (Admin "Login as Student" feature passes the JWT via URL param)
@@ -880,9 +1071,10 @@
         }
     })();
 
-    const token = localStorage.getItem('token');
+    const studentUI = window.studentUI || {};
+    const token = studentUI.getToken ? studentUI.getToken() : localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const authHeaders = () => token ? { 'Authorization': `Bearer ${token}` } : {};
+    const authHeaders = () => studentUI.authHeaders ? studentUI.authHeaders() : (token ? { 'Authorization': `Bearer ${token}` } : {});
     const PAGE_SIZE = 6;
     const reportState = {
         allReports: [],
@@ -1300,6 +1492,102 @@
         renderPagination(total);
     }
 
+    function switchTab(tabName) {
+        document.querySelectorAll('.dash-tab').forEach((btn) => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+            btn.setAttribute('aria-selected', btn.dataset.tab === tabName ? 'true' : 'false');
+        });
+
+        document.querySelectorAll('.tab-pane').forEach((pane) => {
+            pane.classList.toggle('active', pane.id === `tab-${tabName}`);
+        });
+    }
+
+    function getAssignmentStatusClass(status) {
+        const normalized = String(status || 'draft').toLowerCase();
+        if (normalized === 'generated' || normalized === 'edited') return 'status-generated';
+        if (normalized === 'generating') return 'status-generating';
+        if (normalized === 'error') return 'status-error';
+        return 'status-draft';
+    }
+
+    function getAssignmentIcon(type) {
+        const value = String(type || '').toLowerCase();
+        if (value.includes('research')) return 'bi bi-search';
+        if (value.includes('case')) return 'bi bi-briefcase';
+        if (value.includes('coding') || value.includes('program')) return 'bi bi-code-slash';
+        if (value.includes('lab')) return 'bi bi-beaker';
+        if (value.includes('presentation')) return 'bi bi-easel';
+        return 'bi bi-journal-text';
+    }
+
+    function escapeAttr(value) {
+        return escapeHtml(value).replaceAll('`', '&#96;');
+    }
+
+    async function loadRecentAssignments() {
+        const container = document.getElementById('recentAssignments');
+        if (!container) return;
+
+        try {
+            const res = await fetch('/api/student/assignments?limit=3', {
+                credentials: 'include',
+                headers: authHeaders(),
+            });
+
+            if (res.status === 401 || res.status === 403) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+                return;
+            }
+
+            if (!res.ok) {
+                throw new Error(`Failed to load assignments: ${res.status}`);
+            }
+
+            const payload = await res.json();
+            const items = studentUI.normalizeListResponse
+                ? studentUI.normalizeListResponse(payload)
+                : (Array.isArray(payload?.items) ? payload.items : []);
+
+            if (items.length === 0) {
+                container.innerHTML = `
+                    <p class="dash-empty">
+                        No assignment sessions yet. <a href="/student/assignments/new">Create your first assignment</a>.
+                    </p>
+                `;
+                return;
+            }
+
+            container.innerHTML = items.map((item) => {
+                const statusClass = getAssignmentStatusClass(item.status);
+                const statusLabel = String(item.status || 'draft');
+                const createdAt = item.createdAt
+                    ? new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : '-';
+                const icon = getAssignmentIcon(item.assignmentType);
+                return `
+                    <a class="dash-mini-item" href="/student/assignments/${item._id}">
+                        <div class="dash-mini-icon"><i class="${icon}"></i></div>
+                        <div>
+                            <div class="dash-mini-title">${escapeHtml(item.title || 'Untitled Assignment')}</div>
+                            <div class="dash-mini-meta">
+                                ${escapeHtml(item.assignmentType || 'Assignment')} · Created ${escapeHtml(createdAt)}
+                            </div>
+                        </div>
+                        <span class="dash-mini-status ${statusClass}">${escapeHtml(statusLabel)}</span>
+                    </a>
+                `;
+            }).join('');
+        } catch (error) {
+            console.error(error);
+            container.innerHTML = `
+                <p class="dash-empty">Failed to load assignments. <a href="/student/assignments">Open assignments</a>.</p>
+            `;
+        }
+    }
+
     const loadReports = async () => {
         try {
             const profileRes = await fetch('/api/student/profile', {
@@ -1335,10 +1623,13 @@
                 headers: authHeaders()
             });
             const data = await res.json();
+            const reports = studentUI.normalizeListResponse
+                ? studentUI.normalizeListResponse(data)
+                : (Array.isArray(data) ? data : []);
             const list = document.getElementById('reportsList');
 
-            updateWelcomeBanner(data, user.name);
-            updateOnboarding(data, user.profileCompleted);
+            updateWelcomeBanner(reports, user.name);
+            updateOnboarding(reports, user.profileCompleted);
             
             if (res.status === 401 || res.status === 403) {
                 localStorage.removeItem('token');
@@ -1347,17 +1638,17 @@
                 return;
             }
 
-            const total = data.length;
-            const generated = data.filter(r => r.status === 'generated').length;
-            const edited = data.filter(r => r.status === 'edited').length;
-            const pending = data.filter(r => r.status === 'pending' || r.status === 'generating').length;
+            const total = reports.length;
+            const generated = reports.filter(r => r.status === 'generated').length;
+            const edited = reports.filter(r => r.status === 'edited').length;
+            const pending = reports.filter(r => r.status === 'pending' || r.status === 'generating').length;
 
             document.getElementById('statTotal').textContent = total;
             document.getElementById('statGenerated').textContent = generated;
             document.getElementById('statEdited').textContent = edited;
             document.getElementById('statPending').textContent = pending;
 
-            reportState.allReports = data;
+            reportState.allReports = reports;
             reportState.page = 1;
             renderReportsPage();
         } catch (e) {
@@ -1458,7 +1749,7 @@
             return;
         }
 
-        const token = localStorage.getItem('token');
+        const token = studentUI.getToken ? studentUI.getToken() : localStorage.getItem('token');
         if (!token) {
             showToast('Please sign in again.', 'error');
             window.location.href = '/login';
@@ -1528,6 +1819,7 @@
 
         loadReports();
         loadVideoGuides();
+        loadRecentAssignments();
     });
 </script>
 {% endblock %}

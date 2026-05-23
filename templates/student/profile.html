@@ -4,20 +4,9 @@
 
 {% block extra_css %}
 <style>
-    body {
-        background:
-            radial-gradient(1100px 420px at -10% -20%, rgba(59, 130, 246, 0.16), transparent 62%),
-            radial-gradient(980px 360px at 110% -16%, rgba(147, 197, 253, 0.25), transparent 58%),
-            linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
-        color: #0f172a;
-    }
+    /* Body background removed to inherit brand background from base.html */
 
     .profile-shell {
-        --pf-card: #ffffff;
-        --pf-input: #f8fbff;
-        --pf-border: #d7e5ff;
-        --pf-text: #0f172a;
-        --pf-muted: #64748b;
         animation: profileIn 0.35s ease both;
     }
 
@@ -39,9 +28,9 @@
 
     .profile-shell .nav-pills .nav-link {
         border-radius: 999px;
-        color: #2563eb;
-        border: 1px solid #cfe0ff;
-        background: #eef5ff;
+        color: var(--acc2);
+        border: 1px solid var(--brd);
+        background: var(--srf);
         font-weight: 600;
         padding: 0.52rem 1.1rem;
         font-size: 0.88rem;
@@ -49,67 +38,67 @@
     }
 
     .profile-shell .nav-pills .nav-link:hover:not(.active) {
-        background: #dbeafe;
-        border-color: #93c5fd;
-        color: #1e40af;
+        background: var(--srf);
+        border-color: var(--brd);
+        color: var(--acc2);
     }
 
     .profile-shell .nav-pills .nav-link.active {
-        background: linear-gradient(90deg, #2563eb, #3b82f6);
+        background: linear-gradient(90deg, var(--acc2), var(--acc));
         border-color: rgba(96, 165, 250, 0.9);
-        color: #ffffff;
-        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+        color: var(--color-white);
+        box-shadow: var(--shadow-sm);
     }
 
     .profile-shell .card {
-        border: 1px solid var(--pf-border) !important;
+        border: 1px solid var(--brd) !important;
         border-radius: 16px;
-        background: var(--pf-card);
-        box-shadow: 0 12px 30px rgba(37, 99, 235, 0.08);
+        background: var(--card);
+        box-shadow: var(--shadow-sm);
     }
 
     .profile-shell .form-label {
-        color: #64748b;
+        color: var(--txt2);
         font-size: 0.82rem;
         font-weight: 700;
     }
 
     .profile-shell .form-control,
     .profile-shell .form-select {
-        background: var(--pf-input);
-        border: 1.5px solid #dbe7ff;
-        color: #0f172a;
+        background: var(--srf);
+        border: 1.5px solid var(--brd);
+        color: var(--txt);
         min-height: 46px;
         border-radius: 10px;
         transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
     }
 
     .profile-shell .form-control::placeholder {
-        color: #94a3b8;
+        color: var(--txt3);
     }
 
     .profile-shell .form-control:focus,
     .profile-shell .form-select:focus {
-        border-color: #60a5fa;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-        background: #ffffff;
-        color: #0f172a;
+        border-color: var(--acc2);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+        background: var(--card);
+        color: var(--txt);
         outline: none;
     }
 
     .profile-shell .form-select option {
-        background: #ffffff;
-        color: #0f172a;
+        background: var(--card);
+        color: var(--txt);
     }
 
-    .profile-shell .text-danger { color: #f87171 !important; }
+    .profile-shell .text-danger { color: var(--red) !important; }
 
     .profile-shell .input-group .btn,
     .profile-shell .btn-outline-primary,
     .profile-shell .btn-outline-secondary {
-        border-color: #bfdbfe;
-        color: #1d4ed8;
-        background: #eff6ff;
+        border-color: var(--brd);
+        color: var(--acc2);
+        background: var(--srf);
     }
 
     .profile-shell .btn-primary,
@@ -118,14 +107,14 @@
         border-radius: 12px;
         font-weight: 700;
         padding: 0.62rem 1.15rem;
-        background: linear-gradient(90deg, #2563eb, #3b82f6);
-        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
+        background: linear-gradient(90deg, var(--acc2), var(--acc));
+        box-shadow: var(--shadow-sm);
     }
 
     .profile-shell .btn-primary:hover,
     .profile-shell .btn-success:hover {
-        background: linear-gradient(90deg, #1d4ed8, #2563eb);
-        color: #fff;
+        background: linear-gradient(90deg, var(--acc2), var(--acc));
+        color: var(--color-white);
     }
 
     .profile-shell .alert {
@@ -157,16 +146,16 @@
         width: 72px;
         height: 72px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #1d4ed8, #60a5fa);
+        background: linear-gradient(135deg, var(--acc2), var(--acc));
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 1.8rem;
         font-weight: 700;
-        color: #fff;
+        color: var(--color-white);
         flex-shrink: 0;
-        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
-        border: 3px solid rgba(96, 165, 250, 0.45);
+        box-shadow: var(--shadow-sm);
+        border: 3px solid rgba(96, 165, 250, 0.25);
         user-select: none;
     }
 
@@ -181,7 +170,7 @@
 
     .profile-completion-track {
         height: 6px;
-        background: #dbeafe;
+        background: var(--srf);
         border-radius: 999px;
         overflow: hidden;
         margin-bottom: 8px;
@@ -189,7 +178,7 @@
 
     .profile-completion-fill {
         height: 100%;
-        background: linear-gradient(90deg, #1d4ed8, #60a5fa);
+        background: linear-gradient(90deg, var(--acc2), var(--acc));
         border-radius: 999px;
         transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -211,13 +200,13 @@
     .comp-complete {
         background: rgba(5, 150, 105, 0.15);
         border-color: rgba(52, 211, 153, 0.4);
-        color: #34d399;
+        color: var(--grn);
     }
 
     .comp-incomplete {
-        background: #f1f5f9;
-        border-color: #e2e8f0;
-        color: #64748b;
+        background: var(--srf);
+        border-color: var(--brd);
+        color: var(--txt2);
     }
 
     .form-save-bar {
@@ -225,7 +214,7 @@
         align-items: center;
         gap: 12px;
         padding-top: 8px;
-        border-top: 1px solid #dbe7ff;
+        border-top: 1px solid var(--brd);
         margin-top: 8px;
         flex-wrap: wrap;
     }
@@ -249,7 +238,7 @@
     }
 
     .btn-discard:hover {
-        color: #1d4ed8;
+        color: var(--acc2);
         text-decoration-color: currentColor;
     }
 
@@ -592,14 +581,18 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="/static/js/student-ui.js"></script>
 <script>
-    const token = localStorage.getItem('token');
+    const studentUI = window.studentUI || {};
+    const token = studentUI.getToken ? studentUI.getToken() : localStorage.getItem('token');
     if (!token) window.location.href = '/login';
 
-    const authHeaders = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-    };
+    const authHeaders = studentUI.jsonHeaders
+        ? studentUI.jsonHeaders()
+        : {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
 
     let profile = null;
     let degrees = [];

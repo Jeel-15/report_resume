@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}My Assignments — ReportGen{% endblock %}
+
+{% block extra_css %}
+<style>
+:root {
+  /* Light theme aliases for assignments list page */
+  --bg: var(--page-bg);
+  --accent: var(--acc2);        /* purple #7c3aed */
+  --accent-2: var(--acc);       /* pink #e84393 — was undefined, causing broken gradients */
+  --muted: var(--txt3);
+  --danger: var(--red);
+  --success: var(--grn);
+  --amber: var(--amb);
+  /* Missing shadow variables */
+  --shadow-sm: 0 1px 3px rgba(26,26,46,0.06);
+  --color-white: #ffffff;
+}
+body{background:var(--page-bg);color:var(--txt)}
+.as-main{max-width:1180px;margin:28px auto;padding:20px}
+.as-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.as-header h1{font-size:22px;color:var(--txt);font-weight:700}
+.as-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--acc2), var(--acc));
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(124,58,237,0.18);
+  font-weight: 600;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.12s ease;
+}
+.as-btn:hover { box-shadow: 0 6px 18px rgba(124,58,237,0.26); transform: translateY(-1px); color: #fff; }
+.as-filters{display:flex;gap:8px;margin-bottom:14px}
+.as-filters select{background:var(--card);color:var(--txt);padding:8px 12px;border:1px solid var(--brd);border-radius:10px;font-size:13px;outline:none;cursor:pointer;transition:border-color 0.15s ease}
+.as-filters select:focus{border-color:var(--acc2);box-shadow:0 0 0 3px rgba(124,58,237,0.10)}
+.as-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.as-card{background:var(--card);padding:16px;border-radius:14px;border:1px solid var(--brd);box-shadow:0 1px 4px rgba(26,26,46,0.06);display:flex;flex-direction:column;gap:8px;transition:box-shadow 0.15s ease, transform 0.12s ease}
+.as-card:hover{box-shadow:0 4px 14px rgba(26,26,46,0.09);transform:translateY(-1px)}
+.as-card-type-icon{font-size:24px}
+.as-card-title{font-weight:700;font-size:15px;color:var(--txt)}
+.as-card-meta{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.as-status-badge{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:5px}
+.as-status-draft{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+.as-status-generating{background:rgba(124,58,237,0.10);color:var(--acc2);border:1px solid rgba(124,58,237,0.20);animation:as-pulse 1.6s infinite}
+.as-status-generated{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
+.as-status-error{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+@keyframes as-pulse{0%{opacity:1}50%{opacity:.6}100%{opacity:1}}
+.as-card-actions{display:flex;gap:8px;margin-top:6px}
+.as-btn-ghost{background:var(--srf);color:var(--txt2);border:1px solid var(--brd);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.15s ease,border-color 0.15s ease,color 0.15s ease}
+.as-btn-ghost:hover{background:var(--card);border-color:var(--acc2);color:var(--acc2)}
+.as-btn-danger{background:#fef2f2;color:var(--red);border:1px solid #fecaca;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.15s ease}
+.as-btn-danger:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.as-empty{padding:40px 30px;text-align:center;color:var(--txt3);background:var(--srf);border:1.5px dashed var(--brd);border-radius:14px;font-size:14px;line-height:1.6}
+.as-empty a{color:var(--acc2);font-weight:600;text-decoration:none}
+.as-empty a:hover{text-decoration:underline}
+.fab-new{position:fixed;right:24px;bottom:24px;background:linear-gradient(135deg,var(--acc2),var(--acc));color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:700;font-size:13px;box-shadow:0 10px 28px rgba(124,58,237,0.22);transition:box-shadow 0.15s ease,transform 0.12s ease}
+.fab-new:hover{color:#fff;box-shadow:0 14px 32px rgba(124,58,237,0.32);transform:translateY(-2px)}
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="as-main">
+  <div class="as-header">
+    <h1>My Assignments</h1>
+    <a href="/student/assignments/new" class="as-btn">+ New Assignment</a>
+  </div>
+
+  <div class="as-filters">
+    <select id="typeFilter"><option value="">All Types</option></select>
+    <select id="statusFilter"><option value="">All Statuses</option></select>
+  </div>
+
+  <div class="as-grid" id="assignmentsGrid"></div>
+
+  <div class="as-empty" id="emptyState" style="display:none;">
+    No assignments yet. <a href="/student/assignments/new">Create your first one →</a>
+  </div>
+</main>
+
+<a class="fab-new" href="/student/assignments/new">+ New Assignment</a>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/student-ui.js"></script>
+<script>
+(() => {
+  const studentUI = window.studentUI || {}
+  const API_BASE = '/api/student/assignments'
+  const TYPE_ICONS = {essay:'📝',research_paper:'📚',lab_report:'🔬',case_study:'📊',presentation_script:'🎤'}
+  const TYPE_LABELS = {essay:'Essay',research_paper:'Research Paper',lab_report:'Lab Report',case_study:'Case Study',presentation_script:'Presentation Script'}
+  const STATUS_LABELS = {draft:'Draft',generating:'Generating',generated:'Generated',error:'Error'}
+
+  const grid = document.getElementById('assignmentsGrid')
+  const emptyState = document.getElementById('emptyState')
+  const typeFilter = document.getElementById('typeFilter')
+  const statusFilter = document.getElementById('statusFilter')
+
+  function authHeaders(){
+    if (studentUI.authHeaders) return studentUI.authHeaders({ 'Content-Type': 'application/json' })
+    const token = localStorage.getItem('token')
+    return token ? { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }
+  }
+
+  function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
+  function formatDate(iso){try{const d=new Date(iso);return d.toLocaleDateString();}catch(e){return ''}}
+
+  function renderCard(s){
+    const div = document.createElement('div');div.className='as-card';div.dataset.id=s._id;div.dataset.status=s.status||''
+    const icon = document.createElement('div');icon.className='as-card-type-icon';icon.textContent = TYPE_ICONS[s.assignmentType]||'📄'
+    const typeLabel = document.createElement('div');typeLabel.style.fontSize='12px';typeLabel.style.color='var(--muted)';typeLabel.textContent = TYPE_LABELS[s.assignmentType]||s.assignmentType
+    const title = document.createElement('div');title.className='as-card-title';title.textContent = s.title||'Untitled'
+    const meta = document.createElement('div');meta.className='as-card-meta';
+    if((s.wordCountCurrent||0)>0){const sp=document.createElement('span');sp.textContent=(s.wordCountCurrent||0).toLocaleString('en-IN')+' words';meta.appendChild(sp)}
+    const dateSpan = document.createElement('span');dateSpan.textContent = formatDate(s.createdAt||s.updatedAt||'');meta.appendChild(dateSpan)
+
+    const statusWrap = document.createElement('div');statusWrap.className='as-card-status';
+    const badge = document.createElement('span');badge.className='as-status-badge as-status-'+(s.status||'draft');badge.textContent = STATUS_LABELS[s.status]||s.status||'draft';statusWrap.appendChild(badge)
+
+    const actions = document.createElement('div');actions.className='as-card-actions'
+    const openA = document.createElement('a');openA.href = '/student/assignments/'+s._id;openA.className='as-btn-ghost';openA.textContent='Open';actions.appendChild(openA)
+    if((s.status||'')==='generated'){
+      const pdfBtn=document.createElement('button');pdfBtn.className='as-btn-ghost';pdfBtn.textContent='PDF';pdfBtn.onclick=()=>downloadPdf(s._id);actions.appendChild(pdfBtn)
+      const docxBtn=document.createElement('button');docxBtn.className='as-btn-ghost';docxBtn.textContent='DOCX';docxBtn.onclick=()=>downloadDocx(s._id);actions.appendChild(docxBtn)
+    }
+    const delBtn=document.createElement('button');delBtn.className='as-btn-danger';delBtn.textContent='🗑';delBtn.onclick=()=>{ if(confirm('Delete this assignment?')) deleteSession(s._id)};actions.appendChild(delBtn)
+
+    div.appendChild(icon);div.appendChild(typeLabel);div.appendChild(title);div.appendChild(meta);div.appendChild(statusWrap);div.appendChild(actions)
+    return div
+  }
+
+  function renderGrid(items){
+    grid.innerHTML=''
+    if(!items || !items.length){emptyState.style.display='block';return}
+    emptyState.style.display='none'
+    for(const s of items) grid.appendChild(renderCard(s))
+  }
+
+  async function fetchSessions(){
+    try{
+      const res = await fetch(API_BASE, { headers: authHeaders() })
+      if(!res.ok) throw new Error('Failed')
+      const data = await res.json()
+      return studentUI.normalizeListResponse ? studentUI.normalizeListResponse(data) : (Array.isArray(data)?data:data.items||[])
+    }catch(e){console.error(e);return[]}
+  }
+
+  async function loadAndRender(){
+    const sessions = await fetchSessions()
+    populateFilters(sessions)
+    const filtered = sessions.filter(s=>{
+      if(typeFilter.value && (s.assignmentType||'')!==typeFilter.value) return false
+      if(statusFilter.value && (s.status||'')!==statusFilter.value) return false
+      return true
+    })
+    renderGrid(filtered)
+  }
+
+  function populateFilters(sessions){
+    const types = new Set();const statuses = new Set();
+    for(const s of sessions){ if(s.assignmentType) types.add(s.assignmentType); if(s.status) statuses.add(s.status)}
+    // clear and add
+    typeFilter.innerHTML = '<option value="">All Types</option>' + Array.from(types).map(t=>`<option value="${t}">${TYPE_LABELS[t]||t}</option>`).join('')
+    statusFilter.innerHTML = '<option value="">All Statuses</option>' + Array.from(statuses).map(s=>`<option value="${s}">${STATUS_LABELS[s]||s}</option>`).join('')
+  }
+
+  async function downloadPdf(id){ window.open('/api/student/assignments/'+id+'/pdf','_blank') }
+  async function downloadDocx(id){ window.open('/api/student/assignments/'+id+'/docx','_blank') }
+
+  async function deleteSession(id){
+    try{
+      const res = await fetch('/api/student/assignments/'+id, {method:'DELETE', headers: authHeaders()})
+      if(!res.ok) throw new Error('Delete failed')
+      await loadAndRender()
+    }catch(e){alert('Could not delete session')}
+  }
+
+  typeFilter.addEventListener('change', loadAndRender)
+  statusFilter.addEventListener('change', loadAndRender)
+
+  // initial load
+  document.addEventListener('DOMContentLoaded', loadAndRender)
+})();
+</script>
+{% endblock %}

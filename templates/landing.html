@@ -1120,6 +1120,88 @@ body{font-family:var(--body);background:var(--ink);color:var(--white);overflow-x
 @media(min-width:641px) and (max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
 
 /* ══════════════════════════════
+   ASSIGNMENT STUDIO FEATURE
+══════════════════════════════ */
+#assignment-studio{
+  padding:5.75rem clamp(1.5rem,5vw,5rem);
+  background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);
+  border-bottom:1px solid var(--line-soft);
+}
+.as-feature-section{position:relative;overflow:hidden}
+.as-feature-inner{
+  max-width:920px;
+  margin:0 auto;
+  text-align:center;
+  background:linear-gradient(135deg,#ffffff 0%,#f6faff 100%);
+  border:1px solid rgba(37,99,235,0.12);
+  border-radius:28px;
+  padding:3rem clamp(1.5rem,4vw,3rem);
+  box-shadow:0 24px 64px rgba(37,99,235,0.12);
+}
+.as-feature-eyebrow{
+  display:inline-flex;align-items:center;gap:0.45rem;
+  margin-bottom:0.9rem;
+  font-size:0.82rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--blue2);
+}
+.as-feature-headline{
+  margin:0 auto 1rem;
+  color:var(--text-dark);
+  font-family:var(--display);
+  font-size:clamp(2rem,4vw,3.25rem);
+  line-height:1.06;
+}
+.as-feature-accent{color:var(--blue2)}
+.as-feature-sub{
+  max-width:760px;
+  margin:0 auto 1.6rem;
+  color:var(--text-muted-dark);
+  font-size:1rem;
+  line-height:1.75;
+}
+.as-type-strip{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:0.75rem;
+  margin-bottom:1.7rem;
+}
+.as-type-strip-card{
+  display:inline-flex;align-items:center;gap:0.55rem;
+  padding:0.8rem 1rem;
+  border-radius:999px;
+  background:#ffffff;
+  border:1px solid var(--line-soft);
+  color:var(--text-dark);
+  font-size:0.92rem;
+  font-weight:600;
+  box-shadow:0 10px 24px rgba(37,99,235,0.08);
+}
+.as-type-strip-card span{font-size:1.05rem}
+.as-feature-cta{
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:0.5rem;
+  padding:0.95rem 1.35rem;
+  border-radius:14px;
+  background:linear-gradient(135deg,var(--blue2),var(--blue3));
+  color:#ffffff;
+  text-decoration:none;
+  font-weight:700;
+  box-shadow:0 18px 34px rgba(37,99,235,0.22);
+}
+.as-feature-cta:hover{filter:brightness(1.03);transform:translateY(-1px)}
+.as-feature-note{
+  margin:0.95rem 0 0;
+  color:var(--text-muted-dark);
+  font-size:0.9rem;
+}
+@media(max-width:768px){
+  #assignment-studio{padding:4.25rem 1rem}
+  .as-feature-inner{padding:2rem 1.2rem;border-radius:22px}
+  .as-type-strip-card{width:100%;justify-content:center}
+}
+
+/* ══════════════════════════════
    TESTIMONIALS
 ══════════════════════════════ */
 #testimonials{padding:4rem clamp(1.5rem,5vw,5rem) 6rem;background:var(--ink2)}
@@ -1866,6 +1948,33 @@ body{font-family:var(--body);background:var(--ink);color:var(--white);overflow-x
   </div>
 </section>
 
+<!-- ASSIGNMENT STUDIO FEATURE SECTION -->
+<section class="as-feature-section" id="assignment-studio">
+  <div class="as-feature-inner">
+    <div class="as-feature-eyebrow">✦ New Feature</div>
+    <h2 class="as-feature-headline">
+      From Blank Page to Submitted Assignment<br>
+      <span class="as-feature-accent">— In Minutes</span>
+    </h2>
+    <p class="as-feature-sub">
+      Essays, lab reports, case studies, presentations — formatted exactly the way your professor expects.
+      University-aware. Citation-ready. Download as DOCX in one click.
+    </p>
+
+    <!-- Type card strip -->
+    <div class="as-type-strip">
+      <div class="as-type-strip-card"><span>📝</span> Essay</div>
+      <div class="as-type-strip-card"><span>🔬</span> Lab Report</div>
+      <div class="as-type-strip-card"><span>📊</span> Case Study</div>
+      <div class="as-type-strip-card"><span>🎤</span> Presentation</div>
+      <div class="as-type-strip-card"><span>📚</span> Research Paper</div>
+    </div>
+
+    <a href="/register" class="as-feature-cta">Try Assignment Studio →</a>
+    <p class="as-feature-note">3 assignments free. No credit card required.</p>
+  </div>
+</section>
+
 <!-- TESTIMONIALS -->
 <section id="testimonials">
   <div class="testi-shell">
@@ -1903,6 +2012,7 @@ body{font-family:var(--body);background:var(--ink);color:var(--white);overflow-x
       <div class="price-div"></div>
       <ul class="price-list">
         <li>1 Report generation</li>
+        <li>3 Assignment sessions</li>
         <li>PDF download</li>
         <li>Basic formatting</li>
         <li class="na">University-specific format</li>
@@ -1919,6 +2029,7 @@ body{font-family:var(--body);background:var(--ink);color:var(--white);overflow-x
       <div class="price-div"></div>
       <ul class="price-list">
         <li>3 Report generations</li>
+        <li>30 Assignment sessions / month</li>
         <li>PDF + editable format</li>
         <li>University-specific format</li>
         <li>Unlimited edits</li>
@@ -1934,7 +2045,9 @@ body{font-family:var(--body);background:var(--ink);color:var(--white);overflow-x
       <div class="price-div"></div>
       <ul class="price-list">
         <li>Unlimited reports</li>
+        <li>Unlimited assignment sessions</li>
         <li>All export formats</li>
+        <li>DOCX export</li>
         <li>All university formats</li>
         <li>Unlimited edits</li>
         <li>All university templates</li>

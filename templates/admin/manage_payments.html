@@ -5,15 +5,19 @@
 
 {% block admin_content %}
 <section class="dashboard-grid">
-  <div>
-    <h1 class="page-title">Payments</h1>
-    <p class="page-subtitle">Track student transactions, payment status, and revenue timeline.</p>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Revenue</h1>
+      <p class="page-subtitle">Track student transactions and payment status.</p>
+    </div>
   </div>
 
-  <div class="stats-inline" style="gap:10px;">
-    <input id="from" type="date" class="small-input" style="width:170px;">
-    <input id="to" type="date" class="small-input" style="width:170px;">
-    <button class="btn-primary" type="button" onclick="load()">Filter</button>
+  <div class="admin-filter-bar">
+    <label style="font-size:12px;color:var(--rg-muted);font-weight:600;">From</label>
+    <input id="from" type="date" class="small-input">
+    <label style="font-size:12px;color:var(--rg-muted);font-weight:600;">To</label>
+    <input id="to" type="date" class="small-input">
+    <button class="btn-primary" type="button" onclick="load()">Apply Filter</button>
   </div>
 
   <article class="panel-card panel-body table-card">
@@ -51,12 +55,10 @@ async function load(page) {
   if (to) qs.set('to', to);
   qs.set('limit', PAYMENTS_PAGE_SIZE);
   qs.set('offset', (paymentsCurrentPage - 1) * PAYMENTS_PAGE_SIZE);
-  const res = await fetch('/api/admin/payments' + (qs.toString() ? `?${qs.toString()}` : ''), {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  const data = await res.json();
-  const items = data.items || [];
-  totalPayments = data.total || 0;
+  const data = await window.AdminUI.apiPaged('/api/admin/payments', { params: qs });
+  const normalized = window.AdminUI.normalizeListResponse(data);
+  const items = normalized.items || [];
+  totalPayments = normalized.total || 0;
   document.getElementById('rows').innerHTML = (items || []).map(p => `
     <tr>
       <td>${p.user?.name || '-'}<br><small>${p.user?.email || ''}</small></td>
@@ -68,7 +70,7 @@ async function load(page) {
 
   const start = (paymentsCurrentPage - 1) * PAYMENTS_PAGE_SIZE + 1;
   const end = Math.min(paymentsCurrentPage * PAYMENTS_PAGE_SIZE, totalPayments);
-  document.getElementById('paymentsFoot').textContent = `Showing ${start}-${end} of ${totalPayments}`;
+  window.AdminUI.setListFoot(document.getElementById('paymentsFoot'), totalPayments, paymentsCurrentPage, PAYMENTS_PAGE_SIZE, 'Showing 0-0 of 0 payments');
 
   document.getElementById('paymentsPrev').disabled = paymentsCurrentPage <= 1;
   document.getElementById('paymentsNext').disabled = end >= totalPayments;

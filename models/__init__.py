@@ -19,6 +19,8 @@ from .resume import Resume, ResumeEducation, ResumeExperience, ResumeProject, Re
 from .career_objective import CareerObjective
 from .resume_keyword import ResumeKeyword
 from .contact_submission import ContactSubmission
+from .assignment_session import AssignmentSession
+from .assignment_prompt import AssignmentPrompt
 
 __all__ = [
     'User',
@@ -54,4 +56,6 @@ __all__ = [
     'CareerObjective',
     'ResumeKeyword',
     'ContactSubmission',
+    'AssignmentSession',
+    'AssignmentPrompt',
 ]

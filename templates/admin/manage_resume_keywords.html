@@ -5,19 +5,26 @@
 
 {% block admin_content %}
 <section class="dashboard-grid">
-  <div>
-    <h1 class="page-title">Resume Keywords</h1>
-    <p class="page-subtitle">Manage keyword chips for resume sections</p>
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">Resume Keywords</h1>
+      <p class="page-subtitle">Manage keyword chips for resume sections.</p>
+    </div>
+    <div class="page-header-actions">
+      <button class="btn-ghost" type="button" onclick="loadKeywords()">
+        <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+      </button>
+      <button class="btn-primary" type="button" onclick="openCreate()">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i> Add Keyword
+      </button>
+    </div>
   </div>
 
-  <div class="stats-inline">
-    <button class="btn-ghost" type="button" onclick="loadKeywords()"><i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>Refresh</button>
-    <button class="btn-primary" type="button" onclick="openCreate()"><i data-lucide="plus" style="width:14px;height:14px;"></i>Add Keyword</button>
+  <div class="stats-chips">
+    <span class="stats-chip">Total: <b id="resumeKeywordsCount">0</b></span>
   </div>
 
-  <article class="panel-card panel-body" style="display:grid;gap:12px;">
-    <h3 style="margin:0;font-size:16px;color:#0f172a;">Filters</h3>
-    <div class="toolbar" style="display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) minmax(220px,1fr) 140px;gap:12px;">
+  <div class="admin-filter-bar">
       <select id="filterCategory" class="small-input">
         <option value="">All Categories</option>
         <option value="experience">Experience</option>
@@ -27,16 +34,20 @@
         <option value="technical">Technical</option>
       </select>
       <select id="filterMajor" class="small-input"><option value="">All Majors</option></select>
-      <input id="filterSearch" class="small-input" placeholder="Search keyword...">
-      <button class="btn-ghost" type="button" onclick="applyFilters()">Apply</button>
-    </div>
-  </article>
+      <input id="filterSearch" class="small-input search-input" placeholder="Search keyword...">
+  </div>
 
   <article class="panel-card panel-body table-card">
+    <div class="bulk-toolbar" id="bulkToolbar">
+      <span class="bulk-toolbar-count" id="selectedCount">0 selected</span>
+      <button class="bulk-toolbar-delete" onclick="bulkDelete()">Delete Selected</button>
+      <button class="bulk-toolbar-clear" onclick="clearSelection()">Clear</button>
+    </div>
     <div class="data-table-wrap">
       <table class="data-table stagger-table">
         <thead>
           <tr>
+            <th style="width:40px;"><input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" title="Select all"></th>
             <th>Keyword</th>
             <th>Category</th>
             <th>Major</th>
@@ -45,14 +56,14 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody id="rows"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
+        <tbody id="rows"><tr><td colspan="7" style="text-align:center;color:#94a3b8;">Loading...</td></tr></tbody>
       </table>
     </div>
-    <div class="table-foot" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">
-      <div id="resumeKeywordsFoot" style="font-size:13px;color:#64748b;">Showing 0-0 of 0 keywords</div>
-      <div class="pager">
-        <button id="resumeKeywordsPrev">&lt;</button>
-        <button id="resumeKeywordsNext">&gt;</button>
+    <div class="table-foot-row">
+      <span id="resumeKeywordsFoot">Showing 0 keywords</span>
+      <div class="pager-simple">
+        <button id="resumeKeywordsPrev">‹ Prev</button>
+        <button id="resumeKeywordsNext">Next ›</button>
       </div>
     </div>
   </article>
@@ -117,8 +128,37 @@ const PAGE_SIZE = 25;
 let currentPage = 1;
 let totalItems = 0;
 let allKeywords = [];
+let clearSelection = function () {};
+let updateBulkToolbar = function () {};
+let pager = null;
 
 function applyFilters(){ loadKeywords(); }
+
+async function bulkDelete() {
+  const checked = document.querySelectorAll('.row-checkbox:checked');
+  if (!checked.length) return;
+  const ids = Array.from(checked).map(cb => cb.dataset.id);
+  const confirmed = await window.showBulkConfirm(ids.length, 'keywords');
+  if (!confirmed) return;
+  try {
+    const res = await fetch('/api/admin/resume-keywords/bulk-delete', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ids })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      window.showToast(`Deleted ${data.deleted || ids.length} keywords`, 'success');
+      clearSelection();
+      currentPage = 1;
+      loadKeywords();
+    } else {
+      window.showToast(data.message || 'Bulk delete failed', 'error');
+    }
+  } catch (e) {
+    window.showToast('Network error during bulk delete', 'error');
+  }
+}
 
 async function loadMajorsForDropdown(){
   try{ const res = await fetch('/api/admin/majors', { headers }); const data = await res.json(); const sel = document.getElementById('keywordMajor'); const filter = document.getElementById('filterMajor'); sel.innerHTML = '<option value="">All Majors</option>'; filter.innerHTML = '<option value="">All Majors</option>'; (data||[]).forEach(m=>{ sel.innerHTML += `<option value="${m._id}">${m.name}</option>`; filter.innerHTML += `<option value="${m._id}">${m.name}</option>`; }); }catch(e){ console.error(e); }
@@ -132,19 +172,17 @@ async function loadKeywords(){
   if(category) params.set('category', category);
   if(major) params.set('major', major);
   if(q) params.set('q', q);
-  const res = await fetch(`/api/admin/resume-keywords${params.toString()?`?${params.toString()}`:''}`, { headers });
-  const result = await res.json();
-  const data = Array.isArray(result) ? result : (result.items || []);
-  allKeywords = data || [];
-  totalItems = allKeywords.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-  currentPage = Math.min(currentPage, totalPages);
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const pageItems = allKeywords.slice(start, start + PAGE_SIZE);
+  params.set('limit', PAGE_SIZE);
+  params.set('offset', (currentPage - 1) * PAGE_SIZE);
+  const result = await window.AdminUI.apiPaged('/api/admin/resume-keywords', { params });
+  const normalized = window.AdminUI.normalizeListResponse(result);
+  const pageItems = normalized.items || [];
+  totalItems = normalized.total || 0;
   // populate lightweight index for current page and avoid embedding raw JSON
   window.allItems = window.allItems || {};
   pageItems.forEach(item => { window.allItems[item._id] = item; });
   document.getElementById('rows').innerHTML = pageItems.map(item=>`<tr>
+    <td><input type="checkbox" class="row-checkbox" data-id="${item._id}" style="width:16px;height:16px;cursor:pointer;"></td>
     <td>${item.keyword||'-'}</td>
     <td>${item.category||'-'}</td>
     <td>${item.major? item.major.name : '<span style="color:#94a3b8;">All Majors</span>'}</td>
@@ -156,11 +194,12 @@ async function loadKeywords(){
         <button onclick='deleteKeyword("${item._id}")' title="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
       </div>
     </td>
-  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No keywords found</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:#94a3b8;">No keywords found</td></tr>';
   if(window.lucide) lucide.createIcons();
-  document.getElementById('resumeKeywordsFoot').textContent = totalItems ? `Showing ${start + 1}-${Math.min(start + pageItems.length, totalItems)} of ${totalItems} keywords` : 'Showing 0-0 of 0 keywords';
-  document.getElementById('resumeKeywordsPrev').disabled = currentPage <= 1;
-  document.getElementById('resumeKeywordsNext').disabled = currentPage >= totalPages;
+  document.getElementById('resumeKeywordsCount').textContent = String(totalItems);
+  clearSelection();
+  window.AdminUI.setPagerState(pager, totalItems, currentPage);
+  window.AdminUI.setListFoot(document.getElementById('resumeKeywordsFoot'), totalItems, currentPage, PAGE_SIZE, 'Showing 0 keywords');
 }
 
 function jumpToResumeKeywordsPage(nextPage){
@@ -182,23 +221,31 @@ async function saveKeyword(){
     jobProfile: document.getElementById('keywordJobProfile').value.trim(),
     isActive: document.getElementById('keywordActive').checked
   };
-  if(!payload.keyword || !payload.category){ alert('Keyword and Category are required'); return; }
+  if(!payload.keyword || !payload.category){ window.showToast('Keyword and Category are required', 'error'); return; }
   const url = id? `/api/admin/resume-keywords/${id}` : '/api/admin/resume-keywords';
   const method = id? 'PUT' : 'POST';
   const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
-  if(!res.ok){ const d = await res.json().catch(()=>({})); alert(d.message||'Save failed'); return; }
-  modal.hide(); currentPage = 1; loadKeywords();
+  if(!res.ok){ const d = await res.json().catch(()=>({})); window.showToast(d.message||'Save failed', 'error'); return; }
+  modal.hide(); window.showToast(id ? 'Keyword updated' : 'Keyword created', 'success'); currentPage = 1; loadKeywords();
 }
 
-async function deleteKeyword(id){ if(!confirm('Delete this keyword?')) return; await fetch(`/api/admin/resume-keywords/${id}`, { method: 'DELETE', headers }); currentPage = 1; loadKeywords(); }
+async function deleteKeyword(id){ const confirmed = await window.showBulkConfirm(1, 'keyword'); if(!confirmed) return; await fetch(`/api/admin/resume-keywords/${id}`, { method: 'DELETE', headers }); currentPage = 1; window.showToast('Keyword deleted', 'success'); loadKeywords(); }
 
 document.addEventListener('DOMContentLoaded', async ()=>{
   modal = new bootstrap.Modal(document.getElementById('keywordModal'));
+  const bulkSelect = window.initBulkSelect({
+    selectAllId: 'selectAll',
+    tbodyId: 'rows',
+    toolbarId: 'bulkToolbar',
+    countId: 'selectedCount',
+    checkboxClass: 'row-checkbox'
+  });
+  updateBulkToolbar = bulkSelect.updateToolbar;
+  clearSelection = bulkSelect.clearSelection;
+  updateBulkToolbar();
   document.getElementById('filterCategory').addEventListener('change', () => { currentPage = 1; loadKeywords(); });
   document.getElementById('filterMajor').addEventListener('change', () => { currentPage = 1; loadKeywords(); });
   document.getElementById('filterSearch').addEventListener('input', () => { currentPage = 1; loadKeywords(); });
-  document.getElementById('resumeKeywordsPrev').addEventListener('click', () => jumpToResumeKeywordsPage(currentPage - 1));
-  document.getElementById('resumeKeywordsNext').addEventListener('click', () => jumpToResumeKeywordsPage(currentPage + 1));
   // Delegated click handler for edit buttons
   document.getElementById('rows').addEventListener('click', (e) => {
     const btn = e.target.closest && e.target.closest('.edit-btn');
@@ -206,6 +253,13 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     const id = btn.dataset.itemId;
     const item = (window.allItems && window.allItems[id]) || null;
     if (item) openEdit(item);
+  });
+  pager = window.initPager({
+    prevId: 'resumeKeywordsPrev',
+    nextId: 'resumeKeywordsNext',
+    footId: 'resumeKeywordsFoot',
+    pageSize: PAGE_SIZE,
+    onPage: function (page) { currentPage = page; loadKeywords(); }
   });
   await loadMajorsForDropdown();
   await loadKeywords();

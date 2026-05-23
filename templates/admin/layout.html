@@ -1425,6 +1425,25 @@
                         <i data-lucide="tags" class="nav-icon"></i>
                         <span class="nav-label">Resume Keywords</span>
                     </a>
+                    <a href="/admin/resumes" class="nav-item {% if active_page == 'resume_tracking' %}active{% endif %}">
+                        <i data-lucide="file-text" class="nav-icon"></i>
+                        <span class="nav-label">Resume Tracking</span>
+                        <span class="badge-count">{{ resume_count|default(0)|abs }}</span>
+                    </a>
+                </div>
+
+                <div class="menu-section-title">
+                    <span>Assignment Studio</span>
+                </div>
+                <div class="menu-group">
+                    <a href="/admin/assignments" class="nav-item {% if active_page == 'assignments' %}active{% endif %}">
+                        <i data-lucide="book-open" class="nav-icon"></i>
+                        <span class="nav-label">Sessions</span>
+                    </a>
+                    <a href="/admin/assignment-prompts" class="nav-item {% if active_page == 'assignment_prompts' %}active{% endif %}">
+                        <i data-lucide="wand-2" class="nav-icon"></i>
+                        <span class="nav-label">Prompt Library</span>
+                    </a>
                 </div>
 
                 <div class="menu-section-title">

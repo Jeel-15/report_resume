@@ -5,33 +5,44 @@
 
 {% block admin_content %}
 <section class="dashboard-grid">
-    <div>
-        <h1 class="page-title">Reports</h1>
-        <p class="page-subtitle">Track report generation lifecycle and export-ready submissions.</p>
+    <div class="page-header">
+        <div class="page-header-left">
+            <h1 class="page-title">Reports</h1>
+            <p class="page-subtitle">Track report generation lifecycle across all students.</p>
+        </div>
+        <div class="page-header-actions">
+            <button class="btn-ghost" type="button" onclick="reportsCurrentPage=1; loadReports();">
+                <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <div class="admin-filter-bar">
+        <input class="small-input search-input" type="text" placeholder="Search report title..." id="reportSearch">
+        <input class="small-input" type="date" id="reportFromDate">
+        <input class="small-input" type="date" id="reportToDate">
+        <select class="small-input" id="reportUniversityFilter">
+            <option value="">All Universities</option>
+        </select>
+        <select class="small-input" id="reportTemplateFilter">
+            <option value="">All Templates</option>
+        </select>
+        <select class="small-input" id="reportStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="generated">Generated</option>
+            <option value="pending">Pending</option>
+            <option value="generating">Generating</option>
+            <option value="edited">Edited</option>
+            <option value="final">Final</option>
+            <option value="error">Error</option>
+        </select>
     </div>
 
     <article class="panel-card panel-body table-card">
-        <div class="toolbar">
-            <input class="small-input" type="date" id="reportFromDate">
-            <input class="small-input" type="date" id="reportToDate">
-            <select class="small-input" id="reportUniversityFilter"><option value="">All Universities</option></select>
-            <select class="small-input" id="reportTemplateFilter"><option value="">All Templates</option></select>
-            <select class="small-input" id="reportStatusFilter">
-                <option value="">All Status</option>
-                <option value="generated">Generated</option>
-                <option value="pending">Pending</option>
-                <option value="generating">Generating</option>
-                <option value="edited">Edited</option>
-                <option value="final">Final</option>
-                <option value="error">Error</option>
-            </select>
-            <input class="small-input" type="text" placeholder="Search report title" id="reportSearch" style="margin-left:auto;">
-        </div>
-
-        <div id="bulkToolbar" style="display:none;align-items:center;gap:12px;padding:10px 16px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;margin-bottom:12px;font-size:13px;">
-          <span id="selectedCount" style="font-weight:600;color:#856404;">0 selected</span>
-          <button onclick="bulkDelete()" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🗑 Delete Selected</button>
-          <button onclick="clearSelection()" style="padding:6px 12px;background:transparent;border:1px solid #aaa;border-radius:6px;font-size:13px;cursor:pointer;">✕ Clear</button>
+        <div class="bulk-toolbar" id="bulkToolbar">
+          <span class="bulk-toolbar-count" id="selectedCount">0 selected</span>
+          <button class="bulk-toolbar-delete" onclick="bulkDelete()">Delete Selected</button>
+          <button class="bulk-toolbar-clear" onclick="clearSelection()">Clear</button>
         </div>
 
         <div class="data-table-wrap">
@@ -55,16 +66,11 @@
             </table>
         </div>
 
-        <div class="table-foot">
-            <span style="font-size:13px;color:#64748b;" id="reportsFoot">Showing 0-0 of 0 reports</span>
-            <div class="pager">
-                <button type="button" id="reportsPrevPage">&lt;</button>
-                <button type="button" id="reportsPage1" class="active">1</button>
-                <button type="button" id="reportsPage2">2</button>
-                <button type="button" id="reportsPage3">3</button>
-                <span style="font-size:12px;color:#94a3b8;">...</span>
-                <button type="button" id="reportsLastPage">1</button>
-                <button type="button" id="reportsNextPage">&gt;</button>
+        <div class="table-foot-row">
+            <span id="reportsFoot">Showing 0 reports</span>
+            <div class="pager-simple">
+                <button type="button" id="reportsPrevPage">‹ Prev</button>
+                <button type="button" id="reportsNextPage">Next ›</button>
             </div>
         </div>
     </article>
@@ -81,12 +87,6 @@
     const reportStatusFilter = document.getElementById('reportStatusFilter');
     const reportSearch = document.getElementById('reportSearch');
     const reportsFoot = document.getElementById('reportsFoot');
-    const reportsLastPage = document.getElementById('reportsLastPage');
-    const reportsPrevPage = document.getElementById('reportsPrevPage');
-    const reportsNextPage = document.getElementById('reportsNextPage');
-    const reportsPage1 = document.getElementById('reportsPage1');
-    const reportsPage2 = document.getElementById('reportsPage2');
-    const reportsPage3 = document.getElementById('reportsPage3');
 
     let allReports = [];
     let filteredReports = [];
@@ -94,38 +94,15 @@
     let totalReports = 0;
     const REPORTS_PAGE_SIZE = 10;
     const ENTITY_ENDPOINT = 'reports';
-
-    // ─────────────────────────────────────────────────────────────
-    // Multi-select logic for bulk delete
-    // ─────────────────────────────────────────────────────────────
-
-    function updateBulkToolbar() {
-      const checked = document.querySelectorAll('.row-checkbox:checked');
-      const toolbar = document.getElementById('bulkToolbar');
-      const count = document.getElementById('selectedCount');
-      if (checked.length > 0) {
-        toolbar.style.display = 'flex';
-        count.textContent = `${checked.length} selected`;
-      } else {
-        toolbar.style.display = 'none';
-      }
-      const all = document.querySelectorAll('.row-checkbox');
-      document.getElementById('selectAll').checked = all.length > 0 && checked.length === all.length;
-      document.getElementById('selectAll').indeterminate = checked.length > 0 && checked.length < all.length;
-    }
-
-    function clearSelection() {
-      document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
-      document.getElementById('selectAll').checked = false;
-      document.getElementById('selectAll').indeterminate = false;
-      document.getElementById('bulkToolbar').style.display = 'none';
-    }
+        let clearSelection = function () {};
+        let updateBulkToolbar = function () {};
+        let pager = null;
 
     async function bulkDelete() {
       const checked = document.querySelectorAll('.row-checkbox:checked');
       if (!checked.length) return;
       const ids = Array.from(checked).map(cb => cb.dataset.id);
-      const confirmed = await showBulkConfirm(ids.length);
+            const confirmed = await window.showBulkConfirm(ids.length, 'reports');
       if (!confirmed) return;
       try {
         const headers = { 'Authorization': `Bearer ${window.AdminUI?.getAuthToken() || localStorage.getItem('token')}`, 'Content-Type': 'application/json' };
@@ -136,29 +113,15 @@
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
-          alert(`✓ ${data.deleted || ids.length} items deleted`);
+                    window.showToast(`Deleted ${data.deleted || ids.length} reports`, 'success');
           clearSelection();
           loadReports();
         } else {
-          alert(data.message || 'Bulk delete failed');
+                    window.showToast(data.message || 'Bulk delete failed', 'error');
         }
       } catch (err) {
-        alert('Network error during bulk delete');
+                window.showToast('Network error during bulk delete', 'error');
       }
-    }
-
-    function showBulkConfirm(count) {
-      return new Promise((resolve) => {
-        const existing = document.getElementById('bulkConfirmBar');
-        if (existing) existing.remove();
-        const bar = document.createElement('div');
-        bar.id = 'bulkConfirmBar';
-        bar.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:14px 24px;border-radius:10px;font-size:13px;z-index:9999;display:flex;gap:12px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.3);`;
-        bar.innerHTML = `<span>Delete <strong>${count}</strong> selected items? This cannot be undone.</span><button id="bulkConfirmYes" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button><button id="bulkConfirmNo" style="padding:6px 12px;background:transparent;border:1px solid #aaa;color:#fff;border-radius:6px;font-size:13px;cursor:pointer;">Cancel</button>`;
-        document.body.appendChild(bar);
-        document.getElementById('bulkConfirmYes').onclick = () => { bar.remove(); resolve(true); };
-        document.getElementById('bulkConfirmNo').onclick = () => { bar.remove(); resolve(false); };
-      });
     }
 
     const statusClass = (status) => {
@@ -177,13 +140,12 @@
 
         if (!rows.length) {
             reportBody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#94a3b8;">No reports found.</td></tr>';
-            reportsFoot.textContent = 'Showing 0-0 of 0 reports';
-            reportsLastPage.textContent = '1';
-            [reportsPage1, reportsPage2, reportsPage3].forEach((btn, idx) => {
-                btn.textContent = String(idx + 1);
-                btn.classList.toggle('active', idx === 0);
-            });
             clearSelection();
+            if (pager) {
+                pager.setTotal(totalReports, reportsCurrentPage);
+            } else {
+                reportsFoot.textContent = 'Showing 0 reports';
+            }
             return;
         }
 
@@ -191,19 +153,6 @@
         const pageRows = rows;
         const visibleStart = start + 1;
         const visibleEnd = Math.min(start + pageRows.length, totalReports);
-
-        const firstNumber = Math.max(1, Math.min(reportsCurrentPage - 1, totalPages - 2));
-        const pageNumbers = [0, 1, 2].map((i) => Math.min(totalPages, firstNumber + i));
-        [reportsPage1, reportsPage2, reportsPage3].forEach((btn, idx) => {
-            const pageNumber = pageNumbers[idx];
-            btn.textContent = String(pageNumber);
-            btn.classList.toggle('active', pageNumber === reportsCurrentPage);
-            btn.disabled = pageNumber < 1 || pageNumber > totalPages;
-        });
-
-        reportsPrevPage.disabled = reportsCurrentPage <= 1;
-        reportsNextPage.disabled = reportsCurrentPage >= totalPages;
-        reportsLastPage.textContent = `${totalPages.toLocaleString('en-IN')}`;
 
         reportBody.innerHTML = pageRows.map((r) => {
             const id = `RPT-${String(r._id || '').slice(-6).toUpperCase()}`;
@@ -230,27 +179,27 @@
             `;
         }).join('');
 
-        reportsFoot.textContent = `Showing ${visibleStart}-${visibleEnd} of ${totalReports.toLocaleString('en-IN')} reports`;
+        if (pager) {
+            pager.setTotal(totalReports, reportsCurrentPage);
+        } else {
+            reportsFoot.textContent = `Showing ${visibleStart}-${visibleEnd} of ${totalReports.toLocaleString('en-IN')} reports`;
+        }
         if (window.lucide) lucide.createIcons();
         bindDeleteActions();
         window.AdminUI?.staggerRows();
         clearSelection();
     };
 
-    const jumpToReportsPage = (nextPage) => {
-        const totalPages = Math.max(1, Math.ceil(totalReports / REPORTS_PAGE_SIZE));
-        reportsCurrentPage = Math.max(1, Math.min(totalPages, nextPage));
-        loadReports();
-    };
-
     const bindDeleteActions = () => {
         document.querySelectorAll('.delete-report').forEach((btn) => {
             btn.addEventListener('click', async () => {
-                if (!confirm('Delete this report?')) return;
+                const confirmed = await window.showBulkConfirm(1, 'report');
+                if (!confirmed) return;
                 await fetch(`/api/admin/reports/${btn.dataset.id}`, {
                     method: 'DELETE',
                     headers: { Authorization: `Bearer ${window.AdminUI.getAuthToken()}` }
                 });
+                window.showToast('Report deleted', 'success');
                 await loadReports();
             });
         });
@@ -287,32 +236,36 @@
         if (tpl) params.set('template', tpl);
         if (status) params.set('status', status);
 
-        const data = await window.AdminUI.adminApiGet('/api/admin/reports?' + params.toString()) || { items: [] };
-        const items = data.items || [];
-        totalReports = data.total || 0;
+        const data = await window.AdminUI.apiPaged('/api/admin/reports', { params }) || {};
+        const normalized = window.AdminUI.normalizeListResponse(data);
+        const items = normalized.items || [];
+        totalReports = normalized.total || 0;
         fillReportFilters(items);
         renderReports(items, totalReports);
     };
+
+    const bulkSelect = window.initBulkSelect({
+        selectAllId: 'selectAll',
+        tbodyId: 'reportBody',
+        toolbarId: 'bulkToolbar',
+        countId: 'selectedCount',
+        checkboxClass: 'row-checkbox'
+    });
+    updateBulkToolbar = bulkSelect.updateToolbar;
+    clearSelection = bulkSelect.clearSelection;
+    updateBulkToolbar();
 
     [reportFromDate, reportToDate, reportUniversityFilter, reportTemplateFilter, reportStatusFilter].forEach((el) => {
         el.addEventListener('change', applyFilters);
     });
     reportSearch.addEventListener('input', () => { reportsCurrentPage = 1; loadReports(); });
 
-    reportsPrevPage.addEventListener('click', () => jumpToReportsPage(reportsCurrentPage - 1));
-    reportsNextPage.addEventListener('click', () => jumpToReportsPage(reportsCurrentPage + 1));
-    reportsPage1.addEventListener('click', () => jumpToReportsPage(Number(reportsPage1.textContent || '1')));
-    reportsPage2.addEventListener('click', () => jumpToReportsPage(Number(reportsPage2.textContent || '2')));
-    reportsPage3.addEventListener('click', () => jumpToReportsPage(Number(reportsPage3.textContent || '3')));
-    reportsLastPage.addEventListener('click', () => jumpToReportsPage(Number(reportsLastPage.textContent || '1')));
-
-    document.getElementById('selectAll').addEventListener('change', (e) => {
-      document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
-      updateBulkToolbar();
-    });
-
-    reportBody.addEventListener('change', (e) => {
-      if (e.target.classList.contains('row-checkbox')) updateBulkToolbar();
+    pager = window.initPager({
+        prevId: 'reportsPrevPage',
+        nextId: 'reportsNextPage',
+        footId: 'reportsFoot',
+        pageSize: REPORTS_PAGE_SIZE,
+        onPage: function (p) { reportsCurrentPage = p; loadReports(); }
     });
 
     document.addEventListener('DOMContentLoaded', loadReports);

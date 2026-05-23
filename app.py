@@ -1,6 +1,7 @@
 import os
 import datetime
 from flask import Flask, jsonify, render_template, send_from_directory
+import markdown as _markdown
 from dotenv import load_dotenv
 from mongoengine import connect
 
@@ -68,6 +69,11 @@ def utility_processor():
             return datetime.date.today().strftime('%B %d, %Y')
 
     return dict(last_updated=last_updated)
+
+
+@app.template_filter('markdown')
+def markdown_filter(text):
+    return _markdown.markdown(str(text or ''), extensions=['extra', 'sane_lists'])
 
 
 @app.errorhandler(404)

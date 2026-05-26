@@ -165,6 +165,7 @@ body {
 .as-left-panel,
 .as-right-panel {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -419,11 +420,25 @@ body {
 }
 .as-generate-bar { justify-content: space-between; }
 
-.as-output-container { padding: 14px; flex: 1; min-height: 280px; background: var(--page-bg); border-radius: 12px; }
+.as-output-container {
+  padding: 14px;
+  flex: 0 0 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: clamp(420px, 58vh, 760px);
+  background: var(--page-bg);
+  border-radius: 12px;
+}
 .as-output-scroll {
   display: grid;
   gap: 12px;
   align-content: start;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 .as-section-card { padding: 14px; }
 .as-section-header {
@@ -604,12 +619,29 @@ input[type=range]:focus { outline: none; }
 @media (max-width: 1200px) {
   .as-studio-body { grid-template-columns: 1fr; }
   .as-divider { display: none; }
+  .as-output-container { height: auto; }
+  .as-output-scroll { min-height: 260px; height: auto; }
 }
 
 @media (max-width: 900px) {
   .as-type-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .as-form-grid { grid-template-columns: 1fr; }
   .as-mobile-preview-fab { display: inline-flex; }
+  .as-studio-body { min-height: auto; }
+  .as-left-panel,
+  .as-right-panel {
+    padding: 14px;
+  }
+  .as-output-container {
+    height: auto;
+  }
+  .as-output-scroll {
+    min-height: 220px;
+    height: auto;
+  }
+  .as-chat-list {
+    max-height: 180px;
+  }
 }
 </style>
 {% endblock %}
@@ -631,6 +663,7 @@ input[type=range]:focus { outline: none; }
       <span class="as-word-pill" id="wordPill">0 / 0 words</span>
       <button type="button" class="as-btn as-btn-secondary" id="downloadPdfBtn">PDF</button>
       <button type="button" class="as-btn as-btn-secondary" id="downloadDocxBtn">DOCX</button>
+      <button type="button" class="as-btn as-btn-secondary" id="downloadPptxBtn" style="display:none;">PPTX</button>
       <button type="button" class="as-btn as-btn-primary" id="generateBtn">Generate</button>
       <button type="button" class="as-btn as-btn-secondary" id="startNewDraftBtn" style="display:none;margin-left:8px;">Start New Draft</button>
     </div>
@@ -1437,8 +1470,29 @@ const renderDocumentSections = (sections) => {
 
   const sorted = Array.isArray(sections) ? [...sections].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)) : [];
   if (!sorted.length) {
-    container.innerHTML = '<div class="as-empty-output" id="outputEmptyState">No sections generated yet. Generate your assignment to begin.</div>';
+    // Render a lightweight live preview using current form context so users see their inputs
+    const ctx = buildContextPayload(currentType);
+    const title = deriveTitle(currentType);
+    let previewHtml = `<article class="as-section-card"><div class="as-section-header"><div><h3 class="as-section-title-text">Title Page</h3></div></div><div class="as-section-content">`;
+    previewHtml += `<h1>${escapeHtml(title)}</h1>`;
+    if (currentType === 'lab_report') {
+      if (ctx.experimentTitle) previewHtml += `<p><strong>Experiment:</strong> ${escapeHtml(ctx.experimentTitle)}</p>`;
+      if (ctx.objective) previewHtml += `<p><strong>Objective:</strong> ${escapeHtml(ctx.objective)}</p>`;
+      if (ctx.variables) previewHtml += `<p><strong>Variables / Setup:</strong> ${escapeHtml(ctx.variables)}</p>`;
+    } else if (currentType === 'essay' || currentType === 'research_paper') {
+      if (ctx.topic || ctx.researchTopic) previewHtml += `<p><strong>Topic:</strong> ${escapeHtml(ctx.topic || ctx.researchTopic || '')}</p>`;
+      if (ctx.thesis || ctx.researchQuestion) previewHtml += `<p><strong>Thesis / Question:</strong> ${escapeHtml(ctx.thesis || ctx.researchQuestion || '')}</p>`;
+    } else if (currentType === 'case_study') {
+      if (ctx.caseTitle) previewHtml += `<p><strong>Case:</strong> ${escapeHtml(ctx.caseTitle)}</p>`;
+      if (ctx.organization) previewHtml += `<p><strong>Organization:</strong> ${escapeHtml(ctx.organization)}</p>`;
+    } else {
+      if (ctx.presentationTitle) previewHtml += `<p><strong>Title:</strong> ${escapeHtml(ctx.presentationTitle)}</p>`;
+      if (ctx.audience) previewHtml += `<p><strong>Audience:</strong> ${escapeHtml(ctx.audience)}</p>`;
+    }
+    previewHtml += `</div></article>`;
+    container.innerHTML = previewHtml;
     setMeter(currentSession ? currentSession.wordCountCurrent : 0, currentSession ? currentSession.wordCountTarget : 0);
+    if (window.adjustOutputHeight) window.adjustOutputHeight();
     return;
   }
 
@@ -1555,6 +1609,14 @@ const setDownloadAvailability = () => {
     button.disabled = !hasSections;
     button.title = hasSections ? '' : 'Generate assignment first';
   });
+
+  const pptxButton = document.getElementById('downloadPptxBtn');
+  if (pptxButton) {
+    const isPresentation = String(currentType || '') === 'presentation_script';
+    pptxButton.style.display = isPresentation ? 'inline-flex' : 'none';
+    pptxButton.disabled = !hasSections;
+    pptxButton.title = hasSections ? '' : 'Generate assignment first';
+  }
 };
 
 const renderChatChips = (type) => {
@@ -1895,6 +1957,18 @@ const downloadDocx = async () => {
   }
 };
 
+const downloadPptx = async () => {
+  if (!sessionId) return showToast('Create or load an assignment first', 'error');
+  const hasSections = !!(currentSession && Array.isArray(currentSession.documentSections) && currentSession.documentSections.length > 0);
+  if (!hasSections) return showToast('Generate assignment first', 'error');
+  try {
+    const title = currentSession?.title || deriveTitle(currentType) || 'presentation';
+    await downloadFile(`/api/student/assignments/${sessionId}/pptx`, `${title.replace(/[^a-z0-9_-]+/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '') || 'presentation'}.pptx`);
+  } catch (error) {
+    showToast(error.message || 'PPTX download failed', 'error');
+  }
+};
+
 const initResize = () => {
   const body = document.getElementById('studioBody');
   const divider = document.getElementById('dragDivider');
@@ -1924,6 +1998,7 @@ const initEvents = () => {
   document.getElementById('generateBtn2')?.addEventListener('click', startGeneration);
   document.getElementById('downloadPdfBtn')?.addEventListener('click', downloadPdf);
   document.getElementById('downloadDocxBtn')?.addEventListener('click', downloadDocx);
+  document.getElementById('downloadPptxBtn')?.addEventListener('click', downloadPptx);
   document.getElementById('startNewDraftBtn')?.addEventListener('click', startNewDraft);
   document.getElementById('sendChatBtn')?.addEventListener('click', () => sendChat());
   document.getElementById('chatInput')?.addEventListener('keydown', (event) => {

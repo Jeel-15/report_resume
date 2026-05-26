@@ -111,6 +111,33 @@ body{background:var(--page-bg);color:var(--txt)}
   function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}
   function formatDate(iso){try{const d=new Date(iso);return d.toLocaleDateString();}catch(e){return ''}}
 
+  async function downloadFile(url, filename){
+    const res = await fetch(url, { headers: authHeaders() })
+    if (!res.ok) {
+      let message = 'Download failed'
+      try {
+        const data = await res.json()
+        message = data.message || message
+      } catch (e) {}
+      throw new Error(message)
+    }
+    const blob = await res.blob()
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(link.href), 0)
+  }
+
+  function safeFilename(title, fallback){
+    return String(title || fallback || 'assignment')
+      .replace(/[^a-z0-9_-]+/gi, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '') || fallback || 'assignment'
+  }
+
   function renderCard(s){
     const div = document.createElement('div');div.className='as-card';div.dataset.id=s._id;div.dataset.status=s.status||''
     const icon = document.createElement('div');icon.className='as-card-type-icon';icon.textContent = TYPE_ICONS[s.assignmentType]||'📄'
@@ -126,8 +153,9 @@ body{background:var(--page-bg);color:var(--txt)}
     const actions = document.createElement('div');actions.className='as-card-actions'
     const openA = document.createElement('a');openA.href = '/student/assignments/'+s._id;openA.className='as-btn-ghost';openA.textContent='Open';actions.appendChild(openA)
     if((s.status||'')==='generated'){
-      const pdfBtn=document.createElement('button');pdfBtn.className='as-btn-ghost';pdfBtn.textContent='PDF';pdfBtn.onclick=()=>downloadPdf(s._id);actions.appendChild(pdfBtn)
-      const docxBtn=document.createElement('button');docxBtn.className='as-btn-ghost';docxBtn.textContent='DOCX';docxBtn.onclick=()=>downloadDocx(s._id);actions.appendChild(docxBtn)
+      const pdfBtn=document.createElement('button');pdfBtn.className='as-btn-ghost';pdfBtn.textContent='PDF';pdfBtn.onclick=()=>downloadPdf(s._id, s.title);actions.appendChild(pdfBtn)
+      const isPresentation = String(s.assignmentType||'') === 'presentation_script'
+      const exportBtn=document.createElement('button');exportBtn.className='as-btn-ghost';exportBtn.textContent=isPresentation ? 'PPTX' : 'DOCX';exportBtn.onclick=()=>isPresentation ? downloadPptx(s._id, s.title) : downloadDocx(s._id, s.title);actions.appendChild(exportBtn)
     }
     const delBtn=document.createElement('button');delBtn.className='as-btn-danger';delBtn.textContent='🗑';delBtn.onclick=()=>{ if(confirm('Delete this assignment?')) deleteSession(s._id)};actions.appendChild(delBtn)
 
@@ -170,8 +198,18 @@ body{background:var(--page-bg);color:var(--txt)}
     statusFilter.innerHTML = '<option value="">All Statuses</option>' + Array.from(statuses).map(s=>`<option value="${s}">${STATUS_LABELS[s]||s}</option>`).join('')
   }
 
-  async function downloadPdf(id){ window.open('/api/student/assignments/'+id+'/pdf','_blank') }
-  async function downloadDocx(id){ window.open('/api/student/assignments/'+id+'/docx','_blank') }
+  async function downloadPdf(id, title){
+    const name = safeFilename(title, 'assignment') + '.pdf'
+    await downloadFile('/api/student/assignments/'+id+'/pdf', name)
+  }
+  async function downloadDocx(id, title){
+    const name = safeFilename(title, 'assignment') + '.docx'
+    await downloadFile('/api/student/assignments/'+id+'/docx', name)
+  }
+  async function downloadPptx(id, title){
+    const name = safeFilename(title, 'presentation') + '.pptx'
+    await downloadFile('/api/student/assignments/'+id+'/pptx', name)
+  }
 
   async function deleteSession(id){
     try{

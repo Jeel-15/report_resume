@@ -419,6 +419,53 @@ def _serialize_profile(user):
     }
 
 
+def _build_student_profile_snapshot(user):
+    profile = _serialize_profile(user)
+    university_obj = profile.get('university') or {}
+    college_obj = profile.get('college') or {}
+    degree_obj = profile.get('degree') or {}
+    major_obj = profile.get('major') or {}
+    academic_department_obj = profile.get('academicDepartment') or {}
+    industry_obj = profile.get('industry') or {}
+    industry_profile_obj = profile.get('industryProfile') or {}
+
+    department_name = (
+        academic_department_obj.get('name')
+        or str(getattr(user, 'department', '') or '').strip()
+    )
+
+    industry_name = (
+        industry_obj.get('name')
+        or industry_profile_obj.get('name')
+        or str(getattr(user, 'industryType', '') or '').strip()
+    )
+
+    return {
+        'name': profile.get('name', '') or '',
+        'rollNumber': profile.get('rollNumber', '') or '',
+        'enrollmentNumber': profile.get('enrollmentNumber', '') or '',
+        'semester': profile.get('semester', '') or '',
+        'phone': profile.get('phone', '') or '',
+        'whatsapp': profile.get('whatsapp', '') or '',
+        'gender': profile.get('gender', '') or '',
+        'supervisorName': profile.get('supervisorName', '') or '',
+        'supervisorContact': profile.get('supervisorContact', '') or '',
+        'universityName': university_obj.get('name', '') or '',
+        'collegeName': college_obj.get('name', '') or '',
+        'degreeName': degree_obj.get('name', '') or '',
+        'majorName': major_obj.get('name', '') or '',
+        'departmentName': department_name,
+        'industryName': industry_name,
+        'industryType': industry_profile_obj.get('industryType', '') or industry_obj.get('industryType', '') or '',
+        'industrySubType': industry_profile_obj.get('industrySubType', '') or industry_obj.get('industrySubType', '') or '',
+        'profileCompleted': profile.get('profileCompleted', False),
+        'effectiveLogos': {
+            'university': profile.get('universityEffectiveLogo', '') or '',
+            'college': profile.get('collegeEffectiveLogo', '') or '',
+        },
+    }
+
+
 def _serialize_service(service):
     return {
         '_id': str(service.id),
@@ -1990,6 +2037,7 @@ def generate_assignment(current_user, session_id):
         uni_name = str(getattr(s, 'universityName', '') or '')
         atype = str(getattr(s, 'assignmentType', '') or '')
         injections = _get_applicable_prompts(uni_name, atype)
+        student_profile = _build_student_profile_snapshot(current_user)
 
         payload = {
             'sessionId': str(s.id),
@@ -1998,6 +2046,7 @@ def generate_assignment(current_user, session_id):
             'universityName': uni_name,
             'degreeName': str(getattr(s, 'degreeName', '') or ''),
             'majorName': str(getattr(s, 'majorName', '') or ''),
+            'studentProfile': student_profile,
             'promptInjections': injections,
             'callbackUrl': callback_url,
         }
@@ -2336,6 +2385,50 @@ def download_assignment_docx(current_user, session_id):
         filename = f'{safe_title}_assignment.docx'
 
         return send_file(doc_io, mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document', as_attachment=True, download_name=filename)
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@student_bp.route('/assignments/<session_id>/pptx', methods=['GET'])
+@token_required
+def download_assignment_pptx(current_user, session_id):
+    import io
+    from flask import send_file
+    from utils.pptx_generator import generate_pptx_from_sections
+    try:
+        s = AssignmentSession.objects(id=session_id).first()
+        if not s:
+            return jsonify({'message': 'Not found'}), 404
+        user_id = getattr(current_user, 'id', None)
+        session_user_id = getattr(getattr(s, 'user', None), 'id', None) or getattr(s, '_data', {}).get('user', None)
+        if str(session_user_id) != str(user_id):
+            return jsonify({'message': 'Forbidden'}), 403
+
+        sections = list(getattr(s, 'documentSections', []) or [])
+        if not sections:
+            return jsonify({'message': 'Assignment not yet generated'}), 400
+
+        metadata = {
+            'title': str(getattr(s, 'title', '') or 'Presentation'),
+            'assignmentType': str(getattr(s, 'assignmentType', '') or ''),
+            'studentName': str(getattr(current_user, 'name', '') or ''),
+            'universityName': str(getattr(s, 'universityName', '') or ''),
+            'degreeName': str(getattr(s, 'degreeName', '') or ''),
+            'wordCount': int(getattr(s, 'wordCountCurrent', 0) or 0),
+        }
+
+        pptx_io = generate_pptx_from_sections(sections, metadata)
+
+        safe_title = str(getattr(s, 'title', 'presentation') or 'presentation')
+        safe_title = ''.join(c for c in safe_title if c.isalnum() or c in ' _-')[:60].strip().replace(' ', '_')
+        filename = f'{safe_title}_presentation.pptx'
+
+        return send_file(
+            pptx_io,
+            mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            as_attachment=True,
+            download_name=filename,
+        )
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 

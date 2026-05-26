@@ -801,6 +801,7 @@ const studentUI = window.studentUI || {};
 const sessionIdFromRoute = {{ (session_id if session_id is defined else none)|tojson }};
 let sessionId = sessionIdFromRoute || null;
 let currentSession = null;
+let studentProfile = null;
 let currentType = 'essay';
 let _pollTimer = null;
 let _pollCount = 0;
@@ -830,6 +831,63 @@ const CHAT_CHIPS = {
   lab_report: ['Add Error Analysis', 'Improve Data Tables', 'Expand Procedure', 'Add Precautions'],
   case_study: ['Strengthen Recommendation', 'Add SWOT Analysis', 'Add India Examples', 'Improve Analysis'],
   presentation_script: ['Shorten Speaker Notes', 'Add Transitions', 'Make it More Engaging', 'Add CTA'],
+};
+
+const getMajorPolicy = () => studentProfile?.major?.reportPolicy || {};
+
+const getDefaultAssignmentLanguage = () => String(studentProfile?.major?.reportLanguage || 'English').trim() || 'English';
+
+const getAllowedAssignmentLanguages = () => {
+  const policy = getMajorPolicy();
+  const langs = Array.isArray(policy.allowedLanguages) ? policy.allowedLanguages : [];
+  return langs.map(lang => String(lang || '').trim()).filter(Boolean);
+};
+
+const isLanguageSelectorVisible = () => {
+  const policy = getMajorPolicy();
+  const allowedLanguages = getAllowedAssignmentLanguages();
+  const strictLanguageOnly = !!policy.strictLanguageOnly;
+  return !strictLanguageOnly && allowedLanguages.length >= 2;
+};
+
+const getSelectedAssignmentLanguage = () => {
+  const select = document.getElementById('assignmentLanguageSelect');
+  const selected = select ? String(select.value || '').trim() : '';
+  return selected || getDefaultAssignmentLanguage();
+};
+
+const getAssignmentLanguageControlHtml = () => {
+  const defaultLanguage = getDefaultAssignmentLanguage();
+  const allowedLanguages = getAllowedAssignmentLanguages();
+  const visible = isLanguageSelectorVisible();
+  const options = [
+    `<option value="">Default (${escapeHtml(defaultLanguage)})</option>`,
+    ...allowedLanguages.map(lang => `<option value="${escapeHtml(lang)}">${escapeHtml(lang)}</option>`),
+  ].join('');
+
+  return `
+    <div class="as-field as-field-full" id="assignmentLanguageWrap" style="display:${visible ? 'grid' : 'none'};">
+      <label for="assignmentLanguageSelect">Assignment Language</label>
+      <select id="assignmentLanguageSelect">
+        ${options || `<option value="">Default (${escapeHtml(defaultLanguage)})</option>`}
+      </select>
+      <small class="text-muted" id="assignmentLanguageHint" style="font-size:11px;">
+        ${visible
+          ? `Default is "${escapeHtml(defaultLanguage)}". Choose another allowed language for this assignment.`
+          : `Default language is "${escapeHtml(defaultLanguage)}".`}
+      </small>
+    </div>
+  `;
+};
+
+const loadStudentProfile = async () => {
+  if (studentProfile) return studentProfile;
+  try {
+    studentProfile = await apiGet('/api/student/profile');
+  } catch (error) {
+    studentProfile = null;
+  }
+  return studentProfile;
 };
 
 const FORM_TEMPLATES = {
@@ -1257,7 +1315,7 @@ const renderAssignmentForm = (type) => {
     card.classList.toggle('selected', card.dataset.type === currentType);
   });
   container.classList.remove('as-form-animate');
-  container.innerHTML = FORM_TEMPLATES[currentType] || FORM_TEMPLATES.essay;
+  container.innerHTML = `${getAssignmentLanguageControlHtml()}${FORM_TEMPLATES[currentType] || FORM_TEMPLATES.essay}`;
   container.offsetHeight;
   container.classList.add('as-form-animate');
   renderChatChips(currentType);
@@ -1315,6 +1373,7 @@ const getNumberValue = (id, fallback) => {
 };
 
 const buildContextPayload = (type) => {
+  const language = getSelectedAssignmentLanguage();
   if (type === 'essay') {
     return {
       topic: getFieldValue('fTopic'),
@@ -1326,6 +1385,7 @@ const buildContextPayload = (type) => {
       wordCountTarget: getNumberValue('fWordCount', 800),
       bodyParagraphs: getNumberValue('fBodyParagraphs', 3),
       additionalInstructions: getFieldValue('fInstructions'),
+      language,
     };
   }
   if (type === 'research_paper') {
@@ -1338,6 +1398,7 @@ const buildContextPayload = (type) => {
       subject: getFieldValue('fResearchSubject'),
       wordCountTarget: getNumberValue('fResearchWordCount', 1500),
       additionalInstructions: getFieldValue('fResearchInstructions'),
+      language,
     };
   }
   if (type === 'lab_report') {
@@ -1350,6 +1411,7 @@ const buildContextPayload = (type) => {
       subject: getFieldValue('fLabSubject'),
       wordCountTarget: getNumberValue('fLabWordCount', 1200),
       additionalInstructions: getFieldValue('fLabInstructions'),
+      language,
     };
   }
   if (type === 'case_study') {
@@ -1362,6 +1424,7 @@ const buildContextPayload = (type) => {
       toneProfile: getFieldValue('fCaseTone'),
       wordCountTarget: getNumberValue('fCaseWordCount', 1000),
       additionalInstructions: getFieldValue('fCaseInstructions'),
+      language,
     };
   }
   return {
@@ -1373,6 +1436,7 @@ const buildContextPayload = (type) => {
     speakerStyle: getFieldValue('fPresentationStyle'),
     wordCountTarget: getNumberValue('fPresentationWordCount', 900),
     additionalInstructions: getFieldValue('fPresentationInstructions'),
+    language,
   };
 };
 
@@ -1409,6 +1473,7 @@ const fillFormFromContext = () => {
     const el = document.getElementById(id);
     if (el && value != null) el.value = String(value);
   };
+  setValue('assignmentLanguageSelect', ctx.language || currentSession?.language || getDefaultAssignmentLanguage());
   if (currentType === 'essay') {
     setValue('fTopic', ctx.topic || currentSession?.title || '');
     setValue('fThesis', ctx.thesis || '');
@@ -1632,9 +1697,11 @@ const saveCurrentDraft = async () => {
   setSaveStatus('saving', 'Saving');
   try {
     const ctx = buildContextPayload(currentType);
+    const language = ctx.language || getDefaultAssignmentLanguage();
     const payload = {
       assignmentType: currentType,
       contextInputs: ctx,
+      language,
       title: deriveTitle(currentType),
     };
     const result = await apiPut(`/api/student/assignments/${sessionId}`, payload);
@@ -1644,6 +1711,7 @@ const saveCurrentDraft = async () => {
       currentSession.contextInputs = ctx;
       currentSession.title = payload.title;
       currentSession.wordCountTarget = ctx.wordCountTarget || currentSession.wordCountTarget || 0;
+      currentSession.language = language;
     }
     syncHeaderFromSession();
     return result;
@@ -1723,26 +1791,31 @@ const loadSession = async (sid) => {
 const createOrUpdateSession = async () => {
   const ctx = buildContextPayload(currentType);
   const title = deriveTitle(currentType);
+  const language = ctx.language || getDefaultAssignmentLanguage();
   if (!sessionId) {
     const created = await apiPost('/api/student/assignments', {
       assignmentType: currentType,
       contextInputs: ctx,
+      language,
     });
     sessionId = created.session._id;
     currentSession = created.session;
     currentSession.contextInputs = ctx;
     currentSession.title = title;
+    currentSession.language = language;
     history.replaceState({}, '', `/student/assignments/${sessionId}`);
   } else {
     await apiPut(`/api/student/assignments/${sessionId}`, {
       assignmentType: currentType,
       title,
       contextInputs: ctx,
+      language,
     });
     if (currentSession) {
       currentSession.assignmentType = currentType;
       currentSession.title = title;
       currentSession.contextInputs = ctx;
+      currentSession.language = language;
     }
   }
   syncHeaderFromSession();
@@ -2033,6 +2106,7 @@ const init = async () => {
   }
   initEvents();
   initResize();
+  await loadStudentProfile();
   renderAssignmentForm(currentType);
   setStatusPill('draft');
   setWordPill(0, 0);

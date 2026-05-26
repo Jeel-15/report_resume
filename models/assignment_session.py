@@ -35,6 +35,9 @@ class AssignmentSession(Document):
     universityName = StringField(default='')
     degreeName     = StringField(default='')
     majorName      = StringField(default='')
+    # Preferred language for this assignment (e.g., 'English', 'Hindi')
+    # Filled from user/major defaults when session is created.
+    language = StringField(default='')
 
     # Assignment-type-specific inputs
     # All types stored in one flexible dict to avoid schema migration

@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ session.title }}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&display=swap');
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   @page {
@@ -27,7 +25,7 @@
   }
 
   body {
-    font-family: 'Lora', Georgia, 'Times New Roman', serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 11pt;
     line-height: 1.75;
     color: #1e293b;
@@ -60,12 +58,12 @@
   .doc-meta span::before { content: '· '; }
   .doc-meta span:first-child::before { content: ''; }
 
-  .disclaimer {
+  {# .disclaimer {
     font-size: 8.5pt;
     color: #94a3b8;
     font-style: italic;
     margin-top: 6px;
-  }
+  } #}
 
   .section-block {
     margin-bottom: 20px;
@@ -153,7 +151,7 @@
     {% if user.name %}<span>{{ user.name }}</span>{% endif %}
     <span>{{ session.wordCountCurrent | default(0) }} words</span>
   </div>
-  <div class="disclaimer">⚠ AI-Assisted Academic Draft — Review and personalise before submission.</div>
+  
 </div>
 
 {% set sections = session.documentSections | sort(attribute='sort_order') %}

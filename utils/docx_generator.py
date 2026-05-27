@@ -197,14 +197,14 @@ def generate_docx_from_sections(sections, metadata):
     meta_run.font.size = Pt(10)
     meta_run.font.color.rgb = RGBColor(0x64, 0x74, 0x8B)
 
-    # ── Disclaimer ────────────────────────────────────────────────────────
-    disclaimer_para = doc.add_paragraph()
-    disclaimer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    d_run = disclaimer_para.add_run('⚠ AI-Assisted Draft — Review Before Submission')
-    d_run.font.size = Pt(9)
-    d_run.font.italic = True
-    d_run.font.color.rgb = RGBColor(0x94, 0xa3, 0xb8)
-    disclaimer_para.paragraph_format.space_after = Pt(12)
+    # # ── Disclaimer ────────────────────────────────────────────────────────
+    # disclaimer_para = doc.add_paragraph()
+    # disclaimer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # d_run = disclaimer_para.add_run('⚠ AI-Assisted Draft — Review Before Submission')
+    # d_run.font.size = Pt(9)
+    # d_run.font.italic = True
+    # d_run.font.color.rgb = RGBColor(0x94, 0xa3, 0xb8)
+    # disclaimer_para.paragraph_format.space_after = Pt(12)
 
     # ── Section divider ──────────────────────────────────────────────────
     doc.add_paragraph()

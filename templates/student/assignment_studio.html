@@ -801,7 +801,6 @@ const studentUI = window.studentUI || {};
 const sessionIdFromRoute = {{ (session_id if session_id is defined else none)|tojson }};
 let sessionId = sessionIdFromRoute || null;
 let currentSession = null;
-let studentProfile = null;
 let currentType = 'essay';
 let _pollTimer = null;
 let _pollCount = 0;
@@ -825,29 +824,39 @@ const STATUS_LABELS = {
   error: 'Error',
 };
 
-const CHAT_CHIPS = {
-  essay: ['Make More Formal', 'Add India Context', 'Make Shorter', 'Add Examples', 'Improve Flow'],
-  research_paper: ['Add More Citations', 'Strengthen Abstract', 'Add India Statistics', 'Improve Flow'],
-  lab_report: ['Add Error Analysis', 'Improve Data Tables', 'Expand Procedure', 'Add Precautions'],
-  case_study: ['Strengthen Recommendation', 'Add SWOT Analysis', 'Add India Examples', 'Improve Analysis'],
-  presentation_script: ['Shorten Speaker Notes', 'Add Transitions', 'Make it More Engaging', 'Add CTA'],
+let studentProfile = null;
+
+const loadStudentProfile = async () => {
+  if (studentProfile) return studentProfile;
+  try {
+    studentProfile = await apiGet('/api/student/profile');
+  } catch (error) {
+    studentProfile = null;
+  }
+  return studentProfile;
 };
 
 const getMajorPolicy = () => studentProfile?.major?.reportPolicy || {};
 
-const getDefaultAssignmentLanguage = () => String(studentProfile?.major?.reportLanguage || 'English').trim() || 'English';
+const getDefaultAssignmentLanguage = () => String(
+  studentProfile?.major?.reportLanguage || currentSession?.language || 'English'
+).trim() || 'English';
 
 const getAllowedAssignmentLanguages = () => {
   const policy = getMajorPolicy();
-  const langs = Array.isArray(policy.allowedLanguages) ? policy.allowedLanguages : [];
-  return langs.map(lang => String(lang || '').trim()).filter(Boolean);
+  const allowed = Array.isArray(policy.allowedLanguages) ? policy.allowedLanguages : [];
+  const normalized = allowed.map((lang) => String(lang || '').trim()).filter(Boolean);
+  const defaultLanguage = getDefaultAssignmentLanguage();
+  if (!normalized.length) return [defaultLanguage];
+  if (!normalized.includes(defaultLanguage)) normalized.unshift(defaultLanguage);
+  return normalized;
 };
 
 const isLanguageSelectorVisible = () => {
   const policy = getMajorPolicy();
   const allowedLanguages = getAllowedAssignmentLanguages();
-  const strictLanguageOnly = !!policy.strictLanguageOnly;
-  return !strictLanguageOnly && allowedLanguages.length >= 2;
+  if (!allowedLanguages.length) return true;
+  return !policy.strictLanguageOnly || allowedLanguages.length >= 1;
 };
 
 const getSelectedAssignmentLanguage = () => {
@@ -860,16 +869,16 @@ const getAssignmentLanguageControlHtml = () => {
   const defaultLanguage = getDefaultAssignmentLanguage();
   const allowedLanguages = getAllowedAssignmentLanguages();
   const visible = isLanguageSelectorVisible();
-  const options = [
-    `<option value="">Default (${escapeHtml(defaultLanguage)})</option>`,
-    ...allowedLanguages.map(lang => `<option value="${escapeHtml(lang)}">${escapeHtml(lang)}</option>`),
-  ].join('');
+  const options = allowedLanguages
+    .map((lang) => `<option value="${escapeHtml(lang)}">${escapeHtml(lang)}</option>`)
+    .join('');
 
   return `
     <div class="as-field as-field-full" id="assignmentLanguageWrap" style="display:${visible ? 'grid' : 'none'};">
       <label for="assignmentLanguageSelect">Assignment Language</label>
       <select id="assignmentLanguageSelect">
-        ${options || `<option value="">Default (${escapeHtml(defaultLanguage)})</option>`}
+        <option value="">Default (${escapeHtml(defaultLanguage)})</option>
+        ${options}
       </select>
       <small class="text-muted" id="assignmentLanguageHint" style="font-size:11px;">
         ${visible
@@ -880,14 +889,12 @@ const getAssignmentLanguageControlHtml = () => {
   `;
 };
 
-const loadStudentProfile = async () => {
-  if (studentProfile) return studentProfile;
-  try {
-    studentProfile = await apiGet('/api/student/profile');
-  } catch (error) {
-    studentProfile = null;
-  }
-  return studentProfile;
+const CHAT_CHIPS = {
+  essay: ['Make More Formal', 'Add India Context', 'Make Shorter', 'Add Examples', 'Improve Flow'],
+  research_paper: ['Add More Citations', 'Strengthen Abstract', 'Add India Statistics', 'Improve Flow'],
+  lab_report: ['Add Error Analysis', 'Improve Data Tables', 'Expand Procedure', 'Add Precautions'],
+  case_study: ['Strengthen Recommendation', 'Add SWOT Analysis', 'Add India Examples', 'Improve Analysis'],
+  presentation_script: ['Shorten Speaker Notes', 'Add Transitions', 'Make it More Engaging', 'Add CTA'],
 };
 
 const FORM_TEMPLATES = {
@@ -1697,11 +1704,9 @@ const saveCurrentDraft = async () => {
   setSaveStatus('saving', 'Saving');
   try {
     const ctx = buildContextPayload(currentType);
-    const language = ctx.language || getDefaultAssignmentLanguage();
     const payload = {
       assignmentType: currentType,
       contextInputs: ctx,
-      language,
       title: deriveTitle(currentType),
     };
     const result = await apiPut(`/api/student/assignments/${sessionId}`, payload);
@@ -1711,7 +1716,6 @@ const saveCurrentDraft = async () => {
       currentSession.contextInputs = ctx;
       currentSession.title = payload.title;
       currentSession.wordCountTarget = ctx.wordCountTarget || currentSession.wordCountTarget || 0;
-      currentSession.language = language;
     }
     syncHeaderFromSession();
     return result;
@@ -1791,31 +1795,26 @@ const loadSession = async (sid) => {
 const createOrUpdateSession = async () => {
   const ctx = buildContextPayload(currentType);
   const title = deriveTitle(currentType);
-  const language = ctx.language || getDefaultAssignmentLanguage();
   if (!sessionId) {
     const created = await apiPost('/api/student/assignments', {
       assignmentType: currentType,
       contextInputs: ctx,
-      language,
     });
     sessionId = created.session._id;
     currentSession = created.session;
     currentSession.contextInputs = ctx;
     currentSession.title = title;
-    currentSession.language = language;
     history.replaceState({}, '', `/student/assignments/${sessionId}`);
   } else {
     await apiPut(`/api/student/assignments/${sessionId}`, {
       assignmentType: currentType,
       title,
       contextInputs: ctx,
-      language,
     });
     if (currentSession) {
       currentSession.assignmentType = currentType;
       currentSession.title = title;
       currentSession.contextInputs = ctx;
-      currentSession.language = language;
     }
   }
   syncHeaderFromSession();

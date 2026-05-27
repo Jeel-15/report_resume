@@ -339,6 +339,7 @@ def generate_pdf_from_html(html_content, base_url=None, student_name='Student'):
             page = context.new_page()
 
             rendered_html = html_content
+            rendered_html = re.sub(r'@import\s+url\(["\']?https?://[^)]+\);?\s*', '', rendered_html, flags=re.IGNORECASE)
             if base_url and '<base ' not in rendered_html:
                 normalized_base = str(base_url).rstrip('/') + '/'
                 rendered_html = rendered_html.replace('<head>', f'<head><base href="{normalized_base}">', 1)
@@ -375,7 +376,8 @@ def generate_pdf_from_html(html_content, base_url=None, student_name='Student'):
 
             # Use load instead of networkidle so a slow or hanging asset doesn't
             # block the preview request and reset the connection.
-            page.set_content(rendered_html, wait_until='load')
+            page.set_content(rendered_html, wait_until='domcontentloaded')
+            page.wait_for_timeout(250)
 
             # Allow template-side TOC pagination script to complete if present.
             try:

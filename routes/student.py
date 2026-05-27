@@ -1676,14 +1676,12 @@ def _serialize_assignment_session(s, include_sections=False, include_chat=False)
         'universityName':   str(getattr(s, 'universityName', '') or ''),
         'degreeName':       str(getattr(s, 'degreeName', '') or ''),
         'majorName':        str(getattr(s, 'majorName', '') or ''),
-        'language':         str(getattr(s, 'language', '') or ''),
         'status':           str(getattr(s, 'status', 'draft') or 'draft'),
         'errorMessage':     str(getattr(s, 'errorMessage', '') or ''),
         'wordCountCurrent': int(getattr(s, 'wordCountCurrent', 0) or 0),
         'wordCountTarget':  int(getattr(s, 'wordCountTarget', 0) or 0),
         'generationCount':  int(getattr(s, 'generationCount', 0) or 0),
         'contextInputs':    dict(getattr(s, 'contextInputs', {}) or {}),
-        'language':         str(getattr(s, 'language', '') or str(dict(getattr(s, 'contextInputs', {}) or {}).get('language', '') or '')),
         'createdAt':        s.createdAt.isoformat() if getattr(s, 'createdAt', None) else '',
         'updatedAt':        s.updatedAt.isoformat() if getattr(s, 'updatedAt', None) else '',
     }
@@ -1779,6 +1777,21 @@ def _normalize_assignment_callback_sections(raw_sections):
     if not isinstance(raw_sections, list):
         return []
 
+    def _clean_assignment_markdown(md):
+        if not md:
+            return md
+        text = str(md)
+        # Remove AI notice lines like: '⚠ AI-Assisted Draft — Review Before Submission'
+        text = re.sub(r"^\s*⚠.*$", "", text, flags=re.MULTILINE)
+        # Remove 'Body — Argument 1' style markers
+        text = re.sub(r"^\s*Body\s*[—-]\s*Argument\s*\d+\s*$", "", text, flags=re.IGNORECASE | re.MULTILINE)
+        # Remove standalone headings like 'Introduction', 'Conclusion' that LLM may inject
+        text = re.sub(r"^\s*(?:#+\s*)?(Introduction|Conclusion|Abstract)\s*$", "", text, flags=re.IGNORECASE | re.MULTILINE)
+        # Remove any repeated empty lines left behind
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        # Trim leading/trailing whitespace
+        return text.strip()
+
     normalized = []
     used_keys = set()
 
@@ -1787,6 +1800,7 @@ def _normalize_assignment_callback_sections(raw_sections):
             continue
 
         markdown = str(_extract_markdown_from_llm_item(sec) or '').strip()
+        markdown = _clean_assignment_markdown(markdown)
 
         title = str(sec.get('title') or '').strip()
         if not title and markdown:
@@ -1882,38 +1896,6 @@ def create_assignment(current_user):
         )
         title = str(topic).strip()[:120] or 'Untitled Assignment'
 
-        # Determine language selection: explicit request -> validate against major policy -> fallback
-        requested_lang = str(data.get('language') or context.get('language') or '').strip()
-        major_doc = getattr(current_user, 'major', None)
-        allowed_langs = []
-        strict_only = False
-        default_lang = ''
-        try:
-            if major_doc:
-                # Major may be a Document or a dict depending on backend
-                md = major_doc
-                if hasattr(md, 'reportPolicy') and getattr(md, 'reportPolicy', None) is not None:
-                    rp = getattr(md, 'reportPolicy')
-                    allowed_langs = list(getattr(rp, 'allowedLanguages', []) or [])
-                    strict_only = bool(getattr(rp, 'strictLanguageOnly', False) or False)
-                default_lang = str(getattr(md, 'reportLanguage', '') or '')
-        except Exception:
-            allowed_langs = []
-            strict_only = False
-            default_lang = ''
-
-        chosen_lang = ''
-        if requested_lang:
-            # Validate requested language when major enforces a restricted set
-            if allowed_langs and strict_only and requested_lang not in allowed_langs:
-                return jsonify({'message': f"Language '{requested_lang}' is not allowed for the selected major"}), 400
-            chosen_lang = requested_lang
-        else:
-            chosen_lang = default_lang or (allowed_langs[0] if allowed_langs else 'English')
-
-        # Persist chosen language into context for backward compatibility
-        context['language'] = chosen_lang
-
         session = AssignmentSession(
             user=current_user,
             title=title,
@@ -1922,7 +1904,6 @@ def create_assignment(current_user):
             degreeName=deg_name,
             majorName=major_name,
             contextInputs=context,
-            language=chosen_lang,
             wordCountTarget=word_target,
             status='draft',
         )
@@ -1976,7 +1957,6 @@ def clone_assignment(current_user, session_id):
             degreeName=str(getattr(s, 'degreeName', '') or ''),
             majorName=str(getattr(s, 'majorName', '') or ''),
             contextInputs=dict(getattr(s, 'contextInputs', {}) or {}),
-            language=str(getattr(s, 'language', '') or ''),
             wordCountTarget=int(getattr(s, 'wordCountTarget', 0) or 0),
             status='draft',
         )
@@ -2015,12 +1995,6 @@ def update_assignment(current_user, session_id):
             s.contextInputs = dict(data['contextInputs'] or {})
             word_target = int(s.contextInputs.get('wordCountTarget', s.wordCountTarget) or s.wordCountTarget)
             s.wordCountTarget = word_target
-            next_language = str(data.get('language') or s.contextInputs.get('language') or getattr(s, 'language', '') or '').strip()
-            if next_language:
-                s.language = next_language
-
-        if 'language' in data and str(data.get('language') or '').strip():
-            s.language = str(data.get('language')).strip()
 
         s.updatedAt = datetime.datetime.utcnow()
         s.save()
@@ -2081,25 +2055,10 @@ def generate_assignment(current_user, session_id):
         injections = _get_applicable_prompts(uni_name, atype)
         student_profile = _build_student_profile_snapshot(current_user)
 
-        context_inputs = dict(getattr(s, 'contextInputs', {}) or {})
-        resolved_language = str(
-            getattr(s, 'language', '')
-            or context_inputs.get('language', '')
-            or getattr(getattr(current_user, 'major', None), 'reportLanguage', '')
-            or 'English'
-        ).strip() or 'English'
-        s.language = resolved_language
-        if context_inputs.get('language') != resolved_language:
-            context_inputs['language'] = resolved_language
-            s.contextInputs = context_inputs
-            s.updatedAt = datetime.datetime.utcnow()
-            s.save()
-
         payload = {
             'sessionId': str(s.id),
             'assignmentType': atype,
-            'contextInputs': context_inputs,
-            'language': resolved_language,
+            'contextInputs': dict(getattr(s, 'contextInputs', {}) or {}),
             'universityName': uni_name,
             'degreeName': str(getattr(s, 'degreeName', '') or ''),
             'majorName': str(getattr(s, 'majorName', '') or ''),

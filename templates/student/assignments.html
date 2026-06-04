@@ -181,7 +181,11 @@ body{background:var(--page-bg);color:var(--txt)}
 
   async function loadAndRender(){
     const sessions = await fetchSessions()
+    const selectedType = typeFilter.value
+    const selectedStatus = statusFilter.value
     populateFilters(sessions)
+    typeFilter.value = selectedType
+    statusFilter.value = selectedStatus
     const filtered = sessions.filter(s=>{
       if(typeFilter.value && (s.assignmentType||'')!==typeFilter.value) return false
       if(statusFilter.value && (s.status||'')!==statusFilter.value) return false
@@ -194,8 +198,12 @@ body{background:var(--page-bg);color:var(--txt)}
     const types = new Set();const statuses = new Set();
     for(const s of sessions){ if(s.assignmentType) types.add(s.assignmentType); if(s.status) statuses.add(s.status)}
     // clear and add
+    const selectedType = typeFilter.value
+    const selectedStatus = statusFilter.value
     typeFilter.innerHTML = '<option value="">All Types</option>' + Array.from(types).map(t=>`<option value="${t}">${TYPE_LABELS[t]||t}</option>`).join('')
     statusFilter.innerHTML = '<option value="">All Statuses</option>' + Array.from(statuses).map(s=>`<option value="${s}">${STATUS_LABELS[s]||s}</option>`).join('')
+    typeFilter.value = selectedType
+    statusFilter.value = selectedStatus
   }
 
   async function downloadPdf(id, title){

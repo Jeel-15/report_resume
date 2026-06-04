@@ -1013,7 +1013,7 @@
     </div>
 
     <div class="tab-pane" id="tab-resumes">
-        <div class="dash-resume-card">
+        <div class="dash-resume-card" style="margin-bottom:14px;">
             <h3>My Resumes</h3>
             <p>Build and manage polished resumes from the resume builder.</p>
             <div class="dash-resume-cta">
@@ -1024,6 +1024,10 @@
                     <i class="bi bi-magic"></i> Resume Builder
                 </a>
             </div>
+        </div>
+
+        <div class="dash-mini-list" id="recentResumes">
+            <p class="dash-empty">Loading recent resumes...</p>
         </div>
     </div>
 
@@ -1501,6 +1505,10 @@
         document.querySelectorAll('.tab-pane').forEach((pane) => {
             pane.classList.toggle('active', pane.id === `tab-${tabName}`);
         });
+
+        if (tabName === 'resumes') {
+            loadRecentResumes();
+        }
     }
 
     function getAssignmentStatusClass(status) {
@@ -1584,6 +1592,62 @@
             console.error(error);
             container.innerHTML = `
                 <p class="dash-empty">Failed to load assignments. <a href="/student/assignments">Open assignments</a>.</p>
+            `;
+        }
+    }
+
+    async function loadRecentResumes() {
+        const container = document.getElementById('recentResumes');
+        if (!container) return;
+
+        try {
+            const res = await fetch('/api/student/resumes?limit=3', {
+                credentials: 'include',
+                headers: authHeaders(),
+            });
+
+            if (res.status === 401 || res.status === 403) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+                return;
+            }
+
+            if (!res.ok) {
+                throw new Error(`Failed to load resumes: ${res.status}`);
+            }
+
+            const items = await res.json();
+            const resumes = Array.isArray(items) ? items : [];
+
+            if (resumes.length === 0) {
+                container.innerHTML = `
+                    <p class="dash-empty">
+                        No resumes yet. <a href="/student/resume/builder">Create your first resume</a>.
+                    </p>
+                `;
+                return;
+            }
+
+            container.innerHTML = resumes.map((item) => {
+                const createdAt = item.createdAt
+                    ? new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : '-';
+                return `
+                    <a class="dash-mini-item" href="/student/resume/${item._id}/builder">
+                        <div class="dash-mini-icon"><i class="bi bi-person-vcard"></i></div>
+                        <div>
+                            <div class="dash-mini-title">${escapeHtml(item.title || 'Untitled Resume')}</div>
+                            <div class="dash-mini-meta">${escapeHtml(item.fullName || 'Resume')} · Created ${escapeHtml(createdAt)}</div>
+                        </div>
+                        <span class="dash-mini-status status-generated">Open</span>
+                    </a>
+                `;
+            }).join('');
+        } catch (error) {
+            console.error(error);
+            container.innerHTML = `
+                <p class="dash-empty">Failed to load resumes. <a href="/student/resumes">Open resumes</a>.</p>
             `;
         }
     }
@@ -1820,6 +1884,7 @@
         loadReports();
         loadVideoGuides();
         loadRecentAssignments();
+        loadRecentResumes();
     });
 </script>
 {% endblock %}

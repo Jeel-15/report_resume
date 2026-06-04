@@ -615,6 +615,7 @@ function showToast(msg, type = 'info') {
 async function loadResumes() {
     try {
         const res = await fetch('/api/student/resumes', {
+            cache: 'no-store',
             credentials: 'include',
             headers: authHeaders()
         });
@@ -941,6 +942,12 @@ async function renameResume(id, currentTitle) {
                 body: JSON.stringify({ title: newTitle })
             });
             if (!res.ok) throw new Error('Rename failed');
+            allResumes = allResumes.map((resume) => (
+                String(resume._id) === String(id)
+                    ? { ...resume, title: newTitle }
+                    : resume
+            ));
+            renderPage();
             close();
             showToast('Resume renamed.', 'success');
             await loadResumes();
